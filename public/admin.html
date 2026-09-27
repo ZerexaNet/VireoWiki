@@ -1,0 +1,384 @@
+<!DOCTYPE html><html lang="zh-CN"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&family=Montserrat:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24/dist/sweetalert2.min.css"><title class="app-wiki-name">管理后台 - VireoWiki</title><link rel="icon" id="wiki-favicon" href="/favicon.ico"><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/skins-e3e52158b85e58b2.css"><script>window.__WIKI_SKINS__={"list":["default","astro","vector","bootstrap","via"],"default":"default","labels":{"default":"Cloudwiki(기본)","astro":"Astro","vector":"벡터","bootstrap":"Bootstrap","via":"VIA"},"darkOnly":["astro"]};try{var s=localStorage.getItem('themeSkin');var L=window.__WIKI_SKINS__.list;if(s&&L.indexOf(s)>=0){if(s==='default')document.documentElement.removeAttribute('data-wiki-theme');else document.documentElement.setAttribute('data-wiki-theme',s);}}catch(e){}</script> <link rel="stylesheet" href="/css/admin.css">  <script>try{var t=localStorage.getItem('themeMode');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script> <script>(function(){try{var L=window.__WIKI_SKINS__;if(!L||!L.darkOnly||!L.darkOnly.length)return;var d=document.documentElement;var c=d.getAttribute('data-wiki-theme')||'default';if(L.darkOnly.indexOf(c)>=0){d.setAttribute('data-theme','dark');d.setAttribute('data-bs-theme','dark');}else{var t;try{t=localStorage.getItem('themeMode');}catch(e){}var bs;if(t==='light'){d.setAttribute('data-theme','light');bs='light';}else if(t==='dark'){d.setAttribute('data-theme','dark');bs='dark';}else{d.removeAttribute('data-theme');bs=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}d.setAttribute('data-bs-theme',bs);}}catch(e){}})();</script></head> <body data-layout-mode="default" style="-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;"> <!-- 레이아웃 모드 사용자 오버라이드 FOUC 방지: 파싱 중 즉시 적용(common.ts applyLayoutOverride 와 동일 키). --> <script>try{var m=localStorage.getItem('layoutModeOverride');if(m&&['default','left-toc','right-toc','docs','wide'].indexOf(m)>=0)document.body.setAttribute('data-layout-mode',m);}catch(e){}</script>    <!-- ── 사이트 전역 공지 배너 (다중) ── -->
+<!-- src/client/common.ts 가 appConfig.announcements 배열을 읽어 자식 노드를 동적 생성한다. -->
+<div id="announcement-banners" class="announcement-banners d-none"></div>
+
+<!-- ── 네비게이션 바 ── -->
+<nav class="navbar navbar-expand-lg navbar-light">
+    <div class="container-fluid flex-wrap align-items-center">
+        <!-- 상단 줄: 브랜딩 + 기능 버튼들 -->
+        <a class="navbar-brand me-auto" href="/">
+            <span class="wiki-logo-container"><img src="/favicon.jpg" alt="Logo" class="brand-logo" style="height: 32px; vertical-align: middle; margin-right: 8px;"></span>
+            <span class="app-wiki-name">VireoWiki</span>
+        </a>
+
+        <!-- 유저 버튼 & 알림 패널 통합 -->
+        <div class="dropdown ms-2 d-none position-relative" id="navUser">
+            <a href="#" class="d-flex align-items-center text-decoration-none position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+               <img id="userAvatar" class="user-avatar m-0" src="" alt="">
+               <span class="notification-badge d-none" id="notificationBadge"></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm position-absolute">
+                <li><h6 class="dropdown-header text-truncate" id="userName"></h6></li>
+                <li><a class="dropdown-item d-flex align-items-center" href="#" onclick="document.querySelector('#navUser > a').click(); toggleNotificationPanel(); event.stopPropagation(); return false;"><i class="mdi mdi-inbox me-2"></i><span class="me-auto">通知</span><span class="notification-menu-badge d-none" id="notificationMenuBadge"></span></a></li>
+                <li><a class="dropdown-item" href="#" onclick="openSettingsModal(); event.preventDefault(); return false;"><i class="mdi mdi-cog-outline me-2"></i> 个人设置</a></li>
+                <li><a class="dropdown-item" href="/mypage"><i class="mdi mdi-account-circle me-2"></i> 个人中心</a></li>
+                <li id="navAdminConsole" class="d-none"><a class="dropdown-item" href="/admin"><i class="mdi mdi-shield-account me-2"></i> 管理后台</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/auth/logout"><i class="mdi mdi-logout me-2 text-danger"></i> 退出登录</a></li>
+            </ul>
+
+            <!-- 알림 드롭다운 패널 -->
+            <div class="notification-panel d-none" id="notificationPanel">
+                <div class="notification-panel-header">
+                    <strong><i class="mdi mdi-inbox"></i> 通知</strong>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0 ms-auto" id="notifMarkAllReadBtn" onclick="markAllNotificationsRead()" title="全部标为已读" style="font-size:0.8rem;">
+                        <i class="mdi mdi-email-open-outline"></i> 全部标为已读
+                    </button>
+                    <button class="btn btn-sm btn-link text-danger p-0 ms-3" id="notifDeleteAllBtn" onclick="deleteAllNotifications()" title="全部删除" style="font-size:0.8rem;">
+                        <i class="mdi mdi-delete-sweep-outline"></i> 全部删除
+                    </button>
+                </div>
+                <div class="notification-panel-body" id="notificationPanelBody">
+                    <div class="text-center text-muted py-4">正在加载...</div>
+                </div>
+                <a class="notification-panel-archive-link" href="/mypage#notifications">
+                    <i class="mdi mdi-archive-outline"></i> 查看全部通知
+                </a>
+                <div class="notification-panel-footer d-none" id="notificationPanelFooter">
+                    <div class="push-toggle-status d-flex align-items-center justify-content-between mb-2" id="pushToggleStatus">
+                        <span class="push-toggle-status-label">
+                            <i class="mdi mdi-bell-outline me-1"></i>浏览器推送通知
+                        </span>
+                        <span class="push-status-pill push-status-off" id="pushStatusPill">
+                            <i class="mdi mdi-circle-medium" id="pushStatusDot"></i>
+                            <span id="pushStatusText">已关闭</span>
+                        </span>
+                    </div>
+                    <button id="pushToggleBtn" class="btn btn-sm btn-outline-secondary w-100" type="button" title="浏览器推送通知">
+                        <i class="mdi mdi-bell-off-outline"></i> <span id="pushToggleLabel">接收推送通知</span>
+                    </button>
+                </div>
+            </div>
+            <!-- js 호환성을 위한 안보이는 래퍼 유지 -->
+            <div id="notificationBtnWrapper" class="d-none"></div>
+        </div>
+        <!-- 개인 설정 버튼 (로그아웃 상태에서만 노출 — 로그인 시 checkAuth 가 숨기고 드롭다운 항목으로 대체) -->
+        <button class="btn border-0 px-1 ms-2" type="button" id="navSettings" onclick="openSettingsModal()" title="个人设置" aria-label="个人设置">
+            <i class="mdi mdi-cog-outline text-body"></i>
+        </button>
+        <a class="btn border-0 px-1 ms-2" id="navLogin" href="/login" title="登录"><i class="mdi mdi-login text-body"></i></a>
+
+        <!-- 햄버거 버튼 (사이드바 토글) -->
+        <button class="navbar-toggler border-0 px-1 ms-2" type="button" data-bs-toggle="offcanvas"
+            data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+            <i class="mdi mdi-menu fs-2 text-body"></i>
+        </button>
+
+        <!-- 하단 줄: 검색창 (항상 full-width로 다음 줄에 표시) -->
+        <form class="nav-search-form d-flex" onsubmit="doSearch(event)">
+            <button class="btn border-0 px-1 me-1" type="button" title="随机页面" onclick="goRandomPage()"><i class="bi bi-shuffle text-body"></i></button>
+            <div class="input-group">
+                <input type="text" id="searchInput" class="form-control" placeholder="搜索页面..." autocomplete="off">
+                <button class="btn search-mode-btn" type="submit" aria-label="搜索">
+                    <i class="mdi mdi-magnify"></i>
+                </button>
+            </div>
+            <!-- 연관검색어 드롭다운 -->
+            <ul class="search-suggestions" id="searchSuggestions"></ul>
+        </form>
+
+        <script>
+        (function() {
+            let debounceTimer = null;
+            const input = document.getElementById('searchInput');
+            const sugBox = document.getElementById('searchSuggestions');
+            let activeIdx = -1;
+
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const rawQ = this.value.trim();
+                // map: 프리픽스가 붙으면 일반 문서 LIKE 검색을 그대로 돌리되, 결과를 map: 가상 문서로 매핑한다.
+                const isMapMode = rawQ.toLowerCase().startsWith('map:');
+                const q = isMapMode ? rawQ.slice(4).trim() : rawQ;
+                if (q.length < 2) {
+                    sugBox.classList.remove('show');
+                    sugBox.innerHTML = '';
+                    return;
+                }
+                debounceTimer = setTimeout(() => fetchSuggestions(q, isMapMode), 250);
+            });
+
+            async function fetchSuggestions(q, isMapMode) {
+                try {
+                    // map: 모드는 카테고리를 클라이언트에서 거르지 않고 서버에서 아예 제외시켜
+                    // 7개 한도가 카테고리에 잠식돼 페이지 결과가 비는 상황을 막는다.
+                    const url = '/api/search/suggest?q=' + encodeURIComponent(q)
+                        + (isMapMode ? '&exclude_categories=1' : '');
+                    const res = await fetch(url);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const items = data.suggestions || [];
+                    renderSuggestions(items, isMapMode);
+                } catch(e) { /* ignore */ }
+            }
+
+            // 호출 식별자(slug) 네임스페이스별 아이콘. map: 가상 트리, 카테고리:, 이미지:
+            // 는 각각 다른 mdi 아이콘으로, 그 외 일반 문서는 기본 문서 아이콘으로 표시한다.
+            function suggestionIcon(slugTarget) {
+                if (slugTarget.toLowerCase().startsWith('map:')) return 'mdi-file-tree-outline';
+                if (slugTarget.startsWith('카테고리:')) return 'mdi-tag-outline';
+                if (slugTarget.startsWith('이미지:')) return 'mdi-image-outline';
+                return 'mdi-file-document-outline';
+            }
+
+            function renderSuggestions(items, isMapMode) {
+                activeIdx = -1;
+                if (!items.length) {
+                    sugBox.classList.remove('show');
+                    sugBox.innerHTML = '';
+                    return;
+                }
+                // item.title 이 있으면 표시 이름은 그것을, 호출 식별자(data-slug, /w/) 는 항상 slug.
+                // map: 모드에서는 호출 식별자도 map:<slug> 로 감싸 가상 문서 라우트로 이동시킨다.
+                sugBox.innerHTML = items.map((item, i) => {
+                    const baseSlug = item.slug;
+                    const baseDisplayName = item.title || baseSlug;
+                    const slugTarget = isMapMode ? 'map:' + baseSlug : baseSlug;
+                    const displayName = isMapMode ? 'map:' + baseDisplayName : baseDisplayName;
+                    const slugSubLabel = item.title
+                        ? ' <small class="text-muted">' + escapeHtml(slugTarget) + '</small>'
+                        : '';
+                    return '<li class="search-suggestion-item" data-slug="' + escapeHtml(slugTarget) + '">'
+                        + '<i class="mdi ' + suggestionIcon(slugTarget) + '"></i> '
+                        + escapeHtml(displayName) + slugSubLabel + '</li>';
+                }).join('');
+                sugBox.classList.add('show');
+
+                sugBox.querySelectorAll('.search-suggestion-item').forEach(el => {
+                    el.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        const slug = this.dataset.slug;
+                        if (typeof navigateTo === 'function') {
+                            navigateTo('/w/' + encodeURIComponent(slug));
+                        } else {
+                            window.location.href = '/w/' + encodeURIComponent(slug);
+                        }
+                        sugBox.classList.remove('show');
+                        sugBox.innerHTML = '';
+                        input.value = '';
+                        input.blur();
+                    });
+                });
+            }
+
+            // 키보드 탐색
+            input.addEventListener('keydown', function(e) {
+                const items = sugBox.querySelectorAll('.search-suggestion-item');
+                if (!items.length || !sugBox.classList.contains('show')) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIdx = Math.min(activeIdx + 1, items.length - 1);
+                    updateActive(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIdx = Math.max(activeIdx - 1, -1);
+                    updateActive(items);
+                } else if (e.key === 'Enter' && activeIdx >= 0) {
+                    e.preventDefault();
+                    items[activeIdx].dispatchEvent(new Event('mousedown'));
+                } else if (e.key === 'Escape') {
+                    sugBox.classList.remove('show');
+                }
+            });
+
+            function updateActive(items) {
+                items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+            }
+
+            input.addEventListener('blur', function() {
+                setTimeout(() => { sugBox.classList.remove('show'); }, 150);
+            });
+
+            input.addEventListener('focus', function() {
+                if (sugBox.innerHTML && this.value.trim().length >= 2) {
+                    sugBox.classList.add('show');
+                }
+            });
+        })();
+        </script>
+    </div>
+</nav>
+
+<!-- ── 개인 설정 모달 (클라이언트 전용 설정: 테마 · 레이아웃 모드 오버라이드) ── -->
+<!-- src/client/common.ts 가 openSettingsModal() 로 열고, select 변경을 처리한다. -->
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="settingsModalLabel"><i class="mdi mdi-cog-outline me-1"></i> 个人设置</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3" id="settingThemeWrap">
+                    <span class="form-label d-block">主题</span>
+                    <div class="setting-seg" id="settingTheme" role="group" aria-label="主题">
+                        <button type="button" class="seg-btn" data-value="auto" aria-pressed="false" title="自动 (시스템 설정)">
+                            <i class="mdi mdi-circle-half-full" aria-hidden="true"></i><span>自动</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="dark" aria-pressed="false" title="深色">
+                            <i class="mdi mdi-moon-waxing-crescent" aria-hidden="true"></i><span>深色</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="light" aria-pressed="false" title="浅色">
+                            <i class="mdi mdi-white-balance-sunny" aria-hidden="true"></i><span>浅色</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- 다크 전용 색 테마(스킨)가 활성일 때 common.ts 가 위 밝기 토글을 숨기고 이 안내를 보인다. -->
+                <p class="text-muted small mb-3" id="settingThemeForcedNote" style="display:none;"><i class="mdi mdi-moon-waxing-crescent me-1"></i>当前主题仅支持深色模式。</p>
+                <div class="mb-3" id="settingThemeSkinWrap" style="display:none;">
+                    <span class="form-label d-block" id="settingThemeSkinLabelText">配色主题</span>
+                    <!-- 네이티브 <select> 대신 앱 디자인에 맞춘 커스텀 드롭다운. 옵션은 멀티 스킨 -->
+                    <!-- 모드(window.__WIKI_SKINS__)일 때 common.ts 가 동적 주입한다. -->
+                    <div class="skin-select" id="settingThemeSkin">
+                        <button type="button" class="skin-select-toggle" id="settingThemeSkinToggle"
+                            aria-haspopup="listbox" aria-expanded="false" aria-labelledby="settingThemeSkinLabelText settingThemeSkinValue">
+                            <span class="skin-select-value" id="settingThemeSkinValue"></span>
+                            <i class="mdi mdi-chevron-down skin-select-caret" aria-hidden="true"></i>
+                        </button>
+                        <ul class="skin-select-menu" id="settingThemeSkinMenu" role="listbox" aria-label="配色主题"></ul>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="form-label d-block">布局模式</span>
+                    <div class="setting-seg" id="settingLayoutMode" role="group" aria-label="布局模式">
+                        <button type="button" class="seg-btn" data-value="site" aria-pressed="false" title="站点默认值">
+                            <i class="mdi mdi-web" aria-hidden="true"></i><span>站点默认</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="default" aria-pressed="false" title="默认 (无侧栏)">
+                            <i class="mdi mdi-page-layout-body" aria-hidden="true"></i><span>默认</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="left-toc" aria-pressed="false" title="左侧目录">
+                            <i class="mdi mdi-page-layout-sidebar-left" aria-hidden="true"></i><span>左侧目录</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="right-toc" aria-pressed="false" title="右侧目录">
+                            <i class="mdi mdi-page-layout-sidebar-right" aria-hidden="true"></i><span>右侧目录</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="docs" aria-pressed="false" title="页面 (左侧目录树和右侧目录)">
+                            <i class="mdi mdi-file-tree-outline" aria-hidden="true"></i><span>页面</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="wide" aria-pressed="false" title="宽屏 (隐藏侧栏)">
+                            <i class="mdi mdi-arrow-expand-horizontal" aria-hidden="true"></i><span>宽屏</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="form-label d-block">键盘快捷键</span>
+                    <div class="setting-seg" id="settingKeyboardShortcuts" role="group" aria-label="键盘快捷键">
+                        <button type="button" class="seg-btn" data-value="on" aria-pressed="false" title="启用单键快捷键">
+                            <i class="mdi mdi-keyboard" aria-hidden="true"></i><span>开启</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="off" aria-pressed="false" title="关闭单键快捷键">
+                            <i class="mdi mdi-keyboard-off" aria-hidden="true"></i><span>关闭</span>
+                        </button>
+                    </div>
+                    <p class="text-muted small mb-0 mt-1"><i class="mdi mdi-information-outline me-1"></i>关闭后 <kbd>/</kbd> <kbd>g</kbd> <kbd>e</kbd> <kbd>?</kbd> 等单键快捷键将失效 (<kbd>Ctrl/⌘+K</kbd> 始终可用).</p>
+                </div>
+<p class="text-muted small mb-0"><i class="mdi mdi-information-outline me-1"></i>设置仅保存在当前浏览器；更改布局后页面会刷新。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+ <div class="admin-layout"> <!-- ── 왼쪽 사이드바 (관리 메뉴) ── --> <aside class="admin-sidebar"> <!-- 프로필 카드 --> <div class="admin-sidebar-profile-card mb-3" id="adminProfileCard" style="display: none;"> <div class="d-flex align-items-center gap-2 mb-2"> <div id="adminAvatarSlot" class="d-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 32px; height: 32px; overflow: hidden;"> <i class="mdi mdi-account fs-4 text-muted"></i> </div> <div class="min-w-0 flex-grow-1"> <div id="adminNameSlot" class="fw-bold text-truncate small" style="line-height: 1.2;">管理员</div> <div id="adminRoleSlot" class="small text-muted" style="font-size: 0.75rem;">-</div> </div> </div> </div> <div class="wiki-article"> <h6 class="sidebar-title"> <i class="bi bi-gear-fill"></i> 管理菜单
+</h6> <div class="admin-sidebar-nav"> <a href="javascript:void(0)" class="admin-nav-item active" onclick="showTab('tab-dashboard')"> <i class="mdi mdi-view-dashboard-outline"></i> <span>仪表盘</span> </a> <a href="javascript:void(0)" class="admin-nav-item" onclick="showTab('tab-users')"> <i class="mdi mdi-account-group-outline"></i> <span>用户管理</span> <span id="sidebarSignupBadge" class="badge sidebar-signup-badge ms-auto" style="display: none;">0</span> </a> <a href="javascript:void(0)" class="admin-nav-item" onclick="showTab('tab-content')"> <i class="mdi mdi-file-document-edit-outline"></i> <span>内容管理</span> </a> <a href="javascript:void(0)" class="admin-nav-item" onclick="showTab('tab-settings')"> <i class="mdi mdi-cog-outline"></i> <span>系统设置</span> </a> <a href="javascript:void(0)" class="admin-nav-item" onclick="showTab('tab-stats')"> <i class="mdi mdi-chart-line"></i> <span>统计与日志</span> </a> </div> </div> </aside> <!-- ── 메인 콘텐츠 영역 ── --> <div class="wiki-container"> <div class="admin-header d-flex justify-content-between align-items-center"> <div> <h2 class="mb-1"> <i class="mdi mdi-shield-account text-primary"></i> 管理后台
+</h2> <p class="text-muted mb-0 small">
+管理 Wiki 设置。
+</p> </div> <button class="btn btn-wiki-outline btn-sm" onclick="history.back()"> <i class="mdi mdi-arrow-left"></i> 返回
+</button> </div> <!-- ── 탭: 대시보드 (Dashboard) ── --> <div id="tab-dashboard" class="tab-pane active"> <div class="row g-4 mb-4"> <div class="col-md-6"> <div class="card shadow-sm border-0 h-100"> <div class="card-body"> <h5 class="card-title mb-3"> <i class="mdi mdi-ticket-outline text-primary"></i> 빠른
+                    链接
+</h5> <div class="d-grid gap-2"> <a href="/tickets" class="admin-quick-action"> <i class="mdi mdi-ticket-confirmation-outline"></i> <span>工单咨询</span> </a> <a href="/admin-media" class="admin-quick-action"> <i class="mdi mdi-image-multiple-outline"></i> <span>图片管理工具</span> </a> <a href="/admin-bulk-manage" class="admin-quick-action" id="bulkManageQuickLink" style="display: none"> <i class="mdi mdi-file-document-multiple-outline"></i> <span>批量管理页面（超级管理员）</span> </a> </div> </div> </div> </div> <div class="col-md-6"> <div class="card shadow-sm border-0 h-100"> <div class="card-body text-center d-flex flex-column justify-content-center"> <h6 class="text-muted mb-2">查看统计</h6> <button class="btn btn-wiki btn-lg" onclick="
+                      showTab('tab-stats');
+                      loadAnalyticsDashboard();
+                    "> <i class="mdi mdi-chart-box-outline"></i> 打开统计面板
+</button> </div> </div> </div> </div> <div class="card shadow-sm border-0 mb-4" id="analyticsSummaryCard" style="display: none"> <div class="card-header py-3"> <h5 class="mb-0">最近 7 天统计概览</h5> </div> <div class="card-body"> <div class="row g-3 text-center"> <div class="col-6 col-md-3"> <div class="p-3 rounded-3 dash-stat-box"> <div class="text-muted small">总浏览量</div> <div class="fs-4 fw-bold text-primary" id="dashTotalViews">
+-
+</div> </div> </div> <div class="col-6 col-md-3"> <div class="p-3 rounded-3 dash-stat-box"> <div class="text-muted small">访问国家</div> <div class="fs-4 fw-bold text-success" id="dashCountries">
+-
+</div> </div> </div> <div class="col-12 col-md-6"> <div id="dashDailyChart" style="height: 60px"></div> </div> </div> </div> </div> </div> <!-- ── 탭: 회원 관리 (Users) ── --> <div id="tab-users" class="tab-pane"> <div id="signupRequestsCard" class="card shadow-sm border-0 mb-4" style="display: none"> <div class="card-header py-3"> <div class="d-flex justify-content-between align-items-center"> <h5 class="mb-0">
+注册申请管理
+<span class="badge bg-warning text-dark ms-2" id="signupRequestsCount" style="display: none">0</span> </h5> <span class="badge bg-info">注册审核已启用</span> </div> </div> <div class="card-body"> <div class="d-flex flex-wrap gap-2 mb-3"> <select id="signupStatusFilter" class="form-select form-select-sm" style="width: auto"> <option value="pending">待审核</option> <option value="approved">已批准</option> <option value="rejected">已拒绝</option> <option value="blocked">已封禁</option> <option value="all">查看全部</option> </select> <button class="btn btn-sm btn-primary" onclick="loadSignupRequests()">
+应用筛选
+</button> </div> <div class="table-responsive"> <table class="table table-hover text-nowrap mb-0"> <thead class="table-light"> <tr> <th>个人资料</th> <th>显示名称</th> <th>邮箱</th> <th>状态</th> <th>操作</th> </tr> </thead> <tbody id="signupRequestsBody"></tbody> </table> </div> <div id="signupRequestsLoadMore" class="text-center py-3" style="display: none"> <button class="btn btn-outline-secondary btn-sm" onclick="loadMoreSignupRequests()">
+加载更多
+</button> </div> </div> </div> <div class="card shadow-sm border-0"> <div class="card-header py-3"> <h5 class="mb-0">用户列表与权限管理</h5> </div> <div class="card-body"> <div class="d-flex flex-wrap gap-2 mb-3"> <input type="text" id="userSearchInput" class="form-control form-control-sm" placeholder="搜索名称或邮箱" style="max-width: 180px"> <select id="userRoleFilter" class="form-select form-select-sm" style="width: auto"> <option value="all">所有权限</option> <option value="super_admin">超级管理员</option> <option value="admin">管理员</option> <option value="discussion_manager">讨论 管理员</option> <option value="user">普通 用户</option> </select> <button class="btn btn-sm btn-primary" onclick="searchUsers()">
+搜索
+</button> </div> <div class="table-responsive"> <table class="table table-hover user-table text-nowrap mb-0"> <thead class="table-light"> <tr> <th>个人资料</th> <th>名称</th> <th>权限</th> <th>状态</th> <th>注册时间</th> <th>管理</th> </tr> </thead> <tbody id="userTableBody"></tbody> </table> </div> <div id="userLoadMoreWrapper" class="text-center py-3" style="display: none"> <button class="btn btn-outline-secondary btn-sm" onclick="loadMoreUsers()">
+加载更多
+</button> </div> </div> </div> </div> <!-- ── 탭: 콘텐츠 관리 (Content) ── --> <div id="tab-content" class="tab-pane"> <div class="card shadow-sm border-0 mb-4"> <div class="card-header py-3"> <h5 class="mb-0">已删除页面管理（软删除）</h5> </div> <div class="card-body"> <div class="d-flex flex-wrap gap-2 mb-3"> <input type="text" id="deletedPagesSearch" class="form-control form-control-sm" placeholder="搜索页面名或标题" style="max-width: 240px" onkeydown="if (event.key === 'Enter') searchDeletedPages();"> <button class="btn btn-sm btn-primary" onclick="searchDeletedPages()">
+搜索
+</button> <button class="btn btn-sm btn-outline-secondary" onclick="resetDeletedPagesSearch()">
+重置
+</button> <span class="ms-auto small text-muted align-self-center" id="deletedPagesTotal"></span> </div> <div class="table-responsive"> <table class="table table-hover mb-0"> <thead class="table-light"> <tr> <th>页面路径（Slug）</th> <th>删除时间</th> <th>操作</th> </tr> </thead> <tbody id="deletedPagesBody"></tbody> </table> </div> <nav id="deletedPagesPagination" class="mt-3" aria-label="已删除页面翻页"></nav> </div> </div> <div class="card shadow-sm border-0 mb-4"> <div class="card-header py-3 d-flex justify-content-between align-items-center"> <h5 class="mb-0">分类 ACL</h5> <select id="categoryAclSort" class="form-select form-select-sm" style="width: auto;"> <option value="name_asc">名称 ↑</option> <option value="name_desc">名称 ↓</option> <option value="pages_desc">页面数降序</option> <option value="created_desc">最近登记优先</option> </select> </div> <div class="card-body"> <p class="text-muted small mb-3">
+分类에 编辑 ACL 템플릿을 매달면, 그 分类가 页面에 应用될
+                때 페이지의 <code>edit_acl</code> 이 모드(덮어쓰기/합치기/무시)에 따라
+                갱신됩니다. <b>仅管理员</b> 플래그를 켜면 비管理员는 해당
+                分类를 应用할 수 없습니다 (구 "仅管理员 分类" 와 동일 효과).
+                分类를 클릭하면 해당 分类 返回移动页面합니다.
+</p> <div id="categoryAclSummary" class="list-group list-group-flush border rounded"></div> <nav id="categoryAclPagination" class="mt-2" aria-label="分类 ACL 페이지 이동"></nav> </div> </div> <!-- ── 컬러 팔레트 관리 ── --> <div class="card shadow-sm border-0 mb-4" id="paletteManagementSection"> <div class="card-header py-3"> <h5 class="mb-0">调色板管理</h5> </div> <div class="card-body"> <p class="text-muted small mb-3">
+본문에서 <code>{palette:名称}</code> 로 사용할 수 있는
+                커스텀 컬러 팔레트를 管理합니다. 背景色을 지정하면 휘도에 따라
+                文字颜色이 自动 계산되며(수동 변경 가능), 深色模式에서 다른 색을
+                쓰려면 별도 색상 토글을 켜세요. 默认 색상인 프리셋
+                (<code>primary</code>·<code>secondary</code>·<code>success</code>·<code>info</code>·<code>warning</code>·<code>danger</code>·<code>muted</code>)
+                는 사용할 수 없습니다.
+</p> <!-- ── 새 팔레트 추가 폼 ── --> <div class="admin-subpanel mb-3" id="paletteForm"> <div class="palette-form-header"> <h6 class="mb-0" id="paletteFormTitle">添加调色板</h6> <div class="palette-form-actions"> <button class="btn btn-wiki-outline btn-sm" type="button" id="paletteFormReset" style="display: none">
+取消
+</button> <button class="btn btn-primary btn-sm" type="button" id="paletteFormSubmit">
+保存
+</button> </div> </div> <div class="palette-form-name mt-2"> <label class="form-label small mb-1" for="paletteNameInput">名称</label> <input type="text" id="paletteNameInput" class="form-control" placeholder="调色板名称" maxlength="64" autocomplete="off"> <div class="text-danger small mt-1" id="paletteNameError" style="display: none"></div> </div> <!-- Light 변형 --> <div class="palette-variant-section mt-3" data-variant="light"> <div class="palette-variant-header"> <i class="mdi mdi-white-balance-sunny"></i> <span>浅色模式</span> </div> <div class="palette-color-pair"> <div class="palette-color-block" data-channel="light.bg"> <div class="palette-color-block-header"> <span class="palette-color-block-label">背景色</span> </div> <div id="paletteLightBgSwatches" class="palette-swatches-grid mb-2"></div> <canvas id="paletteLightBgCanvas" class="palette-sv-canvas" width="220" height="120"></canvas> <canvas id="paletteLightBgHue" class="palette-hue-canvas mt-2" width="220" height="16"></canvas> <input type="text" id="paletteLightBgHex" class="form-control form-control-sm font-monospace mt-2" value="#0D65F5" maxlength="9"> </div> <div class="palette-color-block" data-channel="light.color"> <div class="palette-color-block-header"> <span class="palette-color-block-label">文字颜色</span> <span class="form-check form-switch mb-0 palette-auto-toggle"> <input class="form-check-input" type="checkbox" id="paletteLightAuto" checked> <label class="form-check-label small" for="paletteLightAuto">自动对比度</label> </span> </div> <div id="paletteLightColorSwatches" class="palette-swatches-grid mb-2"></div> <canvas id="paletteLightColorCanvas" class="palette-sv-canvas" width="220" height="120"></canvas> <canvas id="paletteLightColorHue" class="palette-hue-canvas mt-2" width="220" height="16"></canvas> <input type="text" id="paletteLightColorHex" class="form-control form-control-sm font-monospace mt-2" value="#FFFFFF" maxlength="9"> </div> </div> </div> <div class="form-check form-switch mt-3"> <input class="form-check-input" type="checkbox" id="paletteHasDark"> <label class="form-check-label small" for="paletteHasDark">
+为深色模式单独设置颜色
+</label> </div> <!-- Dark 변형 --> <div class="palette-variant-section mt-3" id="paletteDarkRow" data-variant="dark" style="display: none"> <div class="palette-variant-header"> <i class="mdi mdi-weather-night"></i> <span>深色模式</span> </div> <div class="palette-color-pair"> <div class="palette-color-block" data-channel="dark.bg"> <div class="palette-color-block-header"> <span class="palette-color-block-label">背景色</span> </div> <div id="paletteDarkBgSwatches" class="palette-swatches-grid mb-2"></div> <canvas id="paletteDarkBgCanvas" class="palette-sv-canvas" width="220" height="120"></canvas> <canvas id="paletteDarkBgHue" class="palette-hue-canvas mt-2" width="220" height="16"></canvas> <input type="text" id="paletteDarkBgHex" class="form-control form-control-sm font-monospace mt-2" value="#0D65F5" maxlength="9"> </div> <div class="palette-color-block" data-channel="dark.color"> <div class="palette-color-block-header"> <span class="palette-color-block-label">文字颜色</span> <span class="form-check form-switch mb-0 palette-auto-toggle"> <input class="form-check-input" type="checkbox" id="paletteDarkAuto" checked> <label class="form-check-label small" for="paletteDarkAuto">自动对比度</label> </span> </div> <div id="paletteDarkColorSwatches" class="palette-swatches-grid mb-2"></div> <canvas id="paletteDarkColorCanvas" class="palette-sv-canvas" width="220" height="120"></canvas> <canvas id="paletteDarkColorHue" class="palette-hue-canvas mt-2" width="220" height="16"></canvas> <input type="text" id="paletteDarkColorHex" class="form-control form-control-sm font-monospace mt-2" value="#FFFFFF" maxlength="9"> </div> </div> </div> <!-- 프리뷰 --> <div class="palette-preview-row mt-3"> <span class="text-muted small me-2">预览:</span> <span class="palette-preview-badge" id="paletteLightPreview">Light</span> <span class="palette-preview-badge palette-preview-dark" id="paletteDarkPreview" style="display: none">Dark</span> </div> </div> <!-- ── 팔레트 목록 ── --> <div id="paletteList" class="list-group list-group-flush border rounded"> <div class="p-3 text-center text-muted small">正在加载…</div> </div> </div> </div> </div> <!-- ── 탭: 시스템 설정 (Settings) ── --> <div id="tab-settings" class="tab-pane"> <!-- ── 사이트 공지 ── --> <div class="card shadow-sm border-0 mb-4"> <div class="card-header py-3"> <h5 class="mb-0">站点公告</h5> </div> <div class="card-body"> <p class="text-muted small mb-3">
+여러 개의 공지를 발행하면 헤더에 위에서 아래 순서로 쌓입니다.
+                블로그 포스트 페이지의 "공지로 발행" 버튼은 그대로 사용
+                가능하며, 여기서 추가하는 공지는 외부 链接 또는 链接 없는 텍스트
+                배너로 발행됩니다.
+</p> <!-- 신규 공지 발행 폼 --> <div class="admin-subpanel mb-3"> <h6 class="mb-2">发布新公告</h6> <div class="row g-2"> <div class="col-12 col-md-5"> <label class="form-label small mb-1">标题</label> <input type="text" id="annNewTitle" class="form-control form-control-sm" maxlength="200" placeholder="公告标题"> </div> <div class="col-12 col-md-5"> <label class="form-label small mb-1">链接 URL（可选）</label> <input type="text" id="annNewUrl" class="form-control form-control-sm" placeholder="https://... 或 /blog/123；留空仅显示文字"> </div> <div class="col-12 col-md-2"> <label class="form-label small mb-1">图标</label> <div class="d-flex gap-1 align-items-center"> <button type="button" id="annNewIconBtn" class="btn btn-sm btn-outline-secondary flex-grow-1"> <i id="annNewIconPreview" class="mdi mdi-bullhorn"></i> <span class="ms-1" id="annNewIconLabel">默认</span> </button> <button type="button" id="annNewIconClearBtn" class="btn btn-sm btn-outline-secondary" title="重置图标"> <i class="bi bi-x"></i> </button> </div> </div> </div> <div class="mt-2 text-end"> <button type="button" id="annNewSubmit" class="btn btn-wiki btn-sm"> <i class="mdi mdi-bullhorn me-1"></i>发布公告
+</button> </div> </div> <!-- 현재 공지 목록 --> <div class="table-responsive"> <table class="table table-sm align-middle mb-0" id="announcementsTable"> <thead> <tr> <th style="width: 60px">图标</th> <th>标题</th> <th style="width: 200px">链接</th> <th style="width: 180px">发布时间</th> <th style="width: 160px" class="text-end">管理</th> </tr> </thead> <tbody id="announcementsTbody"> <tr> <td colspan="5" class="text-center text-muted">
+正在加载...
+</td> </tr> </tbody> </table> </div> </div> </div> <!-- 공지 수정 모달 --> <div class="modal fade" id="announcementEditModal" tabindex="-1" aria-hidden="true"> <div class="modal-dialog"> <div class="modal-content"> <div class="modal-header"> <h5 class="modal-title"> <i class="mdi mdi-pencil me-2"></i>编辑公告
+</h5> <button type="button" class="btn-close" data-bs-dismiss="modal"></button> </div> <div class="modal-body"> <p class="text-muted small mb-3">
+标题과 图标만 변경할 수 있습니다. 发布时间은 갱신되지
+                    않으며 Discord 通知도 발송되지 않습니다.
+</p> <input type="hidden" id="annEditId"> <div class="mb-3"> <label class="form-label">标题</label> <input type="text" id="annEditTitle" class="form-control" maxlength="200"> </div> <div class="mb-3"> <label class="form-label">图标</label> <div class="d-flex gap-2 align-items-center"> <button type="button" id="annEditIconBtn" class="btn btn-outline-secondary"> <i id="annEditIconPreview" class="mdi mdi-bullhorn"></i> <span class="ms-1" id="annEditIconLabel">默认</span> </button> <button type="button" id="annEditIconClearBtn" class="btn btn-outline-secondary" title="重置图标"> <i class="bi bi-x"></i> </button> </div> </div> </div> <div class="modal-footer"> <button type="button" class="btn btn-wiki-outline" data-bs-dismiss="modal">
+取消
+</button> <button type="button" id="annEditSubmit" class="btn btn-wiki">
+保存
+</button> </div> </div> </div> </div> <div class="card shadow-sm border-0 mb-4"> <div class="card-header py-3"> <h5 class="mb-0">Wiki 运营策略</h5> </div> <div class="card-body"> <h6 class="fw-bold mb-3">显示名称修改策略</h6> <div class="mb-4"> <div class="form-check mb-2"> <input class="form-check-input" type="radio" name="namechangePolicy" id="namechangeUnlimited" value="0"> <label class="form-check-label" for="namechangeUnlimited">不限次数</label> </div> <div class="form-check mb-2"> <input class="form-check-input" type="radio" name="namechangePolicy" id="namechangeDisabled" value="-1"> <label class="form-check-label" for="namechangeDisabled">禁止修改</label> </div> <div class="form-check mb-2"> <input class="form-check-input" type="radio" name="namechangePolicy" id="namechangeCooldown" value="custom"> <label class="form-check-label" for="namechangeCooldown">按天限制</label> </div> <div class="ms-4 mt-2" id="cooldownDaysWrapper" style="display: none"> <div class="input-group" style="max-width: 150px"> <input type="number" class="form-control" id="cooldownDaysInput" min="1" value="30"> <span class="input-group-text">周日</span> </div> </div> </div> <hr> <h6 class="fw-bold mb-3">私信与注册</h6> <div class="form-check form-switch mb-3"> <input class="form-check-input" type="checkbox" id="allowDmSwitch"> <label class="form-check-label" for="allowDmSwitch">允许私信</label> </div> <div class="mb-4"> <div class="form-check mb-2"> <input class="form-check-input" type="radio" name="signupPolicy" id="signupPolicyOpen" value="open"> <label class="form-check-label" for="signupPolicyOpen">开放注册</label> </div> <div class="form-check mb-2"> <input class="form-check-input" type="radio" name="signupPolicy" id="signupPolicyApproval" value="approval"> <label class="form-check-label" for="signupPolicyApproval">管理员审核</label> </div> <div class="form-check mb-2"> <input class="form-check-input" type="radio" name="signupPolicy" id="signupPolicyBlocked" value="blocked"> <label class="form-check-label" for="signupPolicyBlocked">关闭注册</label> </div> </div> <hr> <h6 class="fw-bold mb-3">编辑权限全局设置</h6> <div class="mb-4"> <label for="editAclMinAgeInput" class="form-label">
+编辑 ACL <b>注册至少 N 天</b> 门槛
+</label> <div class="input-group" style="max-width: 220px"> <input type="number" class="form-control" id="editAclMinAgeInput" min="0" max="36500" value="0"> <span class="input-group-text">周日</span> </div> <small class="text-muted d-block mt-1">
+pages.edit_acl 의 <code>aged</code> 플래그가 참조하는 전역 门槛. 0이면 가입 즉시 통과(=비활성).
+</small> </div> <hr> <h6 class="fw-bold mb-3">编辑申请</h6> <div class="mb-4"> <small class="text-muted d-block">
+ACL 미달 사용자의 编辑을 즉시 반영하지 않고 编辑申请으로 보류해, 검토자(管理员·신뢰 사용자)가
+                  页面 페이지에서 승인/반려하는 기능입니다. 이 토글은 배포 설정(<code>wrangler.toml</code> 의
+<code>EDIT_REQUEST_ENABLED</code>)으로 이전되었습니다. <code>edit_acl_min_age_days</code> 가
+                  0 보다 커야 보류가 발생합니다.
+</small> </div> <button class="btn btn-wiki w-100 mb-4" onclick="saveWikiSettings()"> <i class="mdi mdi-content-save-outline"></i> 保存设置
+</button> <hr> <h6 class="fw-bold mb-3">MCP 服务设置</h6> <div class="mb-3"> <div class="d-flex align-items-center gap-2 mb-2"> <span id="mcpModeDisplay" class="badge bg-secondary">正在检查...</span> <span class="text-muted small">通过 wrangler.toml 中的 MCP_MODE 设置。</span> </div> <div id="mcpServerUrlBox" class="admin-info-box small" style="display: none"> <div class="fw-bold mb-2">
+MCP 服务地址
+</div> <div class="input-group input-group-sm mb-3"> <input type="text" id="mcpServerUrlInput" class="form-control font-monospace" readonly> <button class="btn btn-wiki" onclick="copyMcpUrl('mcpServerUrlInput')"> <i class="mdi mdi-content-copy"></i> 复制
+</button> </div> </div> </div> </div> </div> </div> <!-- ── 탭: 통계 및 로그 (Stats) ── --> <div id="tab-stats" class="tab-pane"> <div class="card shadow-sm border-0 mb-4"> <div class="card-header py-3 d-flex justify-content-between align-items-center"> <h5 class="mb-0">流量统计</h5> <button class="btn btn-sm btn-outline-secondary" onclick="refreshAnalytics()">
+刷新
+</button> </div> <div class="card-body"> <div id="analyticsContainer"> <div class="text-center py-5" id="analyticsLoadBtn"> <button class="btn btn-primary" onclick="loadAnalyticsDashboard()">
+加载数据
+</button> </div> <div id="analyticsRealContent" style="display: none"> <div id="dailyChart" class="mb-4" style="overflow-x: auto"></div> <div class="row g-3"> <div class="col-md-6 col-lg-4"> <div class="card h-100 border-0 bg-light-subtle shadow-sm p-3"> <h6 class="fw-bold border-bottom pb-2 mb-2"><i class="mdi mdi-trending-up text-primary"></i> 热门页面</h6> <div id="topPagesContainer" class="small"></div> </div> </div> <div class="col-md-6 col-lg-4"> <div class="card h-100 border-0 bg-light-subtle shadow-sm p-3"> <h6 class="fw-bold border-bottom pb-2 mb-2"><i class="mdi mdi-fire text-danger"></i> 24 小时热门</h6> <div id="trendingContainer" class="small"></div> </div> </div> <div class="col-md-6 col-lg-4"> <div class="card h-100 border-0 bg-light-subtle shadow-sm p-3"> <h6 class="fw-bold border-bottom pb-2 mb-2"><i class="mdi mdi-link-variant text-success"></i> 来源渠道</h6> <div id="referrersContainer" class="small"></div> </div> </div> <div class="col-md-6 col-lg-4"> <div class="card h-100 border-0 bg-light-subtle shadow-sm p-3"> <h6 class="fw-bold border-bottom pb-2 mb-2"><i class="mdi mdi-earth text-info"></i> 访问国家</h6> <div id="countriesContainer" class="small"></div> </div> </div> <div class="col-md-6 col-lg-4"> <div class="card h-100 border-0 bg-light-subtle shadow-sm p-3"> <h6 class="fw-bold border-bottom pb-2 mb-2"><i class="mdi mdi-cellphone-link text-warning"></i> 设备与浏览器</h6> <div id="devicesContainer" class="small"></div> </div> </div> <div class="col-md-6 col-lg-4"> <div class="card h-100 border-0 bg-light-subtle shadow-sm p-3"> <h6 class="fw-bold border-bottom pb-2 mb-2"><i class="mdi mdi-magnify text-secondary"></i> 搜索词</h6> <div id="searchesContainer" class="small"></div> </div> </div> <div class="col-12 mt-3"> <h6>最近的 HTTP 错误</h6> <div class="table-responsive"> <table class="table table-sm" style="white-space: nowrap"> <thead> <tr> <th>路径</th> <th>错误信息</th> <th>状态码</th> <th>发生次数</th> </tr> </thead> <tbody id="errorsContainerBody"></tbody> </table> </div> </div> <div class="col-12 mt-3"> <h6>性能统计（平均响应时间）</h6> <div id="performanceContainer" class="small d-flex gap-4"></div> </div> </div> </div> </div> </div> </div> <div class="card shadow-sm border-0"> <div class="card-header py-3"> <h5 class="mb-0">管理操作日志</h5> </div> <div class="card-body"> <div class="row g-2 mb-3"> <div class="col-sm-5"> <div class="input-group input-group-sm"> <input type="text" id="adminLogSearch" class="form-control" placeholder="搜索管理员或内容" onkeydown="if (event.key === 'Enter') loadAdminLogs();"> <button class="btn btn-outline-secondary" onclick="loadAdminLogs()">
+搜索
+</button> </div> </div> <div class="col-sm-4"> <select id="adminLogType" class="form-select form-select-sm" onchange="loadAdminLogs()"> <option value="all">全部类型</option> <option value="role_change">权限修改</option> <option value="ban">封禁／解封</option> <option value="signup_approve">批准注册</option> <option value="signup_reject">拒绝注册</option> <option value="signup_block">禁止注册</option> <option value="settings">设置修改</option> <option value="category_add">添加分类</option> <option value="category_delete">分类 删除</option> <option value="media_delete">媒体 删除</option> <option value="media_gc">媒体 GC</option> <option value="soft_delete">页面 删除</option> <option value="hard_delete">永久删除页面</option> <option value="restore">恢复页面</option> <option value="doc_move">移动页面</option> <option value="bulk_soft_delete">批量删除页面</option> <option value="bulk_hard_delete">批量永久删除页面</option> <option value="bulk_move">批量移动页面</option> </select> </div> </div> <div class="table-responsive admin-log-table-wrap"> <table class="table table-hover table-sm admin-log-table"> <thead class="table-light"> <tr> <th>时间</th> <th>类型</th> <th>内容</th> <th>管理员</th> </tr> </thead> <tbody id="adminLogBody"></tbody> </table> </div> <div class="d-flex justify-content-between align-items-center mt-2"> <span class="small text-muted" id="adminLogTotal"></span> <nav id="adminLogPagination" aria-label="管理日志翻页"></nav> </div> </div> </div> </div> </div> <!-- wiki-container end --> </div>   <div class="modal fade" id="iconPickerModal" tabindex="-1" aria-hidden="true"> <div class="modal-dialog modal-xl modal-dialog-scrollable"> <div class="modal-content"> <div class="modal-header"> <h5 class="modal-title"> <i id="iconPickerTypeIcon" class="mdi mdi-material-design me-2"></i> <span id="iconPickerTitle">选择图标</span> </h5> <button type="button" class="btn-close" data-bs-dismiss="modal"></button> </div> <div class="modal-body"> <div class="icon-picker-toolbar mb-2"> <div class="icon-picker-tabs" role="tablist" aria-label="图标库"> <button type="button" id="iconPickerTabMdi" class="icon-picker-tab active" role="tab" aria-selected="true"> <i class="mdi mdi-material-design"></i> <span>MDI</span> </button> <button type="button" id="iconPickerTabBi" class="icon-picker-tab" role="tab" aria-selected="false"> <i class="bi bi-bootstrap"></i> <span>Bootstrap</span> </button> </div> <button type="button" id="iconPickerNoneBtn" class="icon-picker-none-btn"> <i class="bi bi-x-lg"></i> <span>无图标</span> </button> </div> <input type="text" id="iconSearchInput" class="form-control mb-3" placeholder="搜索图标名称..."> <div id="iconLoadingSpinner" class="text-center py-4" style="display: none"> <span class="spinner-border text-primary" role="status"></span> <p class="mt-2 text-muted small">正在加载图标...</p> </div> <div id="iconPickerGrid" class="icon-grid-modal"></div> <div id="iconPickerEmpty" class="text-center text-muted py-3" style="display: none"> <i class="mdi mdi-magnify-close" style="font-size: 2rem"></i> <p class="mt-1">没有搜索结果.</p> </div> </div> </div> </div> </div>  <!-- ── 푸터 ── -->
+<footer class="wiki-footer">
+    <div class="wiki-footer-inner">
+        <span class="footer-copyright">&copy; <span class="app-wiki-name">VireoWiki</span></span>
+        
+    </div>
+</footer>
+    <script type="module" src="/dist/common.js"></script> <script type="module" src="/dist/icon-picker.js"></script> <script type="module" src="/dist/admin-palettes.js"></script> <script type="module" src="/dist/admin.js"></script>  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24"></script>  </body></html>

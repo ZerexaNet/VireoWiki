@@ -1,0 +1,179 @@
+/* ── Diff View ── */
+.diff-container {
+  text-align: left;
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  background: var(--wiki-bg);
+}
+
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.diff-table tr.diff-add {
+  background: var(--wiki-diff-add-bg);
+  color: var(--wiki-diff-add-text);
+}
+
+.diff-table tr.diff-del {
+  background: var(--wiki-diff-del-bg);
+  color: var(--wiki-diff-del-text);
+}
+
+.diff-table tr.diff-same {
+  background: transparent;
+  color: var(--wiki-text-muted);
+}
+
+.diff-table td {
+  padding: 1px 8px;
+  border: none;
+  vertical-align: top;
+}
+
+.diff-table td.diff-prefix {
+  width: 20px;
+  text-align: center;
+  user-select: none;
+  color: var(--wiki-text-muted);
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.diff-table tr.diff-add td.diff-prefix {
+  color: var(--wiki-success);
+  opacity: 1;
+}
+
+.diff-table tr.diff-del td.diff-prefix {
+  color: var(--wiki-danger);
+  opacity: 1;
+}
+
+.diff-table td.diff-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.diff-empty {
+  padding: var(--wiki-space-8);
+  text-align: center;
+  color: var(--wiki-text-muted);
+  font-style: italic;
+}
+
+.diff-table tr.diff-skip {
+  background: transparent;
+}
+
+.diff-table tr.diff-skip td.diff-prefix {
+  color: var(--wiki-text-muted);
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.diff-table td.diff-skip-label {
+  color: var(--wiki-text-muted);
+  font-style: italic;
+  font-size: 0.78rem;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+/* ── Rich (rendered) Diff View — GitHub 의 md rich diff 와 유사 ── */
+.diff-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wiki-space-2);
+  align-items: center;
+  margin-bottom: var(--wiki-space-3);
+}
+
+.diff-mode-toggle {
+  display: inline-flex;
+}
+
+.rich-diff-container {
+  text-align: left;
+  max-height: 70vh;
+  overflow-y: auto;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  background: var(--wiki-bg);
+  padding: var(--wiki-space-3) var(--wiki-space-4);
+}
+
+.rich-diff-block {
+  padding: 0.35rem 0.75rem;
+  border-left: 4px solid transparent;
+  border-radius: var(--wiki-radius-sm);
+  margin: var(--wiki-space-1) 0;
+}
+
+.rich-diff-block > *:first-child {
+  margin-top: 0;
+}
+
+.rich-diff-block > *:last-child {
+  margin-bottom: 0;
+}
+
+.rich-diff-block.rich-diff-add {
+  background: var(--wiki-diff-add-bg);
+  border-left-color: var(--wiki-success);
+}
+
+.rich-diff-block.rich-diff-del {
+  background: var(--wiki-diff-del-bg);
+  border-left-color: var(--wiki-danger);
+  /* 줄긋기는 표/이미지 등에 어색하므로 사용하지 않고 배경/테두리로만 표시 */
+  opacity: 0.92;
+}
+
+.rich-diff-block.rich-diff-same {
+  border-left-color: var(--wiki-border);
+  opacity: 0.85;
+}
+
+/* 외부 스크립트가 필요해 정적 미리보기에서 구동할 수 없는 블록(mermaid/chart/익스텐션)의 안내 자리 표시.
+   무한 로딩 스피너 대신 노출된다 — Raw 비교로 원문을 확인하도록 유도. */
+.rich-diff-noscript {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  margin: var(--wiki-space-1) 0;
+  border: 1px dashed var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  background: var(--wiki-bg-subtle, var(--wiki-bg));
+  color: var(--wiki-text-muted);
+  font-size: 0.85rem;
+}
+
+.rich-diff-noscript .bi {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.rich-diff-noscript-hint {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+/* 미변경 문단 구간을 접은 자리 표시 — Raw diff 의 .diff-skip-label 과 일관 */
+.rich-diff-skip {
+  text-align: center;
+  color: var(--wiki-text-muted);
+  font-size: 0.8rem;
+  padding: 0.35rem 0;
+  margin: var(--wiki-space-1) 0;
+  border-top: 1px dashed var(--wiki-border);
+  border-bottom: 1px dashed var(--wiki-border);
+}

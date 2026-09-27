@@ -1,0 +1,3946 @@
+:root {
+  color-scheme: light dark;
+
+  /* Palette — light-dark(light, dark) — color-scheme 으로 분기됨.
+     라이트값은 "Streamline Professional"(Corporate Modern) 팔레트 — 옅은 하늘빛 배경 위
+     딥블루 primary(#2a53c4). 다크값은 기존 유지(스펙은 라이트 전용). */
+  --wiki-bg: light-dark(#f5fafe, #000000);
+  --wiki-card-bg: light-dark(#FFFFFF, #111111);
+  --wiki-text: light-dark(#181818, #f4f4f5);
+  --wiki-text-muted: light-dark(#525a66, #a1a1aa);
+
+  --wiki-border: light-dark(#d6dbdf, #27272A);
+  --wiki-border-focus: light-dark(#2a53c4, #38bdf8);
+  --wiki-hr-color: light-dark(#c4c5d6, #3f3f46);
+
+  --wiki-primary: light-dark(#2a53c4, #38BDF8);
+  --wiki-primary-hover: light-dark(#003bae, #7dd3fc);
+  /* accent(Vialinks Blue) — 각주/버튼 호버 등 텍스트로도 쓰여 양쪽 모드 AA 필요.
+     flat #4B70E2 는 라이트/다크 표면 모두 4.5:1 경계 아래라 모드별로 분리(라이트 진하게·
+     다크 밝게)해 동일 페리윙클 정체성을 유지하면서 AA 를 통과시킨다. */
+  --wiki-accent: light-dark(#3d61d6, #6d8ef5);
+  --wiki-success: #10B981;
+  --wiki-warning: #F59E0B;
+  --wiki-danger: #EF4444;
+  --wiki-link: var(--wiki-primary);
+
+  /* 빌트인 컬러 팔레트 토큰 — 본문 {palette:NAME}==text== 가 render.css 의
+     mark.wiki-palette-NAME 클래스로 렌더되며 이 토큰을 소비한다(테마/스킨/다크모드 자동 반영).
+     primary/success/warning/danger 의 bg 는 시맨틱 토큰을 var() 참조 → 스킨이 --wiki-primary
+     등만 바꿔도 팔레트가 자동 추종한다. secondary/info/muted 는 대응 시맨틱 토큰이 없어
+     신규 중립색(과거 render.ts WIKI_HARDCODED_PALETTES 의 모드별 hex 승계)을 둔다.
+     테마(scripts/themes/*.mjs)는 이 토큰을 직접 오버라이드해 7종을 독립 제어할 수 있다.
+     ⚠ -text 는 채움 위 글자색. success(#10B981)·danger(#EF4444) 시맨틱 채움은 밝아 흰 글자가
+     WCAG AA(4.5:1) 미달이므로 warning 과 동일하게 어두운 글자(#1A1A1A)를 쓴다(흰색으로 되돌리지 말 것). */
+  --wiki-palette-primary-bg: var(--wiki-primary);
+  --wiki-palette-primary-text: var(--wiki-btn-text);
+  --wiki-palette-secondary-bg: light-dark(#6C757D, #5A6370);
+  --wiki-palette-secondary-text: #FFFFFF;
+  --wiki-palette-success-bg: var(--wiki-success);
+  --wiki-palette-success-text: #1A1A1A;
+  --wiki-palette-info-bg: light-dark(#0DCAF0, #0A7A9B);
+  --wiki-palette-info-text: light-dark(#000000, #FFFFFF);
+  --wiki-palette-warning-bg: var(--wiki-warning);
+  --wiki-palette-warning-text: #1A1A1A;
+  --wiki-palette-danger-bg: var(--wiki-danger);
+  --wiki-palette-danger-text: #1A1A1A;
+  --wiki-palette-muted-bg: light-dark(#ADB5BD, #6C757D);
+  --wiki-palette-muted-text: light-dark(#212529, #FFFFFF);
+
+  /* Misc */
+  --wiki-code-bg: light-dark(#f8fafc, #000000);
+  --wiki-toc-bg: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.08));
+  --wiki-bg-alt: light-dark(#edf2f6, #0a0a0a);
+  --wiki-sidebar-width: 260px;
+
+  --wiki-btn-text: light-dark(#ffffff, #000000);
+
+  /* Diff Colors */
+  --wiki-diff-add-bg: light-dark(#dcfce7, rgba(16, 185, 129, 0.2));
+  --wiki-diff-add-text: light-dark(#166534, #a7f3d0);
+  --wiki-diff-del-bg: light-dark(#fee2e2, rgba(239, 68, 68, 0.2));
+  --wiki-diff-del-text: light-dark(#991b1b, #fecaca);
+
+  /* Glassmorphism & Shadows */
+  --wiki-shadow-sm: light-dark(0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.5));
+  --wiki-shadow: light-dark(0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 4px 6px -1px rgba(0, 0, 0, 0.5));
+  --wiki-shadow-md: light-dark(0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.5));
+  --wiki-shadow-lg: light-dark(0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.5));
+  --wiki-glass-bg: light-dark(rgba(255, 255, 255, 0.75), rgba(0, 0, 0, 0.75));
+  --wiki-glass-border: light-dark(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.05));
+  --wiki-glass-blur: blur(16px);
+
+  /* Motion */
+  --wiki-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --wiki-ease-elastic: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Focus ring (사이트 전역 공통) — 라이트는 딥블루(primary), 다크는 아래 다크 그룹에서
+     밝은 하늘색(56,189,248)으로 재정의(검은 표면 가시성 확보, themes.md 다크 대비 규칙). */
+  --wiki-focus-ring-color: rgba(42, 83, 196, 0.15);
+  --wiki-focus-ring: 0 0 0 3px var(--wiki-focus-ring-color);
+
+  /* RGB triplet for primary — rgba(var(--c-rgb), α) 패턴용 (light-dark 로는 트리플렛 분기 불가) */
+  --wiki-primary-rgb: 42, 83, 196;
+
+  /* Code font stack (위키 본문 + 에디터 공통) */
+  --wiki-code-font: 'JetBrains Mono', 'Nanum Gothic Coding', 'D2Coding', 'Cascadia Code', 'Consolas', 'Menlo', 'DejaVu Sans Mono', monospace;
+
+  /* 본문·제목 글꼴 — 테마가 서체를 통째로 바꿀 수 있도록 토큰화(기본값은 기존 리터럴 그대로
+     → default 무변화). 스킨이 --wiki-font-body/-heading 만 덮으면 세리프/디스플레이 등으로
+     체감 변화를 크게 줄 수 있다. 웹폰트가 필요하면 src/shared/cdn.ts FONTS.ui 에 패밀리를
+     추가하고, 항상 시스템/웹세이프 폴백을 둔다. (코드 글꼴은 위 --wiki-code-font 재사용.) */
+  --wiki-font-body: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Noto Sans KR', sans-serif;
+  --wiki-font-heading: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Noto Sans KR', sans-serif;
+
+  /* 코드 표면색 — 본문(Prism 렌더) / 에디터(CodeMirror) 표면을 한 곳에서 관리.
+     값은 기존과 바이트 동일(무변화 단일소스). 구문 하이라이트 팔레트
+     (render.css --vscode-*, edit.css --cm-wiki-*)는 엔진별로 분리 유지. */
+  --code-render-bg: light-dark(#ffffff, #000000);
+  --code-render-fg: light-dark(#000000, #d4d4d4);
+  --code-editor-inline-bg: light-dark(#f6f8fa, #2d2d2d);
+  --code-editor-inline-fg: light-dark(#24292f, #e0e0e0);
+  --code-editor-block-bg: light-dark(#f6f8fa, #111111);
+  --code-editor-block-fg: light-dark(#24292f, #e0e0e0);
+
+  /* 스크롤바 (의도적 중립색 — 테마 불변) */
+  --wiki-scrollbar-thumb: #30363d;
+  --wiki-scrollbar-thumb-hover: #484f58;
+
+  /* 공지 배너 */
+  --wiki-announce-bg: light-dark(#fff8db, #3a3520);
+  --wiki-announce-text: light-dark(#5a4500, #fff8db);
+  --wiki-announce-icon: light-dark(#b58900, #ffd34d);
+
+  /* callout accent — info/tip/note 는 기존 시맨틱 토큰과 무관한 신규색
+     (success/warning/danger 는 --wiki-success/-warning/-danger 재사용) */
+  --wiki-callout-info: #0ea5e9;
+  --wiki-callout-tip: #14b8a6;
+  --wiki-callout-note: #6b7280;
+
+  /* 컴포넌트 radius (.category-tag-container 등에서 참조) — 레거시 별칭 */
+  --wiki-radius: var(--wiki-radius-sm);
+
+  /* 시맨틱 뮤트 보더 */
+  --wiki-border-muted: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.04));
+
+  /* 헤더(navbar) 표면 — 테마가 헤더를 극적으로 바꿀 수 있도록 페이지 표면과 분리한다.
+     기본값은 기존 글래스 헤더 그대로라 default 테마는 무변화. 스킨은 이 토큰만 덮어
+     컬러 바/그라데이션 헤더를 만들 수 있다(전경은 --wiki-header-text/-brand 로 대비 확보).
+     bg/shadow 에 그라데이션·그림자를 넣는 스킨은 light-dark() 로 표현 불가하므로 root 에
+     라이트값, dark 그룹에 다크값을 둔다(themes.md 토큰 계약 참고). */
+  --wiki-header-bg: var(--wiki-glass-bg);
+  --wiki-header-border: var(--wiki-border);
+  --wiki-header-shadow: var(--wiki-shadow-sm);
+  --wiki-header-text: var(--wiki-text);
+  --wiki-header-brand: var(--wiki-primary);
+
+  /* ─────────────────────────────────────────────────────────────
+     Design tokens — DESIGN.md(radii/spacing/typography/motion/zIndex)
+     명세를 CSS 변수로 실체화. 논리명↔CSS 변수명 매핑은 DESIGN.md 참조.
+     (이 PR 은 정의만; 리터럴→토큰 치환은 후속 PR)
+     ───────────────────────────────────────────────────────────── */
+
+  /* 반경 (radii) — DESIGN.md radii */
+  --wiki-radius-none: 0;
+  --wiki-radius-xs: 3px;
+  --wiki-radius-sm: 4px;
+  --wiki-radius-md: 5px;
+  --wiki-radius-base: 6px;
+  --wiki-radius-lg: 8px;
+  --wiki-radius-xl: 10px;
+  --wiki-radius-2xl: 20px;
+  --wiki-radius-full: 9999px;
+
+  /* 간격 (spacing) — DESIGN.md spacing (4px 베이스 + 구조 레이아웃 값) */
+  --wiki-space-0: 0;
+  --wiki-space-1: 0.25rem;
+  --wiki-space-2: 0.5rem;
+  --wiki-space-3: 0.75rem;
+  --wiki-space-4: 1rem;
+  --wiki-space-5: 1.25rem;
+  --wiki-space-6: 1.5rem;
+  --wiki-space-8: 2rem;
+  --wiki-space-10: 2.5rem;
+  --wiki-space-12: 3rem;
+  --wiki-layout-padding: 2rem;
+  --wiki-layout-gap: 2rem;
+  --wiki-article-padding: 2.5rem;
+  --wiki-card-padding: 1.25rem;
+  --wiki-navbar-padding-x: 1.5rem;
+  --wiki-navbar-padding-y: 0.8rem;
+  --wiki-max-content-width: 960px;
+  --wiki-footer-max-width: 1400px;
+  /* 본문 산문 측정폭(가독성 상한). 단일 소스라 조정 용이 */
+  --wiki-measure: 66ch;
+  /* sidebarWidth 는 기존 --wiki-sidebar-width 재사용 */
+
+  /* 글자 크기 (font-size) — DESIGN.md fontSizes */
+  --wiki-fs-xs: 0.7rem;
+  --wiki-fs-sm: 0.78rem;
+  --wiki-fs-base: 0.85rem;
+  --wiki-fs-body: 0.95rem;
+  --wiki-fs-md: 1rem;
+  --wiki-fs-lg: 1.1rem;
+  --wiki-fs-xl: 1.25rem;
+  --wiki-fs-2xl: 1.45rem;
+  --wiki-fs-3xl: 1.65rem;
+  --wiki-fs-4xl: 1.85rem;
+
+  /* 행간 (line-height) — DESIGN.md lineHeights */
+  --wiki-lh-tight: 1.2;
+  --wiki-lh-snug: 1.3;
+  --wiki-lh-normal: 1.5;
+  --wiki-lh-relaxed: 1.6;
+  --wiki-lh-loose: 1.7;
+  --wiki-lh-spacious: 1.8;
+
+  /* 모션 duration — DESIGN.md motion (easing 은 위 --wiki-ease* 재사용) */
+  --wiki-dur-instant: 0.15s;
+  --wiki-dur-fast: 0.2s;
+  --wiki-dur-moderate: 0.25s;
+  --wiki-dur-slow: 0.3s;
+  --wiki-dur-enter: 0.4s;
+  --wiki-dur-progress: 1.2s;
+
+  /* z-index — DESIGN.md zIndex */
+  --wiki-z-sidebar: 1030;
+  --wiki-z-navbar: 1040;
+  --wiki-z-scroll-fab: 1040;
+  --wiki-z-toc-rail: 1041;
+  --wiki-z-toc-float: 1049;
+  --wiki-z-search-suggestions: 1050;
+  --wiki-z-offcanvas-backdrop: 1055;
+  --wiki-z-offcanvas: 1060;
+  --wiki-z-icon-picker-backdrop: 2069;
+  --wiki-z-icon-picker-modal: 2070;
+  --wiki-z-notification: 9999;
+  --wiki-z-init-overlay: 9999;
+}
+
+/* ── 강제 라이트/다크 테마 ── */
+html[data-theme="light"] { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --wiki-primary-rgb: 56, 189, 248;
+    --wiki-focus-ring-color: rgba(56, 189, 248, 0.15);
+    --wiki-glass-bg: rgba(10, 10, 10, 0.6);
+    --wiki-glass-border: rgba(255, 255, 255, 0.08);
+    --wiki-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 
+                      0 8px 10px -6px rgba(56, 189, 248, 0.15);
+  }
+}
+html[data-theme="dark"] {
+  --wiki-primary-rgb: 56, 189, 248;
+  --wiki-focus-ring-color: rgba(56, 189, 248, 0.15);
+  --wiki-glass-bg: rgba(10, 10, 10, 0.6);
+  --wiki-glass-border: rgba(255, 255, 255, 0.08);
+  --wiki-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 
+                    0 8px 10px -6px rgba(56, 189, 248, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: clip;
+}
+
+body {
+  font-family: var(--wiki-font-body);
+  background-color: var(--wiki-bg);
+  color: var(--wiki-text);
+  /* 본문 기본 행간 — 토큰화(기본값 --wiki-lh-loose = 1.7, 무변화). 테마가 행간을 바꾸려면
+     이 토큰을 덮는다(reader 스킨이 여유로운 독서 행간으로 상향). */
+  line-height: var(--wiki-lh-loose);
+  letter-spacing: -0.005em;
+  min-height: 100vh;
+  /* 안티앨리어싱 강화로 글씨를 더 또렷하게 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow-x: clip;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.navbar-brand,
+.wiki-article-title {
+  font-family: var(--wiki-font-heading);
+  letter-spacing: -0.01em;
+}
+
+/* ── Bootstrap Overrides for Theme Consistency ── */
+.text-muted {
+  color: var(--wiki-text-muted) !important;
+}
+
+.text-body {
+  color: var(--wiki-text) !important;
+}
+
+.table {
+  color: var(--wiki-text);
+  border-color: var(--wiki-border);
+  width: auto;
+}
+
+.table-responsive {
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* 위키 본문의 표 감싸개: 연속된 표들이 옆으로 붙지 않고 세로로 쌓이도록 block 으로 강제.
+   width:fit-content 로 짧은 표는 콘텐츠 폭만큼만 차지해 기존 외형을 유지. */
+.wiki-table-wrapper {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.table> :not(caption)>*>* {
+  color: var(--wiki-text);
+  background-color: transparent;
+  border-bottom-color: var(--wiki-border);
+}
+
+.table-light {
+  background-color: var(--wiki-card-bg);
+  color: var(--wiki-text);
+  border-color: var(--wiki-border);
+}
+
+.table-light th,
+.table-light td {
+  background-color: var(--wiki-card-bg);
+  color: var(--wiki-text);
+  border-color: var(--wiki-border);
+}
+
+.card,
+.card-header:not(.wiki-card-header),
+.card-footer {
+  background-color: var(--wiki-card-bg) !important;
+  color: var(--wiki-text) !important;
+  border-color: var(--wiki-border) !important;
+}
+
+/* .wiki-card-header 는 사용자가 {bg:}/{color:}/{palette:} 토큰으로 inline style 을
+   지정할 수 있어야 하므로 !important 를 쓰지 않고 위키 테마 기본값만 fallback 으로 둔다. */
+.wiki-card-header {
+  background-color: var(--wiki-card-bg);
+  color: var(--wiki-text);
+  border-color: var(--wiki-border);
+}
+
+/* ── SweetAlert2 Overrides ── */
+/* 팝업 창 글래스모피즘 */
+div:where(.swal2-container) div:where(.swal2-popup) {
+  background: var(--wiki-glass-bg) !important;
+  backdrop-filter: var(--wiki-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wiki-glass-blur) !important;
+  color: var(--wiki-text) !important;
+  border: 1px solid var(--wiki-glass-border) !important;
+  box-shadow: var(--wiki-shadow-lg) !important;
+}
+
+/* 체크 표시(Success) 애니메이션 배경 투명화 처리 */
+div:where(.swal2-container) .swal2-success-circular-line-left,
+div:where(.swal2-container) .swal2-success-circular-line-right,
+div:where(.swal2-container) .swal2-success-fix {
+  background: transparent !important;
+}
+
+div:where(.swal2-container) input:where(.swal2-input),
+div:where(.swal2-container) textarea:where(.swal2-textarea) {
+  background: var(--wiki-bg) !important;
+  color: var(--wiki-text) !important;
+  border: 1px solid var(--wiki-border) !important;
+  box-shadow: none !important;
+}
+
+div:where(.swal2-container) input:where(.swal2-input):focus,
+div:where(.swal2-container) textarea:where(.swal2-textarea):focus {
+  border-color: var(--wiki-primary) !important;
+  box-shadow: var(--wiki-focus-ring) !important;
+}
+
+div:where(.swal2-container) .swal2-title,
+div:where(.swal2-container) .swal2-html-container {
+  color: var(--wiki-text) !important;
+}
+
+/* 유효성/안내 메시지(예: 클립보드 복사 알림) 테마 적용 */
+div:where(.swal2-container) .swal2-validation-message {
+  background: var(--wiki-toc-bg) !important;
+  color: var(--wiki-text) !important;
+}
+
+/* ── Navbar ── */
+.navbar {
+  background: var(--wiki-header-bg) !important;
+  backdrop-filter: var(--wiki-glass-blur);
+  -webkit-backdrop-filter: var(--wiki-glass-blur);
+  border-bottom: 1px solid var(--wiki-header-border);
+  box-shadow: var(--wiki-header-shadow);
+  padding: 0.8rem 1.5rem 0.6rem;
+  margin-bottom: var(--wiki-space-8);
+  position: relative;
+  z-index: var(--wiki-z-navbar);
+}
+
+/* 모바일 사이드바 열림 시 헤더 숨김 */
+.navbar.header-hidden-mobile {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.navbar-toggler:focus,
+.btn-close:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 1px var(--wiki-border-focus) !important;
+}
+
+.navbar-brand {
+  font-weight: 800;
+  font-size: var(--wiki-fs-2xl);
+  letter-spacing: -0.02em;
+  color: var(--wiki-header-text) !important;
+  /* 브랜드 텍스트는 헤더 전경색을 따른다(컬러 헤더 스킨 대비 확보) */
+}
+
+.navbar-brand .brand-icon {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  vertical-align: -4px;
+  color: var(--wiki-header-brand);
+}
+
+
+/* 헤더에 직접 얹힌 .text-body 아이콘(햄버거·설정·로그인·랜덤 등)도 헤더 전경색을 따른다.
+   기본값(--wiki-header-text = --wiki-text)이라 default 테마는 무변화. */
+.navbar .text-body {
+  color: var(--wiki-header-text) !important;
+}
+
+.brand-logo {
+  border-radius: var(--wiki-radius-lg);
+  object-fit: cover;
+}
+
+/* Navbar Links */
+.nav-link {
+  color: var(--wiki-text-muted) !important;
+  font-weight: 600;
+  transition: all var(--wiki-dur-fast) var(--wiki-ease);
+  padding: var(--wiki-space-2) var(--wiki-space-4);
+  border-radius: var(--wiki-radius-lg);
+}
+
+.nav-link:hover,
+.nav-link:focus {
+  color: var(--wiki-text) !important;
+  background: var(--wiki-card-bg);
+  /* 마우스 오버 시 은은한 배경만 */
+  box-shadow: none;
+}
+
+/* Search Input */
+.nav-search-form {
+  flex-basis: 100%;
+  order: 10;
+  max-width: 100%;
+  margin-top: var(--wiki-space-2);
+}
+
+.nav-search-form .form-control {
+  border-radius: var(--wiki-radius-sm) 0 0 var(--wiki-radius-sm);
+  color: var(--wiki-text);
+  padding: var(--wiki-space-2) var(--wiki-space-4);
+  box-shadow: none;
+  transition: all var(--wiki-dur-fast) var(--wiki-ease);
+}
+
+.nav-search-form .form-control::placeholder {
+  color: var(--wiki-text-muted);
+}
+
+.nav-search-form .form-control:focus {
+  outline: none;
+  border-color: var(--wiki-primary);
+  box-shadow: var(--wiki-focus-ring);
+}
+
+/* Search Mode Dropdown Button */
+.nav-search-form .search-mode-btn {
+  font-size: 0.8rem;
+  white-space: nowrap;
+  padding: 0.5rem 0.6rem;
+  transition: all var(--wiki-dur-fast) var(--wiki-ease);
+}
+
+.nav-search-form .search-mode-btn:hover,
+.nav-search-form .search-mode-btn:focus {
+  background: var(--wiki-border);
+  color: var(--wiki-text);
+  box-shadow: none;
+}
+
+.nav-search-form .search-mode-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wiki-focus-ring);
+}
+
+.nav-search-form .dropdown-menu {
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  min-width: 120px;
+}
+
+.nav-search-form .dropdown-item {
+  color: var(--wiki-text);
+  font-size: 0.875rem;
+}
+
+.nav-search-form .dropdown-item:hover {
+  background: var(--wiki-border);
+  color: var(--wiki-text);
+}
+
+.nav-search-form .dropdown-item.active {
+  background: var(--wiki-primary);
+  color: var(--wiki-btn-text);
+}
+
+@media (max-width: 991px) {
+  .nav-search-form .input-group {
+    flex-wrap: nowrap;
+  }
+}
+
+/* New Page Button */
+.btn-new-page {
+  background: linear-gradient(135deg, var(--wiki-primary), var(--wiki-accent));
+  color: var(--wiki-btn-text);
+  border: none;
+  border-radius: var(--wiki-radius-sm);
+  padding: 0.6rem 1.4rem;
+  font-weight: 700;
+  font-size: var(--wiki-fs-md);
+  box-shadow: var(--wiki-shadow-sm);
+  transition: all var(--wiki-dur-slow) var(--wiki-ease-elastic);
+}
+
+.btn-new-page:hover {
+  box-shadow: var(--wiki-shadow-md);
+  transform: translateY(-2px);
+  color: var(--wiki-btn-text);
+  filter: brightness(1.1);
+}
+
+.btn-new-page:active {
+  transform: scale(0.97) translateY(0);
+  transition: transform 0.1s ease;
+}
+
+/* ── Offcanvas Sidebar Styling ── */
+.offcanvas,
+.offcanvas-lg {
+  background-color: var(--wiki-bg);
+  color: var(--wiki-text);
+}
+
+@media (max-width: 991.98px) {
+
+  .wiki-sidebar {
+    z-index: 1060;
+    /* 헤더(1040)보다 높게 설정하여 오프캔버스가 위로 올라오게 함 */
+  }
+
+  .offcanvas,
+  .offcanvas-lg {
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    max-width: 85vw !important;
+    /* 모바일에서 화면 전체를 덮지 않고 빈 공간을 남김 */
+    top: 0;
+    z-index: 1060 !important;
+    /* 모든 구성요소(헤더 z-index: 1040 포함)보다 위에 표시 */
+  }
+
+  .offcanvas-backdrop {
+    z-index: 1055 !important;
+    /* offcanvas(1060)보다 아래, 헤더(1040)보다 위 */
+  }
+}
+
+.offcanvas-header {
+  border-bottom: 1px solid var(--wiki-border) !important;
+}
+
+.offcanvas-title {
+  color: var(--wiki-text);
+}
+
+.offcanvas .nav-link,
+.offcanvas-lg .nav-link {
+  color: var(--wiki-text) !important;
+  border-radius: var(--wiki-radius-lg);
+  transition: all var(--wiki-dur-fast) var(--wiki-ease);
+}
+
+.offcanvas .nav-link:hover,
+.offcanvas-lg .nav-link:hover {
+  background-color: var(--wiki-toc-bg);
+}
+
+.offcanvas .btn-outline-primary,
+.offcanvas-lg .btn-outline-primary {
+  border-color: var(--wiki-primary);
+  color: var(--wiki-primary) !important;
+}
+
+.offcanvas .btn-outline-primary:hover,
+.offcanvas-lg .btn-outline-primary:hover {
+  background-color: var(--wiki-primary);
+  color: var(--wiki-btn-text) !important;
+}
+
+.offcanvas .dropdown-menu,
+.offcanvas-lg .dropdown-menu {
+  background-color: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+}
+
+.offcanvas .dropdown-item,
+.offcanvas-lg .dropdown-item {
+  color: var(--wiki-text);
+}
+
+.offcanvas .dropdown-item:hover,
+.offcanvas-lg .dropdown-item:hover {
+  background-color: var(--wiki-toc-bg);
+}
+
+@media (min-width: 992px) {
+  .offcanvas-lg {
+    background-color: transparent !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* .offcanvas-body가 .sidebar-section-pc-only 클래스를 가지고 있으므로 명시적으로 지정 */
+  .offcanvas-lg .offcanvas-body.sidebar-section-pc-only {
+    background-color: var(--wiki-card-bg) !important;
+    background: var(--wiki-card-bg) !important;
+    border: 1px solid var(--wiki-border) !important;
+    border-radius: var(--wiki-radius-lg) !important;
+    padding: var(--wiki-space-5) !important;
+    box-shadow: var(--wiki-shadow-sm) !important;
+    transition: box-shadow var(--wiki-dur-fast) ease;
+    margin-bottom: var(--wiki-space-6);
+  }
+
+  .offcanvas-lg .offcanvas-body.sidebar-section-pc-only:hover {
+    box-shadow: var(--wiki-shadow) !important;
+  }
+
+  .sidebar-section-pc-only .nav-item.mt-3 {
+    font-size: var(--wiki-fs-base);
+    font-weight: 700 !important;
+    color: var(--wiki-text-muted) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--wiki-space-3) !important;
+    padding-bottom: var(--wiki-space-2) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    border-bottom: 1px solid var(--wiki-border);
+    margin-top: 0 !important;
+  }
+
+  .sidebar-section-pc-only .nav-link,
+  .sidebar-section-pc-only .nav-item.text-body {
+    padding: 0.5rem 0.6rem !important;
+    border-radius: var(--wiki-radius-lg);
+    text-decoration: none !important;
+    color: var(--wiki-text) !important;
+    transition: background var(--wiki-dur-instant) ease;
+  }
+
+  .sidebar-section-pc-only .nav-link:hover,
+  .sidebar-section-pc-only .nav-item.text-body:hover {
+    background: var(--wiki-bg);
+  }
+}
+
+/* User Profile Collapsible Menu */
+.user-dropdown-toggle {
+  cursor: pointer;
+  transition: background-color var(--wiki-dur-fast);
+}
+
+.user-dropdown-toggle:hover {
+  background-color: var(--wiki-toc-bg) !important;
+}
+
+.user-dropdown-icon {
+  transition: transform var(--wiki-dur-slow) ease;
+}
+
+.user-dropdown-toggle[aria-expanded="true"] .user-dropdown-icon {
+  transform: rotate(-90deg);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .user-dropdown-toggle {
+    border-color: var(--wiki-border-muted) !important;
+  }
+}
+html[data-theme="dark"] .user-dropdown-toggle {
+  border-color: var(--wiki-border-muted) !important;
+}
+
+/* ── 검색바 스타일 ── */
+.nav-search-form {
+  position: relative;
+  transition: all var(--wiki-dur-fast) var(--wiki-ease);
+}
+
+.nav-search-form .input-group {
+  box-shadow: var(--wiki-shadow-sm);
+  border-radius: var(--wiki-radius-lg);
+  overflow: hidden;
+  background: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  transition: box-shadow var(--wiki-dur-fast) ease, border-color var(--wiki-dur-fast) ease;
+}
+
+.nav-search-form .input-group:focus-within {
+  box-shadow: var(--wiki-focus-ring);
+  border-color: var(--wiki-border-focus);
+}
+
+.nav-search-form .form-control {
+  border: none;
+  background: transparent;
+  color: var(--wiki-text);
+  padding-left: var(--wiki-space-4);
+}
+
+.nav-search-form .form-control:focus {
+  box-shadow: none;
+}
+
+.nav-search-form .search-mode-btn {
+  border: none;
+  background: var(--wiki-toc-bg);
+  color: var(--wiki-text);
+  font-weight: 500;
+  border-left: 1px solid var(--wiki-border);
+  border-radius: 0;
+}
+
+.nav-search-form .search-mode-btn:hover,
+.nav-search-form .search-mode-btn:focus {
+  background: var(--wiki-border);
+  color: var(--wiki-text);
+}
+
+/* 연관검색어 드롭다운 */
+.search-suggestions {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: var(--wiki-z-search-suggestions);
+  margin: 4px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.search-suggestions.show {
+  display: block;
+}
+
+.search-suggestion-item {
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--wiki-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background var(--wiki-dur-instant);
+}
+
+.search-suggestion-item:hover,
+.search-suggestion-item.active {
+  background: var(--wiki-border);
+}
+
+.search-suggestion-item .mdi {
+  color: var(--wiki-text-muted);
+  margin-right: 6px;
+}
+
+/* 반응형 검색바 */
+@media (max-width: 576px) {
+  .nav-search-form {
+    max-width: none !important;
+  }
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--wiki-border);
+  box-shadow: none;
+  margin-right: 0;
+}
+
+#navLogin i {
+  font-size: 1.3rem;
+}
+
+/* ── Main Layout (Sidebar + Content) ── */
+.wiki-layout {
+  display: flex;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--wiki-space-8);
+  gap: var(--wiki-space-8);
+  margin-bottom: var(--wiki-space-12);
+}
+
+/* ── Sidebar ── */
+.wiki-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 1.5rem !important;
+  /* 화면 최상단과 약간의 여백 주기 (JS 덮어쓰기 방지) */
+  align-self: flex-start;
+  z-index: var(--wiki-z-sidebar);
+}
+
+/* 공통 카드 표면 — bg + 1px 보더 + lg 반경. 컴포넌트별 padding/shadow/margin 은
+   각 규칙에서 유지한다(불일치 의도 보존). 새 컴포넌트는 .surface-card 로 재사용. */
+.surface-card,
+.sidebar-section,
+.wiki-toc,
+.wiki-toc-card,
+.search-result-item,
+.revision-item,
+.discussion-item {
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+}
+
+.sidebar-section {
+  padding: var(--wiki-space-5);
+  box-shadow: var(--wiki-shadow-sm);
+  transition: box-shadow var(--wiki-dur-fast) ease;
+}
+
+.sidebar-section:hover {
+  box-shadow: var(--wiki-shadow);
+}
+
+.sidebar-title {
+  font-size: var(--wiki-fs-base);
+  font-weight: 700;
+  color: var(--wiki-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--wiki-space-3);
+  padding-bottom: var(--wiki-space-2);
+  border-bottom: 1px solid var(--wiki-border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-title i {
+  color: var(--wiki-primary);
+}
+
+.doc-stats-counter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0.35rem 0.75rem;
+  margin-top: var(--wiki-space-2);
+  padding: 0 var(--wiki-space-1);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--wiki-text-muted);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.doc-stats-counter span {
+  white-space: nowrap;
+}
+
+.recent-changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-change-item {
+  display: block;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--wiki-radius-lg);
+  text-decoration: none !important;
+  color: var(--wiki-text);
+  transition: background var(--wiki-dur-instant) ease, transform var(--wiki-dur-slow) var(--wiki-ease-elastic);
+}
+
+.recent-change-item:hover {
+  background: var(--wiki-bg);
+  color: var(--wiki-text);
+}
+
+.recent-change-item:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+.rc-title {
+  font-size: var(--wiki-fs-base);
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--wiki-primary);
+}
+
+.recent-change-item:hover .rc-title {
+  color: var(--wiki-primary-hover);
+}
+
+.rc-meta {
+  font-size: var(--wiki-fs-sm);
+  color: var(--wiki-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--wiki-space-2);
+  margin-top: 2px;
+}
+
+.rc-time {
+  white-space: nowrap;
+}
+
+.rc-author {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-author::before {
+  content: '·';
+  margin-right: var(--wiki-space-1);
+}
+
+/* ── Bottom Recent Changes ── */
+.recent-changes-bottom {
+  margin-top: var(--wiki-space-8);
+  margin-bottom: var(--wiki-space-4);
+}
+
+/* ── Main Container ── */
+.wiki-container {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 60vh;
+  padding: 0 var(--wiki-space-2) var(--wiki-space-12);
+  animation: fadeIn var(--wiki-dur-enter) ease-out forwards;
+}
+
+/* ── 좌측 목차 사이드바 (LAYOUT_MODE="left-toc") ──
+   기본은 .d-none 으로 숨김. left-toc 모드 + 헤딩이 있는 문서에서만 JS 가 d-none 을 제거. */
+.wiki-toc-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 1.5rem;
+  align-self: flex-start;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  z-index: var(--wiki-z-sidebar);
+  /* 목차가 길어 스크롤바가 생길 때: 스크롤바를 좌측에 배치(direction: rtl)하고
+     내용은 .wiki-toc-sidebar-inner 에서 ltr 로 되돌린다. 스크롤바는 얇게(thin). */
+  direction: rtl;
+  scrollbar-width: thin;
+  scrollbar-color: var(--wiki-border) transparent;
+}
+
+.wiki-toc-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.wiki-toc-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wiki-toc-sidebar::-webkit-scrollbar-thumb {
+  background: var(--wiki-border);
+  border-radius: var(--wiki-radius-xs);
+}
+
+.wiki-toc-sidebar-inner {
+  direction: ltr;
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  padding: 1rem 0.85rem;
+  box-shadow: var(--wiki-shadow-sm);
+}
+
+.wiki-toc-sidebar-title {
+  font-size: var(--wiki-fs-base);
+  font-weight: 700;
+  color: var(--wiki-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--wiki-border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wiki-toc-sidebar-title i {
+  color: var(--wiki-primary);
+}
+
+.wiki-toc-sidebar-nav ol,
+.wiki-toc-sidebar-nav ul {
+  list-style: none;
+  padding-left: 0.85rem;
+  margin: 0;
+}
+
+.wiki-toc-sidebar-nav > ol {
+  padding-left: 0;
+}
+
+.wiki-toc-sidebar-nav li {
+  margin: 0.2rem 0;
+  font-size: var(--wiki-fs-base);
+  line-height: 1.35;
+}
+
+.wiki-toc-sidebar-nav a {
+  color: var(--wiki-text);
+  text-decoration: none;
+  display: inline-block;
+  padding: 1px 2px;
+  border-radius: var(--wiki-radius-xs);
+  transition: background var(--wiki-dur-instant) ease, color var(--wiki-dur-instant) ease;
+}
+
+.wiki-toc-sidebar-nav a:hover {
+  color: var(--wiki-primary);
+  background: var(--wiki-bg);
+}
+
+.wiki-toc-sidebar-nav .wiki-toc-num {
+  color: var(--wiki-text-muted);
+  margin-right: var(--wiki-space-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 좌측 목차 사이드바 스크롤스파이 강조 — PC(≥992px) 한정. 모바일에선 좌측 사이드바를
+   숨기고 인라인 목차 카드를 쓰므로 강조가 필요 없다. */
+@media (min-width: 992px) {
+  .wiki-toc-sidebar-nav a.toc-active {
+    color: var(--wiki-primary);
+    font-weight: 600;
+  }
+}
+
+/* === LAYOUT_MODE="left-toc" 분기 ===
+   우측 사이드바를 숨기고, 본문 하단으로 옮겨진 트렌딩/최근 변경 컨테이너를 가로 그리드로 표시.
+   좌측 목차 사이드바는 헤딩이 있는 문서에서 JS 가 d-none 을 제거할 때 노출.
+   `.wiki-layout-doc` 마커로 위키 문서 조회 페이지(index.html) 에만 한정한다 — 검색/리비전/
+   블로그 등 다른 페이지의 `.wiki-sidebar` 까지 숨겨버리지 않도록.
+   데스크탑(≥992px) 폭에서만 우측 사이드바를 숨긴다 — 모바일에서는 #wikiSidebar 안의
+   `#app-sidebar-placeholder` 가 `components/sidebar.html` 의 `#mobileSidebar` 오프캔버스
+   (모바일 햄버거 메뉴 소스)를 담고 있어 ancestor 가 display:none 이 되면 메뉴를 열 수 없다. */
+@media (min-width: 992px) {
+  body[data-layout-mode="left-toc"] .wiki-layout-doc > .wiki-sidebar {
+    display: none;
+  }
+  /* PC left-toc: 좌측 목차 사이드바를 쓰므로 본문 상단 인라인 목차 카드는 숨긴다.
+     `.wiki-layout-doc` 로 위키 문서 조회 페이지에만 한정 — edit 프리뷰 등 다른 페이지의
+     인라인 목차 카드(좌측 사이드바 대체물이 없음)까지 숨겨버리지 않도록. */
+  body[data-layout-mode="left-toc"] .wiki-layout-doc .wiki-toc-card {
+    display: none;
+  }
+}
+
+/* 모바일(<992px) left-toc: 좌측 목차 사이드바를 숨기고 인라인 목차 카드를 쓴다
+   (기본 모드와 동일). 인라인 카드의 모바일 풀폭 동작은 render.css 가 처리. */
+@media (max-width: 991px) {
+  body[data-layout-mode="left-toc"] .wiki-toc-sidebar {
+    display: none !important;
+  }
+}
+
+/* ── 좌측 그룹 문서 트리 사이드바 (LAYOUT_MODE="docs") ──
+   `.wiki-toc-sidebar` 의 sticky/스크롤바 동작을 그대로 따르되 살짝 더 넓게(그룹 트리 슬러그 표시용).
+   내부(.wiki-toc-sidebar-inner)·링크(.wiki-toc-sidebar-nav) 스타일은 공유 클래스로 재사용된다. */
+.wiki-nav-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 1.5rem;
+  align-self: flex-start;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  z-index: var(--wiki-z-sidebar);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wiki-border) transparent;
+}
+
+.wiki-nav-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.wiki-nav-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wiki-nav-sidebar::-webkit-scrollbar-thumb {
+  background: var(--wiki-border);
+  border-radius: var(--wiki-radius-xs);
+}
+
+/* 그룹 트리는 문서간 링크 목록이므로 좌측 들여쓰기를 살짝 넉넉히 준다. */
+.wiki-nav-sidebar-tree ul {
+  list-style: none;
+  padding-left: 0.8rem;
+  margin: 0;
+}
+
+.wiki-nav-sidebar-tree > ul {
+  padding-left: 0;
+}
+
+.wiki-nav-sidebar-tree li {
+  margin: 0.18rem 0;
+  font-size: var(--wiki-fs-base);
+  line-height: 1.35;
+}
+
+/* 문서가 없는 중간 경로 노드(링크 없음)는 muted 텍스트로 구분. */
+.wiki-nav-sidebar-tree .nav-nodoc {
+  color: var(--wiki-text-muted);
+  display: inline-block;
+  padding: 1px 2px;
+}
+
+.wiki-nav-sidebar-tree .nav-truncated {
+  color: var(--wiki-text-muted);
+  font-style: italic;
+  font-size: 0.8rem;
+  margin-top: 0.4rem;
+}
+
+/* === LAYOUT_MODE="docs" 분기 (Astro 문서 스타일: 좌측 그룹 트리 + 우측 문서내 목차) ===
+   `.wiki-layout-doc` 마커로 위키 문서 조회 페이지에만 한정. 데스크탑에서만 우측 트렌딩
+   사이드바와 인라인 목차 카드를 숨기고, 좌측 그룹 nav 와 우측 목차 사이드바를 노출한다.
+   트렌딩/최근 변경/커스텀 사이드바 블록은 left-toc 와 동일하게 JS(relocateRightSidebarBelowArticle)
+   로 본문(.wiki-article) 하단(.wiki-sidebar-bottom-relocated)으로 옮겨 본문 폭에 맞춰 노출한다.
+   #wikiSidebar 를 숨기는 규칙을 ≥992px 로만 한정하는 이유는 left-toc 와 동일
+   (모바일 오프캔버스 #mobileSidebar 소스이므로). */
+@media (min-width: 992px) {
+  body[data-layout-mode="docs"] .wiki-layout-doc > .wiki-sidebar {
+    display: none;
+  }
+  body[data-layout-mode="docs"] .wiki-layout-doc .wiki-toc-card {
+    display: none;
+  }
+}
+
+/* 모바일(<992px) docs: 좌·우 사이드바를 모두 숨기고 인라인 목차 카드로 폴백한다
+   (기본 모드와 동일). */
+@media (max-width: 991px) {
+  body[data-layout-mode="docs"] #wikiNavSidebar,
+  body[data-layout-mode="docs"] #wikiTocSidebarRight {
+    display: none !important;
+  }
+}
+
+/* wide 모드: 좌·우 사이드바를 모두 숨겨 산만함을 제거하고, 본문을 화면 중앙에 넉넉한
+   가독 폭으로 정렬한 몰입형 풀폭 읽기 레이아웃. 사이드바가 없으므로 문서 내 탐색은 본문
+   상단에 float 되는 인라인 목차 카드(.wiki-toc-card)로 제공하며(default 모드와 동일), 스크롤
+   시 노출되는 플로팅 목차 FAB(#tocFabBtn)도 보조로 함께 동작한다. 트렌딩/최근 변경은
+   docs/left-toc 와 동일하게 JS(relocateRightSidebarBelowArticle)로 본문 하단
+   (.wiki-sidebar-bottom-relocated)으로 옮겨 노출한다. #wikiSidebar 숨김을 ≥992px 로만 한정하는
+   이유는 다른 모드와 동일(모바일 오프캔버스 #mobileSidebar 소스이므로). 좌측 목차/그룹 트리
+   사이드바는 wide 에서 동기화하지 않아 기본 d-none 으로 남으므로 별도 숨김 규칙이 불필요하다. */
+@media (min-width: 992px) {
+  body[data-layout-mode="wide"] .wiki-layout-doc > .wiki-sidebar {
+    display: none;
+  }
+  body[data-layout-mode="wide"] .wiki-layout-doc .wiki-container {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+}
+/* wide 는 사이드바 목차가 없으므로 인라인 목차 카드를 전 뷰포트에서 그대로 노출한다(별도
+   숨김 규칙 없음 — 기본 .wiki-toc-card float:left 스타일이 본문 안에 목차를 표시). */
+
+/* 현재 문서 강조 (그룹 nav 트리). PC/모바일 공통. */
+.wiki-nav-sidebar-tree a.nav-current {
+  color: var(--wiki-primary);
+  font-weight: 600;
+}
+
+/* ── 본문 하단 이전/다음 문서 네비게이션 (LAYOUT_MODE="docs") ──
+   그룹 트리 순서 기준으로 직전/직후 문서를 좌·우 버튼으로 노출한다.
+   한쪽만 있을 때도 다음 버튼이 우측에 정렬되도록 spacer 로 자리를 채운다. */
+.docs-page-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--wiki-space-3);
+  margin-top: var(--wiki-space-6);
+  padding-top: var(--wiki-space-4);
+  border-top: 1px solid var(--wiki-border);
+}
+
+.docs-page-nav-spacer {
+  flex: 1 1 0;
+}
+
+.docs-page-nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--wiki-space-2);
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  text-decoration: none;
+  color: var(--wiki-text);
+  transition: border-color var(--wiki-dur-instant) ease, background-color var(--wiki-dur-instant) ease;
+}
+
+.docs-page-nav-link:hover {
+  border-color: var(--wiki-primary);
+  background-color: rgba(var(--wiki-primary-rgb), 0.08);
+}
+
+.docs-page-nav-next {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.docs-page-nav-link .bi {
+  font-size: 1.25rem;
+  color: var(--wiki-text-muted);
+  flex-shrink: 0;
+}
+
+.docs-page-nav-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.docs-page-nav-dir {
+  font-size: 0.78rem;
+  color: var(--wiki-text-muted);
+}
+
+.docs-page-nav-title {
+  font-weight: 600;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 모바일(<992px)에서는 문서 제목을 숨기고 "이전 문서/다음 문서" 방향 라벨만 노출한다. */
+@media (max-width: 991px) {
+  .docs-page-nav-title {
+    display: none;
+  }
+}
+
+/* 에디터 프리뷰(#custom-wiki-preview)는 .wiki-layout-doc 밖이라 위의 본문 인라인 목차 카드
+   숨김 규칙이 닿지 않는다. 조회 화면과 동일하게, left-toc/docs 레이아웃에서는 데스크탑(≥992px)
+   에서만 프리뷰의 인라인 목차 카드를 숨겨 사이드바 목차와 중복을 피하고, 모바일에서는
+   (사이드바가 숨겨지므로) 카드를 그대로 노출해 실제 조회 화면과 일치시킨다.
+   (default 레이아웃은 어느 폭에서도 숨기지 않아 카드가 항상 노출된다.) */
+@media (min-width: 992px) {
+  body[data-layout-mode="left-toc"] #custom-wiki-preview .wiki-toc-card,
+  body[data-layout-mode="right-toc"] #custom-wiki-preview .wiki-toc-card,
+  body[data-layout-mode="docs"] #custom-wiki-preview .wiki-toc-card {
+    display: none;
+  }
+}
+/* wide 레이아웃은 본문 인라인 목차 카드를 전 뷰포트에서 노출하므로(사이드바 목차 없음),
+   에디터 프리뷰도 카드를 숨기지 않아 실제 wide 조회 화면과 일치시킨다(별도 규칙 불필요). */
+
+/* === LAYOUT_MODE="right-toc" 분기: left-toc 와 동일하되 현재 문서 목차를 우측에 배치 ===
+   우측 목차 사이드바(#wikiTocSidebarRight)는 docs 모드와 동일 요소를 공유한다(JS 가 d-none 제거).
+   좌측 사이드바는 없다(JS 가 left-toc/docs 좌측 사이드바를 노출하지 않음).
+   #wikiSidebar(트렌딩/최근 변경)는 본문 하단으로 JS(relocateRightSidebarBelowArticle)가 옮기므로
+   데스크탑(≥992px)에서만 원위치를 숨긴다 — 모바일에선 #mobileSidebar 오프캔버스 소스이므로 숨기지 않는다
+   (left-toc/docs 와 동일). */
+@media (min-width: 992px) {
+  body[data-layout-mode="right-toc"] .wiki-layout-doc > .wiki-sidebar {
+    display: none;
+  }
+  body[data-layout-mode="right-toc"] .wiki-layout-doc .wiki-toc-card {
+    display: none;
+  }
+}
+
+/* 모바일(<992px) right-toc: 우측 목차 사이드바를 숨기고 인라인 목차 카드로 폴백한다(기본 모드와 동일). */
+@media (max-width: 991px) {
+  body[data-layout-mode="right-toc"] #wikiTocSidebarRight {
+    display: none !important;
+  }
+}
+
+/* 우측 목차 사이드바는 좌측(.wiki-toc-sidebar 의 direction:rtl 스크롤바)과 달리 스크롤바를
+   자연스럽게 오른쪽에 둔다. */
+.wiki-toc-sidebar-right {
+  direction: ltr;
+}
+
+/* ── 우측 목차 진행 레일 (docs·right-toc) ──
+   목차 항목 좌측을 따라 흐르는 SVG path 한 줄. track 은 전체 윤곽, active 는 같은 path 를
+   stroke-dasharray/-dashoffset 으로 잘라 "현재 섹션 구간"만 칠한다(article/toc-sidebar-rail.ts
+   가 좌표와 dash 값을 계산). 항목마다 요소를 만들지 않으므로 스크롤 중 DOM 변경이 없다. */
+.wiki-toc-railed {
+  position: relative;
+}
+
+/* 레일이 들어갈 좌측 여백. toc-sidebar-rail.ts 의 RAIL_GUTTER(10px) + stroke 폭 여유. */
+.wiki-toc-railed .wiki-toc-sidebar-nav {
+  padding-left: 14px;
+}
+
+.wiki-toc-rail-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* 목차 링크의 클릭·호버를 가리지 않는다(레일은 표시 전용). */
+  pointer-events: none;
+  /* stroke 가 좌표 경계에 걸쳐도 잘리지 않도록. */
+  overflow: visible;
+}
+
+/* SVGElement 는 UA 의 `[hidden]` 규칙 대상이 아니므로 명시한다(JS 는 속성만 토글). */
+.wiki-toc-rail-svg[hidden] {
+  display: none;
+}
+
+.wiki-toc-rail-track {
+  stroke: var(--wiki-border);
+}
+
+.wiki-toc-rail-active {
+  stroke: var(--wiki-primary);
+}
+
+/* 첫 좌표가 확정된 뒤(JS 가 data-ready 부여) 전환을 켠다 — 문서 진입 시 선이 위에서부터
+   자라 내려오는 잔상을 막고, 이후 섹션 이동만 부드럽게 이어진다. */
+.wiki-toc-rail-active[data-ready="true"] {
+  transition: stroke-dasharray var(--wiki-dur-moderate) var(--wiki-ease),
+              stroke-dashoffset var(--wiki-dur-moderate) var(--wiki-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wiki-toc-rail-active[data-ready="true"] {
+    transition: none;
+  }
+}
+
+/* 본문 하단으로 옮긴 트렌딩/최근 변경/커스텀 사이드바 — 본문 폭 전체로 확장(단일 컬럼). */
+.wiki-sidebar-bottom-relocated {
+  margin: var(--wiki-space-8) 0 var(--wiki-space-4);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--wiki-space-5);
+}
+
+/* 하단 커스텀 사이드바 복제본 — PC 전용 노출. 모바일은 햄버거 오프캔버스로 접근. */
+.wiki-sidebar-bottom-custom {
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  padding: var(--wiki-space-3) var(--wiki-space-2);
+  box-shadow: var(--wiki-shadow-sm);
+}
+
+.wiki-sidebar-bottom-custom .navbar-nav {
+  flex-direction: column;
+}
+
+@media (max-width: 991px) {
+  .wiki-sidebar-bottom-custom {
+    display: none;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Wiki Article Card ── */
+.wiki-article {
+  background: var(--wiki-card-bg);
+  border-radius: var(--wiki-radius-lg);
+  /* 본문 컨테이너 패딩 — 토큰화(기본값 --wiki-article-padding = 2.5rem = 기존 --wiki-space-10,
+     무변화). 테마가 본문 여백을 바꾸려면 이 토큰을 덮는다(reader 스킨이 3rem 으로 상향). */
+  padding: var(--wiki-article-padding);
+  border: 1px solid var(--wiki-border);
+  box-shadow: var(--wiki-shadow-md);
+  margin-bottom: var(--wiki-space-8);
+  transition: box-shadow var(--wiki-dur-slow) ease;
+}
+
+.wiki-article:hover {
+  box-shadow: var(--wiki-shadow-lg);
+}
+
+@media (max-width: 767.98px) {
+  .wiki-article {
+    padding: var(--wiki-space-6);
+    border-radius: var(--wiki-radius-lg);
+  }
+}
+
+.wiki-article-title {
+  font-size: 2.25rem;
+  line-height: 1.25;
+  font-weight: 800;
+  margin-bottom: var(--wiki-space-4);
+  color: var(--wiki-text);
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 767.98px) {
+  .wiki-article-title {
+    font-size: 1.75rem;
+  }
+}
+
+/* 대체 title 이 설정된 문서에서 h1 아래에 실제 슬러그를 좌측 정렬·muted 작게 노출하는 라벨. */
+.wiki-article-slug-label {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: var(--wiki-space-1);
+  font-size: var(--wiki-fs-base);
+  color: var(--wiki-text-muted);
+  margin-top: -0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.wiki-article-slug-label code {
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  padding: 0;
+}
+
+.wiki-article-slug-label .wiki-slug-copy-btn {
+  color: var(--wiki-text-muted);
+  line-height: 1;
+  text-decoration: none;
+}
+
+.wiki-article-slug-label .wiki-slug-copy-btn:hover {
+  color: var(--wiki-text);
+}
+
+.wiki-article-meta {
+  font-size: var(--wiki-fs-body);
+  color: var(--wiki-text-muted);
+  margin-bottom: var(--wiki-space-8);
+  padding-bottom: var(--wiki-space-4);
+  border-bottom: 1px solid var(--wiki-border);
+  /* 명확한 선으로 구분 */
+  display: flex;
+  align-items: center;
+  gap: var(--wiki-space-6);
+  flex-wrap: wrap;
+}
+
+.wiki-article-actions {
+  display: flex;
+  gap: var(--wiki-space-2);
+  /* 버튼 간격 타이트하게 */
+  margin-bottom: var(--wiki-space-8);
+  flex-wrap: wrap;
+}
+
+/* ── Document Actions Button Group (Flat Design) ── */
+#articleMainActions .btn,
+#shareDropdown,
+#docToolsDropdown {
+  background: var(--wiki-card-bg) !important;
+  color: var(--wiki-text) !important;
+  border: 1px solid var(--wiki-border) !important;
+  font-weight: 600;
+  font-size: var(--wiki-fs-base);
+  padding: 0.5rem 0.9rem;
+  box-shadow: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background var(--wiki-dur-instant) ease, color var(--wiki-dur-instant) ease, border-color var(--wiki-dur-instant) ease, transform var(--wiki-dur-slow) var(--wiki-ease-elastic);
+}
+
+#articleMainActions .btn:hover,
+#shareDropdown:hover,
+#docToolsDropdown:hover {
+  background: var(--wiki-bg) !important;
+  color: var(--wiki-primary) !important;
+  border-color: var(--wiki-primary) !important;
+  z-index: 2;
+  /* Ensure border is visible in group */
+  box-shadow: none !important;
+}
+
+#articleMainActions .btn:active,
+#shareDropdown:active,
+#docToolsDropdown:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* 마우스 포커스 / 드롭다운 열림(.show) 에서는 Bootstrap 기본 포커스 그림자만 차단 */
+#articleMainActions .btn:focus,
+#articleMainActions .btn.show,
+#shareDropdown:focus,
+#shareDropdown.show,
+#docToolsDropdown:focus,
+#docToolsDropdown.show {
+  box-shadow: none !important;
+  outline: none;
+}
+
+/* 키보드 포커스 (Tab) 에서는 접근성을 위해 outline 으로 명확한 포커스 링 표시 */
+#articleMainActions .btn:focus-visible,
+#shareDropdown:focus-visible,
+#docToolsDropdown:focus-visible {
+  box-shadow: none !important;
+  outline: 2px solid var(--wiki-primary);
+  outline-offset: 2px;
+}
+
+#articleMainActions .btn i,
+#shareDropdown i,
+#docToolsDropdown i {
+  font-size: var(--wiki-fs-lg);
+}
+
+#articleMainActions .btn.disabled {
+  opacity: 0.5 !important;
+  background: var(--wiki-bg) !important;
+  border-color: var(--wiki-border) !important;
+  color: var(--wiki-text-muted) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.no-caret::after {
+  display: none !important;
+}
+
+/* ── Buttons (Premium Flat) ── */
+.btn-wiki {
+  background: var(--wiki-card-bg);
+  color: var(--wiki-text);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  padding: var(--wiki-space-2) var(--wiki-space-4);
+  font-weight: 600;
+  font-size: var(--wiki-fs-body);
+  box-shadow: var(--wiki-shadow-sm);
+  transition: all var(--wiki-dur-slow) var(--wiki-ease-elastic);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-wiki:active {
+  transform: scale(0.97) translateY(0);
+  transition: transform 0.1s ease;
+}
+
+.btn-wiki:hover {
+  background: var(--wiki-bg);
+  border-color: var(--wiki-primary);
+  color: var(--wiki-primary);
+  box-shadow: var(--wiki-shadow);
+  transform: translateY(-1px);
+}
+
+.btn-wiki-outline {
+  background: transparent;
+  color: var(--wiki-text-muted);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  padding: var(--wiki-space-2) var(--wiki-space-4);
+  font-weight: 600;
+  box-shadow: none;
+  transition: all var(--wiki-dur-fast) var(--wiki-ease);
+}
+
+.btn-wiki-outline:hover {
+  color: var(--wiki-text);
+  border-color: var(--wiki-text-muted);
+}
+
+.btn-wiki-danger {
+  color: var(--wiki-danger);
+  border-color: color-mix(in srgb, var(--wiki-danger) 40%, transparent);
+}
+
+.btn-wiki-danger:hover {
+  background: color-mix(in srgb, var(--wiki-danger) 10%, transparent);
+  color: var(--wiki-danger);
+  border-color: var(--wiki-danger);
+}
+
+/* ── Bootstrap Modal Dark Mode ── */
+.modal-content {
+  background-color: var(--wiki-card-bg);
+  color: var(--wiki-text);
+  border-color: var(--wiki-border);
+}
+
+.modal-header {
+  background-color: var(--wiki-toc-bg);
+  border-bottom-color: var(--wiki-border);
+  color: var(--wiki-text);
+}
+
+.modal-body {
+  background-color: var(--wiki-card-bg);
+  color: var(--wiki-text);
+}
+
+.modal-footer {
+  background-color: var(--wiki-toc-bg);
+  border-top-color: var(--wiki-border);
+}
+
+.modal-title {
+  color: var(--wiki-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+  }
+}
+html[data-theme="dark"] .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* ── Forms ── */
+.form-control {
+  background: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  padding: 0.7rem 1rem;
+  color: var(--wiki-text);
+  box-shadow: none;
+}
+
+.form-control:focus {
+  background: var(--wiki-bg);
+  color: var(--wiki-text);
+  border-color: var(--wiki-primary);
+  box-shadow: var(--wiki-focus-ring);
+  /* 윤곽선 포커스 링 */
+  outline: none;
+}
+
+.form-select {
+  background-color: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  color: var(--wiki-text);
+}
+
+.form-select:focus {
+  background-color: var(--wiki-bg);
+  color: var(--wiki-text);
+  border-color: var(--wiki-primary);
+  box-shadow: var(--wiki-focus-ring);
+  outline: none;
+}
+
+.form-control::placeholder,
+.edit-title-input::placeholder,
+.edit-summary-input::placeholder {
+  color: var(--wiki-text-muted);
+  opacity: 1;
+}
+
+.form-select option {
+  background-color: var(--wiki-bg);
+  color: var(--wiki-text);
+}
+
+/* ── Input Group (Bootstrap) Dark Mode ── */
+.input-group-text {
+  background-color: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  color: var(--wiki-text-muted);
+}
+
+/* ── Pagination (Bootstrap) Dark Mode ── */
+.pagination {
+  --bs-pagination-bg: var(--wiki-card-bg);
+  --bs-pagination-color: var(--wiki-text);
+  --bs-pagination-border-color: var(--wiki-border);
+  --bs-pagination-hover-bg: var(--wiki-bg);
+  --bs-pagination-hover-color: var(--wiki-primary);
+  --bs-pagination-hover-border-color: var(--wiki-border);
+  --bs-pagination-focus-bg: var(--wiki-bg);
+  --bs-pagination-focus-color: var(--wiki-primary);
+  --bs-pagination-focus-box-shadow: var(--wiki-focus-ring);
+  --bs-pagination-active-bg: var(--wiki-primary);
+  --bs-pagination-active-color: var(--wiki-btn-text);
+  --bs-pagination-active-border-color: var(--wiki-primary);
+  --bs-pagination-disabled-bg: var(--wiki-bg);
+  --bs-pagination-disabled-color: var(--wiki-text-muted);
+  --bs-pagination-disabled-border-color: var(--wiki-border);
+}
+
+.pagination .page-link {
+  background-color: var(--bs-pagination-bg);
+  color: var(--bs-pagination-color);
+  border-color: var(--bs-pagination-border-color);
+  transition: background-color var(--wiki-dur-instant) ease, color var(--wiki-dur-instant) ease, border-color var(--wiki-dur-instant) ease;
+}
+
+.pagination .page-link:hover {
+  background-color: var(--bs-pagination-hover-bg);
+  color: var(--bs-pagination-hover-color);
+  border-color: var(--bs-pagination-hover-border-color);
+}
+
+.pagination .page-link:focus {
+  background-color: var(--bs-pagination-focus-bg);
+  color: var(--bs-pagination-focus-color);
+  box-shadow: var(--bs-pagination-focus-box-shadow);
+  outline: none;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--bs-pagination-active-bg);
+  color: var(--bs-pagination-active-color);
+  border-color: var(--bs-pagination-active-border-color);
+}
+
+.pagination .page-item.disabled .page-link {
+  background-color: var(--bs-pagination-disabled-bg);
+  color: var(--bs-pagination-disabled-color);
+  border-color: var(--bs-pagination-disabled-border-color);
+}
+
+/* ── Edit Page Inputs ── */
+.edit-title-input {
+  width: 100%;
+  background: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  padding: 1rem 1.2rem;
+  font-size: var(--wiki-fs-3xl);
+  font-weight: 700;
+  color: var(--wiki-text);
+  box-shadow: none;
+  margin-bottom: var(--wiki-space-4);
+}
+
+.edit-title-input:focus {
+  outline: none;
+  border-color: var(--wiki-primary);
+  box-shadow: var(--wiki-focus-ring);
+}
+
+.edit-summary-input {
+  width: 100%;
+  background: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  padding: 0.7rem 1rem;
+  color: var(--wiki-text);
+  box-shadow: none;
+}
+
+.edit-summary-input:focus {
+  outline: none;
+  border-color: var(--wiki-primary);
+  box-shadow: var(--wiki-focus-ring);
+}
+
+/* ── Editor Note (편집 메모) ── */
+.editor-note-collapse > summary {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.editor-note-collapse > summary::-webkit-details-marker { display: none; }
+.editor-note-collapse > summary::before {
+  content: '\25B6';
+  display: inline-block;
+  margin-right: 0.4rem;
+  font-size: 0.7em;
+  transition: transform 0.15s ease;
+}
+.editor-note-collapse[open] > summary::before {
+  transform: rotate(90deg);
+}
+.editor-note-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.editor-note-textarea {
+  width: 100%;
+  background: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  padding: 0.6rem 0.9rem;
+  color: var(--wiki-text);
+  resize: vertical;
+  font-size: 0.9rem;
+}
+.editor-note-textarea:focus {
+  outline: none;
+  border-color: var(--wiki-primary);
+  box-shadow: var(--wiki-focus-ring);
+}
+
+/* ── Profile Input Custom ── */
+.edit-name-form input {
+  background: var(--wiki-bg);
+  color: var(--wiki-text);
+  border: 1px solid var(--wiki-border);
+}
+
+/* ── Search namespace chips & filters ── */
+.search-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--wiki-radius-full);
+  border: 1px solid var(--wiki-border);
+  background: var(--wiki-card-bg);
+  color: var(--wiki-text);
+  font-size: var(--wiki-fs-base);
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color var(--wiki-dur-instant), background-color var(--wiki-dur-instant), color var(--wiki-dur-instant);
+}
+
+.search-chip:hover {
+  border-color: var(--wiki-primary);
+}
+
+.search-chip.is-active {
+  background: color-mix(in srgb, var(--wiki-primary) 12%, transparent);
+  border-color: var(--wiki-primary);
+  color: var(--wiki-primary);
+  font-weight: 600;
+}
+
+.search-filters {
+  border: 1px solid var(--wiki-border);
+  background: var(--wiki-card-bg);
+}
+
+/* 전역 .form-control 패딩 오버라이드(0.7rem)가 -sm 입력을 키워 select 보다 높아지는 현상 보정.
+   필터 바 안의 텍스트/날짜 입력을 form-select-sm 와 동일한 small 패딩으로 맞춰 높이를 정렬한다. */
+.search-filters .form-control-sm {
+  padding: var(--wiki-space-1) var(--wiki-space-2);
+}
+
+/* 카테고리 필터 자동완성 드롭다운 (에디터 #category-autocomplete 과 동일 스타일 이식) */
+#searchCategoryAutocomplete {
+  position: fixed;
+  z-index: 2100;
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  display: none;
+  overflow: hidden;
+}
+
+#searchCategoryAutocomplete .list-group-item {
+  background: transparent;
+  color: var(--wiki-text);
+  border: none;
+  border-bottom: 1px solid var(--wiki-border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--wiki-fs-body);
+  padding: 8px 12px;
+}
+
+#searchCategoryAutocomplete .list-group-item:last-child {
+  border-bottom: none;
+}
+
+#searchCategoryAutocomplete .list-group-item:hover,
+#searchCategoryAutocomplete .list-group-item.active {
+  background-color: var(--wiki-bg);
+  border-left: 3px solid var(--wiki-primary);
+  padding-left: 9px;
+}
+
+/* ── Search Results ── */
+.search-result-item {
+  padding: var(--wiki-space-6);
+  margin-bottom: var(--wiki-space-4);
+  box-shadow: none;
+  transition: border-color var(--wiki-dur-fast);
+}
+
+.search-result-item:hover {
+  transform: none;
+  border-color: var(--wiki-text-muted);
+  /* hover 시 테두리만 밝아짐 */
+}
+
+.search-result-item h4 a {
+  color: var(--wiki-primary);
+  font-weight: 700;
+}
+
+/* 카드 body(슬러그 보조 라벨 + 스니펫) 클릭 영역: 제목 링크와 분리된 별도 이동 링크.
+   본문 매치면 ?highlight= 위치로, 아니면 문서로만 이동한다. 링크지만 본문 텍스트처럼 보이도록
+   색을 상속받고 밑줄을 제거하며, hover 시 클릭 가능함을 알리는 약한 밑줄만 노출한다. */
+.search-result-body-link {
+  color: inherit;
+}
+
+.search-result-body-link:hover .snippet,
+.search-result-body-link:focus-visible .snippet {
+  text-decoration: underline;
+  text-decoration-color: var(--wiki-text-muted);
+  text-underline-offset: 2px;
+}
+
+/* 검색 결과 내 이미지 썸네일: 고정 정사각형에 이미지 비율 보존 */
+.search-image-thumb {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  background: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-base);
+  flex-shrink: 0;
+}
+
+@media (max-width: 575.98px) {
+  .search-image-thumb {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+/* 검색 결과 본문 영역: flex 자식이 내용 크기보다 작게 줄어들 수 있도록 min-width:0.
+   긴 파일명/URL 이 줄바꿈되도록 overflow-wrap 을 내부 자손(제목/링크/스니펫)에도 강제. */
+.search-result-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.search-result-body h4,
+.search-result-body h4 a,
+.search-result-body .snippet {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+/* 이미지 검색 결과 본문 영역의 태그/콘텐츠 미리보기 */
+.search-image-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wiki-space-1) 0;
+}
+
+.search-image-tags .badge {
+  font-weight: 500;
+  font-size: 0.78rem;
+}
+
+.search-image-content {
+  font-size: var(--wiki-fs-body);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ── Nav Tabs (위키 스타일 통합) ── */
+.nav-tabs {
+  border-bottom: 1px solid var(--wiki-border);
+  gap: var(--wiki-space-1);
+}
+
+.nav-tabs .nav-link {
+  color: var(--wiki-text-muted) !important;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--wiki-radius-lg) var(--wiki-radius-lg) 0 0;
+  font-weight: 600;
+  padding: 0.5rem 1.1rem;
+  margin-bottom: -1px;
+  transition: all var(--wiki-dur-fast) var(--wiki-ease);
+}
+
+.nav-tabs .nav-link:hover,
+.nav-tabs .nav-link:focus {
+  color: var(--wiki-text) !important;
+  background: var(--wiki-card-bg);
+  border-color: var(--wiki-border) var(--wiki-border) transparent;
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--wiki-primary) !important;
+  background: var(--wiki-card-bg);
+  border-color: var(--wiki-border) var(--wiki-border) var(--wiki-card-bg);
+  font-weight: 700;
+}
+
+/* ── Revision List ── */
+.revision-item {
+  margin-bottom: var(--wiki-space-2);
+  padding: var(--wiki-space-4);
+  box-shadow: none;
+}
+
+.revision-summary {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.revision-item.is-current {
+  background: color-mix(in srgb, var(--wiki-warning) 15%, var(--wiki-card-bg));
+  border-color: var(--wiki-warning);
+  box-shadow: 0 0 0 1px var(--wiki-warning) inset;
+}
+
+/* 리비전 조작 버튼 (Premium Neutral UI) */
+.btn-rev-action {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--wiki-radius-base);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--wiki-dur-slow) var(--wiki-ease-elastic);
+  background-color: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  color: var(--wiki-text);
+  box-shadow: var(--wiki-shadow-sm);
+  white-space: nowrap;
+}
+
+.btn-rev-action i {
+  font-size: var(--wiki-fs-md);
+  transition: color var(--wiki-dur-fast) ease;
+}
+
+.btn-rev-action:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--wiki-shadow-md);
+  border-color: var(--wiki-border-focus);
+}
+
+.btn-rev-action:active {
+  transform: scale(0.97) translateY(0);
+  transition: transform 0.1s ease;
+}
+
+/* 보기 버튼 - Blue Icon on Hover */
+.btn-rev-view:hover {
+  color: var(--wiki-primary) !important;
+}
+
+.btn-rev-view:hover i {
+  color: var(--wiki-primary);
+}
+
+/* 비교 버튼 - Indigo Icon on Hover */
+.btn-rev-diff:hover {
+  color: var(--wiki-accent) !important;
+}
+
+.btn-rev-diff:hover i {
+  color: var(--wiki-accent);
+}
+
+/* 되돌리기 버튼 - Rose Icon on Hover */
+.btn-rev-revert:hover {
+  color: var(--wiki-danger) !important;
+}
+
+.btn-rev-revert:hover i {
+  color: var(--wiki-danger);
+}
+
+.btn-rev-revert:disabled {
+  background-color: var(--wiki-bg) !important;
+  color: var(--wiki-text-muted) !important;
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: var(--wiki-border) !important;
+}
+
+.btn-rev-revert:disabled i {
+  color: inherit !important;
+}
+
+/* 좁은 화면에서 아이콘 버튼의 텍스트 숨기기 */
+@media (max-width: 575.98px) {
+  .btn-icon-collapse .btn-collapse-text {
+    display: none;
+  }
+}
+
+/* ── Home Page / Welcome ── */
+.wiki-welcome h1 {
+  color: var(--wiki-text);
+  text-shadow: none;
+  /* Embossed Text 제거, 깔끔한 플랫 */
+  font-weight: 800;
+}
+
+.recent-page-card {
+  background: var(--wiki-card-bg);
+  border-radius: var(--wiki-radius-lg);
+  padding: var(--wiki-space-5);
+  box-shadow: none;
+  border: 1px solid var(--wiki-border);
+  color: var(--wiki-text);
+  margin-bottom: var(--wiki-space-4);
+  transition: all var(--wiki-dur-fast) var(--wiki-ease);
+}
+
+.recent-page-card:hover {
+  transform: translateY(-2px);
+  /* 미세한 떠오름 유지 */
+  border-color: var(--wiki-primary);
+}
+
+/* ── Badges & Alerts ── */
+.badge {
+  color: var(--wiki-primary) !important;
+  background-color: color-mix(in srgb, var(--wiki-primary) 10%, transparent) !important;
+  /* 투명도 있는 배경 트렌드 */
+  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--wiki-primary) 20%, transparent) !important;
+  border-radius: var(--wiki-radius-full);
+  padding: 0.3em 0.6em;
+  font-weight: 600;
+}
+
+.badge.bg-secondary {
+  color: var(--wiki-text-muted) !important;
+  background-color: rgba(139, 148, 158, 0.1) !important;
+  border-color: rgba(139, 148, 158, 0.2) !important;
+}
+
+.badge.bg-danger {
+  color: var(--wiki-danger) !important;
+  background-color: rgba(248, 81, 73, 0.05) !important;
+  border-color: rgba(248, 81, 73, 0.3) !important;
+  box-shadow: none;
+}
+
+.alert {
+  background-color: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  box-shadow: none;
+  color: var(--wiki-text);
+}
+
+.alert-info {
+  border-left: 4px solid var(--wiki-primary);
+  background-color: color-mix(in srgb, var(--wiki-primary) 5%, transparent);
+}
+
+/* ── Mobile Optimization ── */
+@media (max-width: 991px) {
+  .wiki-layout {
+    flex-direction: column;
+    padding: 0;
+    margin-bottom: 0;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  .wiki-sidebar {
+    width: 100% !important;
+    position: relative !important;
+    top: 0 !important;
+    margin-top: 0 !important;
+    padding: 0 var(--wiki-space-2) !important;
+    z-index: var(--wiki-z-sidebar);
+  }
+
+  .sidebar-section {
+    margin-bottom: var(--wiki-space-6) !important;
+  }
+
+  .recent-changes-bottom {
+    padding: 0 var(--wiki-space-2);
+  }
+}
+
+
+@media (max-width: 768px) {
+  .wiki-article {
+    padding: 1.2rem;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  .navbar {
+    padding: 0.8rem 1rem;
+  }
+
+  .wiki-container {
+    padding: 0 var(--wiki-space-2);
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  .recent-changes-bottom {
+    padding: 0;
+  }
+}
+
+/* ── Scrollbar Customization (Dark Theme) ── */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--wiki-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--wiki-scrollbar-thumb);
+  border-radius: var(--wiki-radius-lg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--wiki-scrollbar-thumb-hover);
+}
+
+/* ── Dropdown Animation + 다크모드 대응 ── */
+.dropdown-menu {
+  display: block;
+  /* Force block to allow transition */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: opacity var(--wiki-dur-fast) ease, transform var(--wiki-dur-fast) ease, visibility var(--wiki-dur-fast);
+  pointer-events: none;
+  /* Prevent clicking when hidden */
+  background-color: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  box-shadow: var(--wiki-shadow-md);
+}
+
+.dropdown-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.dropdown-item {
+  color: var(--wiki-text);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--wiki-bg);
+  color: var(--wiki-text);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+  background-color: var(--wiki-primary);
+  color: var(--wiki-btn-text);
+}
+
+.dropdown-header {
+  color: var(--wiki-text-muted);
+}
+
+.dropdown-divider {
+  border-color: var(--wiki-border);
+}
+
+/* ── Footnotes ── */
+.wiki-fn-ref {
+  white-space: nowrap;
+}
+
+.wiki-fn-ref a {
+  color: var(--wiki-primary);
+  font-weight: 700;
+  font-size: 0.75em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--wiki-dur-fast) ease;
+  white-space: nowrap;
+}
+
+.wiki-fn-ref a:hover {
+  color: var(--wiki-accent);
+  text-decoration: underline;
+}
+
+.wiki-footnotes {
+  margin-top: var(--wiki-space-8);
+  padding-top: 0;
+}
+
+.wiki-footnotes hr {
+  border-color: var(--wiki-border);
+  margin-bottom: var(--wiki-space-4);
+}
+
+.wiki-footnotes h4 {
+  font-size: var(--wiki-fs-xl);
+  font-weight: 700;
+  color: var(--wiki-text-muted);
+  margin-bottom: var(--wiki-space-3);
+}
+
+.wiki-footnotes h4 i {
+  color: var(--wiki-primary);
+}
+
+.wiki-footnotes ol {
+  padding-left: var(--wiki-space-6);
+  margin: 0;
+}
+
+.wiki-footnotes ol li {
+  font-size: var(--wiki-fs-body);
+  color: var(--wiki-text);
+  padding: 0.3rem 0;
+  line-height: 1.6;
+  border-bottom: 1px solid var(--wiki-border);
+  scroll-margin-top: 80px;
+}
+
+.wiki-footnotes ol li:last-child {
+  border-bottom: none;
+}
+
+.wiki-fn-back {
+  color: var(--wiki-primary);
+  text-decoration: none;
+  font-size: 0.85em;
+  margin-right: 0.3rem;
+  cursor: pointer;
+  transition: color var(--wiki-dur-fast) ease;
+}
+
+.wiki-fn-back:hover {
+  color: var(--wiki-accent);
+}
+
+/* Highlight animation when navigating to a footnote */
+.wiki-footnotes ol li:target {
+  background-color: color-mix(in srgb, var(--wiki-primary) 10%, transparent);
+  border-radius: var(--wiki-radius-lg);
+  transition: background-color var(--wiki-dur-slow) ease;
+}
+
+/* ── Discussion UI ── */
+.discussion-item {
+  display: block;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: var(--wiki-space-2);
+  text-decoration: none !important;
+  color: var(--wiki-text);
+  transition: border-color var(--wiki-dur-fast) ease, background var(--wiki-dur-instant) ease, box-shadow var(--wiki-dur-instant) ease;
+}
+
+.discussion-item:hover {
+  border-color: var(--wiki-primary);
+  background: var(--wiki-bg);
+  color: var(--wiki-text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.discussion-item-title {
+  font-weight: 600;
+  font-size: var(--wiki-fs-md);
+  display: flex;
+  align-items: center;
+  gap: var(--wiki-space-2);
+  margin-bottom: 0.35rem;
+  color: var(--wiki-text);
+}
+
+.discussion-item-meta {
+  font-size: 0.78rem;
+  color: var(--wiki-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.discussion-item-meta i {
+  margin-right: 0.15rem;
+  opacity: 0.7;
+}
+
+/* Discussion author link — theme-aware */
+.discussion-author-link {
+  text-decoration: none;
+  color: var(--wiki-text);
+  font-weight: 500;
+  transition: color var(--wiki-dur-instant) ease;
+}
+
+.discussion-author-link:hover {
+  color: var(--wiki-primary);
+  text-decoration: underline;
+}
+
+/* Discussion Comments */
+.discussion-comment {
+  background: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  padding: 1rem 1.2rem;
+  margin-bottom: var(--wiki-space-3);
+  transition: border-color var(--wiki-dur-fast) ease;
+}
+
+.discussion-comment:hover {
+  border-color: var(--wiki-text-muted);
+}
+
+.discussion-comment-deleted {
+  opacity: 0.5;
+  background: var(--wiki-card-bg);
+}
+
+.discussion-comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--wiki-space-2);
+}
+
+.discussion-comment-author {
+  font-weight: 600;
+  font-size: var(--wiki-fs-body);
+  display: flex;
+  align-items: center;
+  gap: var(--wiki-space-2);
+  color: var(--wiki-text);
+}
+
+.discussion-comment-date {
+  color: var(--wiki-text-muted);
+}
+
+.discussion-comment-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--wiki-border);
+}
+
+.discussion-comment-body {
+  font-size: var(--wiki-fs-md);
+  line-height: 1.7;
+  margin-bottom: var(--wiki-space-2);
+  white-space: pre-line;
+}
+
+.discussion-comment-actions {
+  display: flex;
+  gap: var(--wiki-space-1);
+}
+
+.discussion-comment-actions .btn-link {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.4rem;
+  text-decoration: none;
+}
+
+/* Discussion Quote (reply quoting) */
+.discussion-quote {
+  border-left: 3px solid var(--wiki-primary);
+  background: var(--wiki-card-bg);
+  border-radius: 0 var(--wiki-radius-md) var(--wiki-radius-md) 0;
+  padding: 0.6rem 1rem;
+  margin-bottom: var(--wiki-space-2);
+  font-size: var(--wiki-fs-base);
+}
+
+.discussion-quote-author {
+  font-weight: 600;
+  color: var(--wiki-primary);
+  margin-bottom: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.discussion-quote-author i {
+  margin-right: 0.2rem;
+}
+
+.discussion-quote-text {
+  color: var(--wiki-text-muted);
+  white-space: pre-line;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* Comment target highlight */
+.discussion-comment:target {
+  border-color: var(--wiki-primary);
+  box-shadow: var(--wiki-focus-ring);
+}
+
+/* ── Bootstrap list-group Override (Dark Mode) ── */
+.list-group-item {
+  background-color: var(--wiki-bg);
+  color: var(--wiki-text);
+  border-color: var(--wiki-border);
+}
+
+.list-group-item-action {
+  color: var(--wiki-text);
+  transition: background var(--wiki-dur-instant) ease, border-color var(--wiki-dur-instant) ease;
+}
+
+.list-group-item-action:hover,
+.list-group-item-action:focus {
+  background-color: var(--wiki-card-bg);
+  color: var(--wiki-text);
+  border-color: var(--wiki-primary);
+}
+
+.list-group-item-action:active {
+  background-color: var(--wiki-card-bg);
+  color: var(--wiki-text);
+}
+
+.list-group-item .fw-bold {
+  color: var(--wiki-text);
+}
+
+.list-group-item small.text-muted {
+  color: var(--wiki-text-muted) !important;
+}
+
+
+
+/* ── Notification System ── */
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  background: var(--wiki-primary);
+  border-radius: 50%;
+  border: 2px solid var(--wiki-bg);
+}
+
+.notification-menu-badge {
+  display: inline-block;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  background: var(--wiki-primary);
+  color: var(--wiki-btn-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  border-radius: var(--wiki-radius-full);
+  margin-left: 8px;
+}
+
+.notification-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 360px;
+  max-height: 480px;
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: var(--wiki-z-notification);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 576px) {
+  .notification-panel {
+    position: fixed;
+    top: 60px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+}
+
+.notification-panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--wiki-border);
+  color: var(--wiki-text);
+  font-size: var(--wiki-fs-body);
+  display: flex;
+  align-items: center;
+}
+
+.notification-panel-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 420px;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--wiki-border);
+  transition: background var(--wiki-dur-instant);
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--wiki-text);
+}
+
+.notification-item:hover {
+  background: var(--wiki-toc-bg);
+  color: var(--wiki-text);
+}
+
+/* 안 읽은 알림: 좌측 강조 바 + 살짝 강조된 배경 + 굵은 본문 */
+.notification-item.unread {
+  background: var(--wiki-toc-bg);
+  box-shadow: inset 3px 0 0 var(--wiki-primary);
+}
+
+.notification-item.unread .notif-text {
+  font-weight: 600;
+}
+
+/* 마이페이지 알림 보관함의 안 읽은 항목 강조 */
+.notif-archive-item.unread {
+  box-shadow: inset 3px 0 0 var(--wiki-primary);
+}
+
+.notif-archive-item.unread .notif-archive-text {
+  font-weight: 600;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item .notif-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notification-item .notif-icon.type-discussion_comment {
+  color: var(--wiki-primary);
+}
+
+.notification-item .notif-icon.type-banned {
+  color: var(--wiki-danger);
+}
+
+.notification-item .notif-icon.type-message {
+  color: var(--wiki-accent);
+}
+
+.notification-item .notif-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-item .notif-text {
+  font-size: var(--wiki-fs-base);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.notification-item .notif-time {
+  font-size: var(--wiki-fs-sm);
+  color: var(--wiki-text-muted);
+  margin-top: 2px;
+}
+
+.notification-item .notif-delete {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--wiki-text-muted);
+  padding: 2px 4px;
+  border-radius: var(--wiki-radius-lg);
+  cursor: pointer;
+  font-size: var(--wiki-fs-body);
+  transition: all var(--wiki-dur-instant);
+}
+
+.notification-item .notif-delete:hover {
+  color: var(--wiki-danger);
+  background: rgba(248, 81, 73, 0.1);
+}
+
+.notification-empty {
+  padding: var(--wiki-space-8);
+  text-align: center;
+  color: var(--wiki-text-muted);
+  font-size: var(--wiki-fs-base);
+}
+
+.notification-panel-archive-link {
+  display: block;
+  padding: 9px 12px;
+  border-top: 1px solid var(--wiki-border);
+  background: var(--wiki-card-bg);
+  color: var(--wiki-text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+  text-decoration: none;
+  flex: 0 0 auto;
+  transition: background var(--wiki-dur-instant), color var(--wiki-dur-instant);
+}
+
+.notification-panel-archive-link:hover {
+  background: var(--wiki-toc-bg);
+  color: var(--wiki-primary);
+}
+
+.notification-panel-footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--wiki-border);
+  background: var(--wiki-card-bg);
+  flex: 0 0 auto;
+}
+
+.push-toggle-status-label {
+  font-size: var(--wiki-fs-base);
+  color: var(--wiki-text-muted);
+  display: inline-flex;
+  align-items: center;
+}
+
+.push-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px 2px 4px;
+  border-radius: var(--wiki-radius-full);
+  font-size: var(--wiki-fs-sm);
+  font-weight: 600;
+  border: 1px solid transparent;
+  line-height: 1.2;
+}
+
+.push-status-pill .mdi {
+  font-size: var(--wiki-fs-lg);
+  line-height: 1;
+}
+
+.push-status-on {
+  background: color-mix(in srgb, var(--wiki-success) 12%, transparent);
+  color: var(--wiki-success);
+  border-color: color-mix(in srgb, var(--wiki-success) 35%, transparent);
+}
+
+.push-status-off {
+  background: rgba(108, 117, 125, 0.12);
+  color: var(--wiki-text-muted);
+  border-color: rgba(108, 117, 125, 0.3);
+}
+
+html[data-theme="dark"] .push-status-on {
+  background: color-mix(in srgb, var(--wiki-success) 18%, transparent);
+  color: color-mix(in srgb, var(--wiki-success), white 35%);
+  border-color: color-mix(in srgb, var(--wiki-success) 45%, transparent);
+}
+
+/* ── 푸터 ── */
+.wiki-footer {
+  border-top: 1px solid var(--wiki-border);
+  background-color: var(--wiki-card-bg);
+  color: var(--wiki-text-muted);
+  font-size: var(--wiki-fs-base);
+  padding: var(--wiki-space-4) var(--wiki-space-6);
+  margin-top: auto;
+}
+
+.wiki-footer-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wiki-space-2) var(--wiki-space-4);
+}
+
+.footer-copyright {
+  flex-shrink: 0;
+}
+
+.footer-custom-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wiki-space-1) var(--wiki-space-3);
+}
+
+.footer-link {
+  color: var(--wiki-text-muted);
+  text-decoration: none;
+  transition: color var(--wiki-dur-instant);
+}
+
+.footer-link:hover {
+  color: var(--wiki-primary);
+  text-decoration: underline;
+}
+
+.footer-text {
+  color: var(--wiki-text-muted);
+}
+
+.footer-divider {
+  color: var(--wiki-border);
+  user-select: none;
+}
+
+/* ── Loading Spinner ── */
+.spinner-border {
+  border-width: 2px;
+  border-color: var(--wiki-border);
+  border-right-color: var(--wiki-primary);
+}
+
+/* ── SPA Progress Bar ── */
+.spa-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.spa-progress-bar-inner {
+  height: 100%;
+  background: var(--wiki-primary);
+  animation: spaProgress var(--wiki-dur-progress) ease-in-out infinite;
+}
+
+@keyframes spaProgress {
+  0% {
+    width: 0;
+    margin-left: 0;
+  }
+
+  50% {
+    width: 60%;
+    margin-left: 20%;
+  }
+
+  100% {
+    width: 0;
+    margin-left: 100%;
+  }
+}
+
+/* ── 셸 전역 로딩(.wiki-loading) ── */
+/* search/recent-changes/revisions/discussions/tickets/index 등 9개 Astro 셸이
+   사용하지만 그동안 CSS 정의가 없어 스피너가 좌측 정렬로 표시되던 것을 정상화. */
+.wiki-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wiki-space-3);
+  padding: var(--wiki-space-12) var(--wiki-space-6);
+  color: var(--wiki-text-muted);
+}
+
+/* ── 인라인 로딩 (버튼·소형 패널·부분 갱신) ── */
+.loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wiki-space-2);
+  color: var(--wiki-text-muted);
+}
+
+.loading-inline.loading-block {
+  display: flex;
+  justify-content: center;
+  padding: var(--wiki-space-5) 0;
+}
+
+/* ── 빈 상태 (아이콘 + 제목 + 안내 + 선택 CTA) ── */
+.empty-state {
+  padding: var(--wiki-space-12) var(--wiki-space-6);
+  text-align: center;
+  color: var(--wiki-text-muted);
+}
+
+.empty-state.empty-state-compact {
+  padding: var(--wiki-space-6) var(--wiki-space-4);
+}
+
+.empty-state-icon {
+  display: block;
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--wiki-text-muted);
+  opacity: 0.55;
+  margin-bottom: var(--wiki-space-3);
+}
+
+.empty-state-compact .empty-state-icon {
+  font-size: 1.75rem;
+  margin-bottom: var(--wiki-space-2);
+}
+
+.empty-state-title {
+  font-weight: 600;
+  color: var(--wiki-text);
+  margin-bottom: 0.35rem;
+}
+
+.empty-state-compact .empty-state-title {
+  font-size: var(--wiki-fs-body);
+}
+
+.empty-state-text {
+  font-size: var(--wiki-fs-body);
+  color: var(--wiki-text-muted);
+  margin-bottom: 0;
+}
+
+.empty-state-cta {
+  margin-top: var(--wiki-space-4);
+}
+
+/* ── 스켈레톤 (shimmer) ── */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--wiki-border);
+  border-radius: var(--wiki-radius-base);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--wiki-card-bg), transparent);
+  opacity: 0.5;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-line {
+  height: 0.9rem;
+  margin-bottom: 0.6rem;
+}
+
+.skeleton-line.w-40 { width: 40%; }
+.skeleton-line.w-60 { width: 60%; }
+.skeleton-line.w-80 { width: 80%; }
+
+.skeleton-list-row {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--wiki-border);
+}
+
+.skeleton-list-row .skeleton-line:last-child {
+  margin-bottom: 0;
+}
+
+.skeleton-card {
+  height: 120px;
+  margin-bottom: var(--wiki-space-4);
+}
+
+@keyframes skeletonShimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 모션 민감 사용자 존중: shimmer 애니메이션 정지(정적 회색 블록 유지) */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+
+  .spa-progress-bar-inner {
+    animation: none;
+  }
+}
+
+/* ── Scroll FAB Buttons ── */
+.scroll-fab-group {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wiki-space-2);
+  z-index: var(--wiki-z-scroll-fab);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--wiki-dur-moderate) ease;
+}
+
+.scroll-fab-group.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scroll-fab {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--wiki-radius-lg);
+  border: 1px solid var(--wiki-border);
+  background: var(--wiki-glass-bg);
+  backdrop-filter: var(--wiki-glass-blur);
+  -webkit-backdrop-filter: var(--wiki-glass-blur);
+  box-shadow: var(--wiki-shadow);
+  color: var(--wiki-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--wiki-fs-base);
+  cursor: pointer;
+  transition: background var(--wiki-dur-fast), box-shadow var(--wiki-dur-fast), transform var(--wiki-dur-instant);
+  padding: 0;
+  line-height: 1;
+}
+
+.scroll-fab:hover {
+  background: var(--wiki-glass-bg);
+  box-shadow: var(--wiki-shadow-md);
+  transform: scale(1.1);
+}
+
+.scroll-fab:active {
+  transform: scale(0.95);
+}
+
+/* ── 우측 스크롤바 목차 레일 (PC 전용) ──
+   본문 헤딩 하나당 점 하나를 문서 내 위치 비율대로 스크롤바 옆에 배치한다. 어느 점에 호버하든
+   모든 헤딩 제목이 각자의 점 옆(좌측)으로 함께 펼쳐지고, 클릭하면 FAB 목차와 동일하게 해당 헤딩으로 스크롤.
+   제목은 카드(패널·테두리·그림자) 없이 본문 위에 글자만 얹는다 — 스크롤바 옆의 작은 보조
+   어피던스에 유리 카드를 씌우면 본문을 가리는 덩어리가 갑자기 튀어나오는 인상이 된다.
+   가독성은 배경색 text-shadow 헤일로로 확보한다(아래 .toc-rail-label 참고).
+   상/하 inset 은 src/client/article/toc.ts 의 RAIL_TOP_INSET·RAIL_BOTTOM_INSET 과 맞춘다
+   (점 좌표를 JS 가 이 범위 안에서 계산하므로 값이 어긋나면 배치가 밀린다).
+   컨테이너는 pointer-events:none — 뷰포트 우측 끝을 가로지르므로 본문·스크롤바 조작을 막지 않는다. */
+.toc-rail {
+  position: fixed;
+  right: 0;
+  top: 72px;
+  /* 하단은 toc.ts railBottomInset() 이 스크롤 FAB 그룹을 실측해 써 넣는다(읽기 모드처럼
+     FAB 개수가 바뀌면 함께 움직인다). 아래 값은 실측 전 첫 프레임 폴백이며 toc.ts
+     RAIL_BOTTOM_INSET 과 같아야 한다. */
+  bottom: var(--toc-rail-bottom, 152px);
+  width: 0;
+  /* 스크롤 FAB 그룹(--wiki-z-scroll-fab 1040) 바로 위 — 하단 점의 펼친 제목이 FAB 에 가려지지
+     않도록. 접힌 점은 FAB 과 가로로 겹치지 않으므로 FAB 조작을 막지 않고, 모달·오프캔버스·
+     플로팅 목차(1049 이상)보다는 아래라 그 레이어들을 뚫지 않는다. */
+  z-index: var(--wiki-z-toc-rail);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--wiki-dur-moderate) ease;
+}
+
+.toc-rail.visible {
+  opacity: 1;
+}
+
+/* 점의 히트 영역이자 펼친 제목이 자라는 상자다. 실제 점은 .toc-rail-dot::after 가 그린다.
+   박스 높이(--toc-rail-hit-h)는 인접 점 간격과 같아야 한다 — 더 크면 박스가 겹쳐
+   뒤 형제가 앞 점의 원 위를 덮고, 가리킨 점과 펼쳐지는 제목이 어긋난다.
+   기본값은 toc.ts 의 RAIL_MIN_GAP 과 같은 22px 이고, 균등 분배 폴백처럼 간격이 더
+   좁아질 때 toc.ts 의 layoutRailPositions 가 실제 간격으로 낮춰 준다. */
+.toc-rail-dot {
+  --toc-rail-dot-size: 9px;
+  position: absolute;
+  right: 0;
+  /* 문서 내 위치 비율. JS(layoutRailPositions)가 커스텀 속성으로 준다. */
+  top: var(--toc-rail-y, 0px);
+  transform: translateY(-50%);
+  box-sizing: border-box;
+  /* 상자는 점 열(22px)에 고정한다 — 제목은 이 상자 밖으로 절대 배치되는 장식이라
+     상자를 넓힐 필요가 없고, 넓히면 제목이 덮은 폭만큼 본문 클릭·텍스트 선택이 막힌다. */
+  width: 22px;
+  height: var(--toc-rail-hit-h, 22px);
+  background: transparent;
+  color: var(--wiki-text);
+  cursor: pointer;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.toc-rail-lv3 {
+  --toc-rail-dot-size: 7px;
+}
+
+.toc-rail-lv4 {
+  --toc-rail-dot-size: 5px;
+}
+
+/* 그려지는 원의 지름은 실제 점 간격(--toc-rail-hit-h)을 넘지 않는다. 넘으면 ① 이웃 원끼리
+   겹쳐 하나의 막대처럼 읽히고 ② 히트 테스트에 참여하는 의사요소가 앞 점의 중심까지 덮어
+   호버가 엉킨다(레일 밀집 구간). 지름을 간격으로 묶으면 두 문제가 함께 닫힌다. */
+.toc-rail-dot::after {
+  --toc-rail-dot-draw: min(var(--toc-rail-dot-size), var(--toc-rail-hit-h, 22px));
+  content: '';
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: var(--toc-rail-dot-draw);
+  height: var(--toc-rail-dot-draw);
+  margin-top: calc(var(--toc-rail-dot-draw) / -2);
+  border-radius: var(--wiki-radius-full);
+  background: color-mix(in srgb, var(--wiki-text) 40%, transparent);
+  transition: background var(--wiki-dur-fast) ease,
+    transform var(--wiki-dur-fast) var(--wiki-ease);
+}
+
+/* 호버한 점은 사라지지 않는다 — 제목이 그 점에서 자라 나오는 것으로 읽혀야 하므로
+   점을 앵커로 남기고 브랜드색으로만 강조한다. */
+.toc-rail-dot:hover::after {
+  background: var(--wiki-primary);
+  transform: scale(1.2);
+}
+
+/* 스크롤스파이 활성 헤딩 — 점을 브랜드색으로 키워 현재 위치를 표시. */
+.toc-rail-dot.toc-active::after {
+  background: var(--wiki-primary);
+  transform: scale(1.35);
+}
+
+/* 카드 없이 본문 위에 얹히는 글자다. 배경색 헤일로(text-shadow)로 본문 글자·이미지 위에서도
+   읽히게 하되 상자는 그리지 않는다 — 4방향으로 깔아야 어느 방향의 본문 획과 겹쳐도 끊긴다.
+   점 열(22px) 밖으로 절대 배치되므로 히트 테스트에 참여하지 않는다(pointer-events:none) —
+   제목이 펼쳐져도 그 아래 본문의 클릭·텍스트 선택은 그대로다.
+   right 는 점 원(right:6px, 최대 지름 9px)을 피할 만큼 띄운다. */
+.toc-rail-label {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: max-content;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-size: var(--wiki-fs-base);
+  line-height: 1.2;
+  font-weight: 500;
+  text-shadow:
+    0 0 6px var(--wiki-bg),
+    1px 0 2px var(--wiki-bg),
+    -1px 0 2px var(--wiki-bg),
+    0 1px 2px var(--wiki-bg),
+    0 -1px 2px var(--wiki-bg);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--wiki-dur-fast) ease;
+}
+
+/* 어느 점에 호버하든 모든 제목이 함께 펼쳐진다 — 점 하나만 펼치면 나머지 목차를 볼 수 없다.
+   점은 자리를 옮기지 않으므로(라벨은 각자의 점 옆에 그대로 뜬다) 이전 패널 방식과 달리
+   호버가 끊겼다 붙는 진동도, 그걸 막기 위한 투명 덮개도 필요 없다.
+   `.toc-rail-labels` 는 JS(layoutRailPositions)가 점 간격이 한 줄을 담을 만큼 넉넉할 때만
+   붙인다 — 그보다 촘촘하면 제목끼리 세로로 겹쳐 읽을 수 없으므로 가리킨 점 하나만 펼친다. */
+.toc-rail-labels:has(.toc-rail-dot:hover) .toc-rail-label {
+  opacity: 1;
+}
+
+/* 가리킨 점·현재 위치(스크롤스파이)는 전체가 펼쳐진 상태에서도 구분되어야 한다. */
+.toc-rail-dot:hover .toc-rail-label {
+  opacity: 1;
+  color: var(--wiki-primary);
+}
+
+.toc-rail-dot.toc-active .toc-rail-label {
+  color: var(--wiki-primary);
+  font-weight: 600;
+}
+
+.toc-rail-num {
+  color: var(--wiki-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Raw 보기에는 본문 헤딩이 없다(JS 도 레일을 비우지만 전환 순간 잔상을 막는다). */
+body.raw-mode .toc-rail {
+  display: none;
+}
+
+/* 목차 사이드바가 없는 레이아웃(default·wide)에서만 띄운다 — left-toc·right-toc·docs 는
+   같은 목차를 사이드바로 상시 노출하므로 레일이 중복이다. toc.ts railEligible 과 같은
+   화이트리스트로 적고(:not 으로 뒤집어 표현), 레이아웃 모드가 추가돼도 양쪽이 함께
+   막도록 한다. display:none 대신 :not 을 쓰는 이유는 노출 쪽에 규칙을 두면 JS 가 쓰는
+   `rail.hidden`(UA display:none)을 특이성으로 이겨 버리기 때문이다.
+   data-layout-mode 는 BaseLayout/ssr 이 항상 5종 중 하나로 주입한다. */
+body:not([data-layout-mode="default"]):not([data-layout-mode="wide"]) .toc-rail {
+  display: none;
+}
+
+/* 태블릿/모바일과 포인터 호버가 없는 환경에서는 노출하지 않는다(호버 전용 어피던스). */
+@media (max-width: 991px) {
+  .toc-rail {
+    display: none;
+  }
+}
+
+@media (hover: none) {
+  .toc-rail {
+    display: none;
+  }
+}
+
+@media print {
+  .toc-rail {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .toc-rail,
+  .toc-rail-dot,
+  .toc-rail-dot::after,
+  .toc-rail-label {
+    transition: none;
+  }
+}
+
+/* ── 카테고리 버블 태그 ── */
+.category-tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius);
+  background-color: var(--wiki-bg);
+  min-height: 42px;
+  cursor: text;
+  transition: border-color var(--wiki-dur-fast), box-shadow var(--wiki-dur-fast);
+}
+
+.category-tag-container:focus-within {
+  border-color: var(--wiki-primary);
+  box-shadow: var(--wiki-focus-ring);
+  background-color: var(--wiki-card-bg);
+}
+
+.category-tag {
+  display: inline-flex;
+  align-items: center;
+  background-color: color-mix(in srgb, var(--wiki-primary) 10%, transparent);
+  color: var(--wiki-primary);
+  border: 1px solid color-mix(in srgb, var(--wiki-primary) 20%, transparent);
+  border-radius: var(--wiki-radius-lg);
+  padding: 3px 10px;
+  font-size: var(--wiki-fs-base);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.category-tag i {
+  font-size: var(--wiki-fs-body);
+  color: var(--wiki-primary);
+  opacity: 0.7;
+  transition: opacity var(--wiki-dur-instant);
+  margin-top: 1px;
+  margin-left: 4px;
+}
+
+.category-tag i:hover {
+  opacity: 1;
+}
+
+.category-tag-input {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--wiki-text);
+  font-size: var(--wiki-fs-md);
+  padding: 2px 0;
+}
+
+.category-tag-input::placeholder {
+  color: var(--wiki-text-muted);
+}
+
+/* ── 사이트 전역 공지 배너 (다중) ── */
+.announcement-banners {
+  display: flex;
+  flex-direction: column;
+}
+.announcement-banners > .announcement-banner + .announcement-banner {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+.announcement-banner {
+  background: var(--wiki-announce-bg);
+  color: var(--wiki-announce-text);
+  border-bottom: 1px solid var(--wiki-border);
+  padding: 6px 0;
+  font-size: 0.92rem;
+}
+.announcement-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--wiki-space-2);
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 var(--wiki-space-4);
+}
+.announcement-banner-icon {
+  color: var(--wiki-announce-icon);
+  font-size: var(--wiki-fs-xl);
+  flex-shrink: 0;
+}
+.announcement-banner-text {
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.announcement-banner-text:hover {
+  text-decoration: underline;
+  color: inherit;
+}
+.announcement-banner-skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  font-size: var(--wiki-fs-base);
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.announcement-banner-skip .form-check-input {
+  margin-top: 0;
+  cursor: pointer;
+}
+.announcement-banner-close {
+  flex-shrink: 0;
+  font-size: var(--wiki-fs-sm);
+}
+/* 배너 bg/text/icon 색은 --wiki-announce-* (light-dark) 가 처리하므로
+   data-theme 다크 오버라이드는 닫기 버튼 반전만 유지 */
+[data-theme="dark"] .announcement-banner-close {
+  filter: invert(1);
+}
+
+/* ── 아이콘 피커 모달 툴바 (라이브러리 탭 + 아이콘 없음 버튼) ──
+ * 기본 Bootstrap btn-outline-primary 가 사이트 wiki 토큰과 어긋나 보여 별도 스타일 부여. */
+.icon-picker-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.icon-picker-tabs {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--wiki-bg-alt);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-full);
+}
+
+.icon-picker-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  font-size: var(--wiki-fs-base);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--wiki-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--wiki-radius-full);
+  cursor: pointer;
+  transition: background var(--wiki-dur-instant) var(--wiki-ease), color var(--wiki-dur-instant) var(--wiki-ease);
+}
+
+.icon-picker-tab i {
+  font-size: var(--wiki-fs-lg);
+  line-height: 1;
+}
+
+.icon-picker-tab:hover:not(.active) {
+  color: var(--wiki-text);
+  background: rgba(var(--wiki-primary-rgb), 0.08);
+}
+
+.icon-picker-tab.active {
+  color: var(--wiki-btn-text);
+  background: var(--wiki-primary);
+  box-shadow: var(--wiki-shadow-sm);
+}
+
+.icon-picker-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--wiki-focus-ring);
+}
+
+.icon-picker-none-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 5px 12px;
+  font-size: var(--wiki-fs-base);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--wiki-text-muted);
+  background: transparent;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-full);
+  cursor: pointer;
+  transition: color var(--wiki-dur-instant) var(--wiki-ease), border-color var(--wiki-dur-instant) var(--wiki-ease), background var(--wiki-dur-instant) var(--wiki-ease);
+}
+
+.icon-picker-none-btn i {
+  font-size: var(--wiki-fs-base);
+  line-height: 1;
+}
+
+.icon-picker-none-btn:hover {
+  color: var(--wiki-danger);
+  border-color: var(--wiki-danger);
+  background: color-mix(in srgb, var(--wiki-danger) 8%, transparent);
+}
+
+.icon-picker-none-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wiki-focus-ring);
+}
+
+/* ── 아이콘 피커 모달 그리드 ──
+ * 에디터(edit/modals.ts) 와 standalone(iconPicker.ts) 양쪽에서 사용.
+ * 이전엔 edit.css 에만 있어 admin/blog 페이지에서는 스타일이 적용되지 않았음. */
+.icon-grid-modal {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 6px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.icon-grid-modal-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  cursor: pointer;
+  border-radius: var(--wiki-radius-lg);
+  border: 1px solid var(--wiki-border);
+  transition: all var(--wiki-dur-instant);
+  font-size: var(--wiki-fs-xs);
+  text-align: center;
+  overflow: hidden;
+  color: var(--wiki-text);
+  background: transparent;
+  line-height: 1.3;
+}
+
+.icon-grid-modal-item:hover {
+  background: var(--wiki-bg);
+  border-color: var(--wiki-primary);
+  color: var(--wiki-primary);
+}
+
+.icon-grid-modal-item i {
+  font-size: var(--wiki-fs-2xl);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.icon-grid-modal-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 74px;
+  display: block;
+}
+
+/* iconPicker 모달은 SweetAlert2(기본 ~1060) 와 다른 Bootstrap 모달(1055) 위에 띄워야 한다.
+ * iconPicker.ts 가 modal.show() 직후 마지막 .modal-backdrop 에 .icon-picker-backdrop
+ * 클래스를 부여하므로 그에 대응하는 backdrop z-index 도 함께 올린다. */
+#iconPickerModal {
+  z-index: var(--wiki-z-icon-picker-modal);
+}
+.modal-backdrop.icon-picker-backdrop {
+  z-index: var(--wiki-z-icon-picker-backdrop);
+}
+
+
+/* ── 개인 설정 모달 세그먼트(버튼 그룹) ──
+ * 테마·레이아웃 모드 선택을 드롭다운 대신 한 번에 하나만 활성화되는
+ * 세그먼트 컨트롤로 표시한다. (settingsModal 의 #settingTheme/#settingLayoutMode) */
+.setting-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.setting-seg .seg-btn {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--wiki-radius-lg);
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color var(--wiki-dur-instant) ease, border-color var(--wiki-dur-instant) ease, color var(--wiki-dur-instant) ease;
+}
+.setting-seg .seg-btn i {
+  font-size: 1.15rem;
+}
+.setting-seg .seg-btn:hover {
+  background: var(--bs-secondary-bg);
+  border-color: var(--bs-secondary-border-subtle, var(--bs-border-color));
+}
+.setting-seg .seg-btn:focus-visible {
+  outline: 2px solid var(--wiki-primary);
+  outline-offset: 1px;
+}
+.setting-seg .seg-btn.active {
+  background: var(--wiki-primary);
+  border-color: var(--wiki-primary);
+  color: var(--wiki-btn-text);
+}
+.setting-seg .seg-btn.active:hover {
+  background: var(--wiki-primary);
+}
+
+/* ── 색 테마(스킨) 커스텀 드롭다운 (개인 설정 모달) ── */
+.skin-select {
+  position: relative;
+}
+.skin-select-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--wiki-radius-lg);
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.9rem;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--wiki-dur-instant) ease, border-color var(--wiki-dur-instant) ease;
+}
+.skin-select-toggle:hover {
+  background: var(--bs-secondary-bg);
+  border-color: var(--bs-secondary-border-subtle, var(--bs-border-color));
+}
+.skin-select-toggle:focus-visible {
+  outline: 2px solid var(--wiki-primary);
+  outline-offset: 1px;
+}
+.skin-select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skin-select-caret {
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+  color: var(--bs-secondary-color);
+  transition: transform var(--wiki-dur-instant) ease;
+}
+.skin-select.open .skin-select-caret {
+  transform: rotate(180deg);
+}
+.skin-select-menu {
+  display: none;
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px;
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 2px);
+  z-index: 10;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--wiki-radius-lg);
+  box-shadow: var(--wiki-shadow-md);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.skin-select.open .skin-select-menu {
+  display: block;
+}
+.skin-select-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--wiki-radius-md);
+  font-size: 0.9rem;
+  color: var(--bs-body-color);
+  cursor: pointer;
+}
+.skin-select-option:hover,
+.skin-select-option:focus-visible {
+  background: var(--bs-secondary-bg);
+  outline: none;
+}
+.skin-select-option .skin-select-check {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 1.15rem;
+  color: var(--wiki-primary);
+  opacity: 0;
+}
+.skin-select-option.selected .skin-select-check {
+  opacity: 1;
+}
+.skin-select-option.selected {
+  font-weight: 600;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   전역 커맨드 팔레트 (Cmd/Ctrl+K) & 단축키 도움말
+   ─────────────────────────────────────────────────────────────────────────── */
+.cmd-palette-overlay,
+.cmd-help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1070; /* 헤더(1040)·suggestions(1050)·Bootstrap modal(1055~1060) 위 */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+.cmd-palette-overlay[hidden],
+.cmd-help-overlay[hidden] {
+  display: none;
+}
+
+.cmd-palette-panel {
+  width: 100%;
+  max-width: 620px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.32);
+  overflow: hidden;
+  animation: cmdPaletteIn 0.12s ease-out;
+}
+
+@keyframes cmdPaletteIn {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.cmd-palette-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--wiki-border);
+}
+.cmd-palette-search-icon {
+  font-size: 1.25rem;
+  color: var(--wiki-text-muted);
+}
+.cmd-palette-input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--wiki-text);
+  font-size: 1.05rem;
+  padding: 2px 0;
+}
+.cmd-palette-input::placeholder {
+  color: var(--wiki-text-muted);
+}
+.cmd-palette-esc {
+  font-size: 0.7rem;
+  color: var(--wiki-text-muted);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  padding: 1px 6px;
+}
+
+.cmd-palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.cmd-palette-group {
+  padding: 8px 16px 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--wiki-text-muted);
+}
+.cmd-palette-item {
+  display: flex;
+  align-items: center;
+  padding: 9px 16px;
+  border-radius: 0;
+}
+.cmd-palette-item .mdi,
+.cmd-palette-item .bi {
+  color: var(--wiki-text-muted);
+  margin-right: 10px;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+.cmd-palette-item.active .mdi,
+.cmd-palette-item.active .bi {
+  color: var(--wiki-text);
+}
+.cmd-palette-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmd-palette-item small {
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmd-palette-loading,
+.cmd-palette-empty {
+  padding: 4px 16px 8px;
+}
+
+.cmd-palette-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--wiki-border);
+  font-size: 0.72rem;
+  color: var(--wiki-text-muted);
+}
+.cmd-palette-foot kbd {
+  font-size: var(--wiki-fs-xs);
+  background: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  padding: 0 4px;
+  color: var(--wiki-text-muted);
+  margin-right: 2px;
+}
+
+/* 단축키 도움말 모달 */
+.cmd-help-overlay {
+  align-items: center;
+  padding: 16px;
+}
+.cmd-help-panel {
+  width: 100%;
+  max-width: 420px;
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-lg);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.32);
+  overflow: hidden;
+  animation: cmdPaletteIn 0.12s ease-out;
+}
+.cmd-help-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--wiki-border);
+  color: var(--wiki-text);
+}
+.cmd-help-close {
+  border: 0;
+  background: transparent;
+  font-size: var(--wiki-fs-2xl);
+  line-height: 1;
+  color: var(--wiki-text-muted);
+  cursor: pointer;
+}
+.cmd-help-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+}
+.cmd-help-table td {
+  padding: 9px 18px;
+  font-size: 0.875rem;
+  color: var(--wiki-text);
+  border-top: 1px solid var(--wiki-border);
+}
+.cmd-help-table tr:first-child td {
+  border-top: 0;
+}
+.cmd-help-keys {
+  white-space: nowrap;
+  width: 38%;
+}
+.cmd-help-keys kbd {
+  font-size: 0.78rem;
+  background: var(--wiki-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-sm);
+  padding: 1px 6px;
+  color: var(--wiki-text);
+  margin-right: 3px;
+}
+
+@media (max-width: 576px) {
+  .cmd-palette-overlay {
+    padding: 8vh 8px 8px;
+  }
+  .cmd-palette-foot {
+    gap: 10px;
+  }
+}
+
+/* 문서 단위 카드형 배너 (MCP draft / 편집요청 검토 대기 / 미작성 안내 / 편집요청 surface).
+   과거 index.ts 에 색만 바꿔 복붙되던 인라인 cssText 를 renderDocBanner 헬퍼 + 이 클래스로 일원화.
+   기존 리터럴 색을 그대로 유지(--wiki-palette-* 토큰은 light-dark() 라 다크모드 외관이 바뀌므로 미사용). */
+.doc-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  margin: 0.5rem 0 1rem;
+  border: 1px solid;
+  border-radius: var(--wiki-radius-xl);
+  font-size: 0.95rem;
+}
+.doc-banner--warning { border-color: #ffc107; background: rgba(255, 193, 7, 0.10); }
+.doc-banner--sky     { border-color: #38BDF8; background: rgba(56, 189, 248, 0.10); }
+.doc-banner--info    { border-color: #0dcaf0; background: rgba(13, 202, 240, 0.10); }
+.doc-banner--flush   { margin: 0; }
+.doc-banner__action  { white-space: nowrap; }
+.doc-banner--sky .doc-banner__action { background: #38BDF8; color: #06283d; }

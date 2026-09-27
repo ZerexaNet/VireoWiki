@@ -1,0 +1,177 @@
+import { createMiddleware } from 'hono/factory';
+import { getCookie } from 'hono/cookie';
+import { isSuperAdmin } from '../utils/auth';
+import { RBAC } from '../utils/role';
+import { ensureMcpInstantApplyMigration } from '../utils/mcpInstantApplyMigration';
+import { ensureMcpDisabledToolsMigration } from '../utils/mcpToolPrefs';
+import type { Env, User } from '../types';
+
+/**
+ * RBAC 인스턴스를 초기화하여 Context에 주입하는 미들웨어.
+ *
+ * 권한 정의는 RBAC.getDefaultPermissions() 단일 소스에서 가져온다.
+ * ROLE_PERMISSIONS_JSON 환경변수 오버라이드는 폐기됨.
+ */
+export const rbacMiddleware = createMiddleware<Env>(async (c, next) => {
+    c.set('rbac', new RBAC());
+    await next();
+});
+
+/**
+ * 세션 미들웨어: wiki_session 쿠키에서 세션 토큰을 읽고 DB에서 검증한다.
+ * 세션이 유효하면 c.set('user', user)로 유저 정보를 주입한다.
+ * 세션이 없거나 만료되었으면 user = null로 설정한다.
+ *
+ * 성능 최적화: KV에 세션 정보를 캐싱하여 D1 쿼리 횟수를 최소화한다.
+ */
+const SESSION_CACHE_TTL = 1800; // KV 캐시 TTL: 30분
+
+export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
+    const sessionId = getCookie(c, 'wiki_session');
+
+    if (!sessionId) {
+        c.set('user', null);
+        return next();
+    }
+
+    const kv = c.env.KV;
+    const db = c.env.DB;
+    const now = Math.floor(Date.now() / 1000);
+    const cacheKey = `session:${sessionId}`;
+
+    // 1) KV 캐시에서 먼저 확인
+    let row: User | null = null;
+    const cached = await kv.get(cacheKey);
+
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached) as { user: User; expires_at: number };
+            if (parsed.expires_at > now) {
+                row = parsed.user;
+            }
+        } catch {
+            // 캐시 파싱 실패 시 DB에서 조회
+        }
+    }
+
+    // 2) 캐시 미스 시 DB에서 조회 후 KV에 캐싱
+    if (!row) {
+        // 레거시 D1(mcp_instant_apply/mcp_disabled_tools 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 SELECT.
+        await ensureMcpInstantApplyMigration(db);
+        await ensureMcpDisabledToolsMigration(db);
+        const dbRow = await db
+            .prepare(
+                `SELECT u.id, u.provider, u.uid, u.email, u.name, u.picture, u.picture_private, u.mcp_instant_apply, u.mcp_disabled_tools, u.role, u.banned_until, u.last_namechange, u.created_at, s.expires_at
+           FROM sessions s
+           JOIN users u ON s.user_id = u.id
+           WHERE s.id = ? AND s.expires_at > ?`
+            )
+            .bind(sessionId, now)
+            .first<User & { expires_at: number }>();
+
+        if (dbRow) {
+            const expiresAt = dbRow.expires_at;
+            const { expires_at: _, ...userData } = dbRow;
+            row = userData as User;
+
+            // KV에 캐싱 (세션 만료 시각 또는 TTL 중 짧은 것을 사용)
+            const ttl = Math.min(SESSION_CACHE_TTL, expiresAt - now);
+            if (ttl > 60) {
+                c.executionCtx.waitUntil(
+                    kv.put(cacheKey, JSON.stringify({ user: row, expires_at: expiresAt }), { expirationTtl: ttl })
+                );
+            }
+        }
+    }
+
+    if (row) {
+        // 구 KV 캐시(마이그레이션 이전 직렬화)에는 신 컬럼이 없을 수 있다 — 기본값으로 보정.
+        if ((row as any).mcp_disabled_tools === undefined) (row as any).mcp_disabled_tools = '[]';
+        if ((row as any).mcp_instant_apply === undefined) (row as any).mcp_instant_apply = 0;
+        // 탈퇴한 유저는 세션 무효화
+        if (row.role === 'deleted') {
+            c.header('Set-Cookie', 'wiki_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+            // 삭제된 사용자 에러로 리다이렉트 (api인 경우 미들웨어 이후 단계에서 처리되거나 json 응답이 필요하지만 일단 next()로 null로 전달 후 라우트 단에서 권한없음으로 처리)
+            // 브라우저에서 페이지 접근 시 강제 리다이렉트
+            c.set('user', null);
+            if (c.req.path.startsWith('/api/')) {
+                return c.json({ error: '탈퇴한 사용자입니다.' }, 403);
+            }
+            return c.redirect('/?error=deleted_account');
+        }
+        // Super Admin 판별
+        if (isSuperAdmin(row.email, c.env)) {
+            row.role = 'super_admin';
+        }
+        // Banned 판별
+        else if (row.banned_until && row.banned_until > now) {
+            row.role = 'banned';
+        } else if (row.role === 'banned') {
+            // cron이 실행되기 전이라도 기간이 지났으면 롤백
+            row.role = 'user';
+        }
+    }
+
+    c.set('user', row ?? null);
+    return next();
+});
+
+/**
+ * 인증 필수 미들웨어: 로그인하지 않은 사용자의 요청을 차단한다.
+ * 차단된(banned) 사용자도 차단한다.
+ */
+export const requireAuth = createMiddleware<Env>(async (c, next) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    if (user.role === 'banned') {
+        return c.json({ error: '차단된 계정입니다. 이용하실 수 없습니다.' }, 403);
+    }
+    return next();
+});
+
+/**
+ * 인증 필수 미들웨어 (차단된 사용자 허용): 로그인만 확인하고 차단 여부는 확인하지 않음
+ * 차단된 사용자도 알림 조회 등 일부 기능은 사용할 수 있도록 허용
+ */
+export const requireAuthAllowBanned = createMiddleware<Env>(async (c, next) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    return next();
+});
+
+/**
+ * 관리자 필수 미들웨어: 관리자(admin) 또는 최고 관리자(super_admin)만 접근 가능
+ */
+export const requireAdmin = createMiddleware<Env>(async (c, next) => {
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    if (!user || !rbac.can(user.role, 'admin:access')) {
+        return c.json({ error: '관리자 권한이 필요합니다.' }, 403);
+    }
+    return next();
+});
+
+/**
+ * 특정 권한 필수 미들웨어: 지정된 권한을 가진 사용자만 접근 가능
+ */
+export function requirePermission(permission: string) {
+    return createMiddleware<Env>(async (c, next) => {
+        const user = c.get('user');
+        const rbac = c.get('rbac') as RBAC;
+
+        // 비로그인 사용자는 'guest' 역할로 취급 (필요시)
+        const role = user ? user.role : 'guest';
+
+        if (!rbac.can(role, permission)) {
+            if (!user) {
+                return c.json({ error: '로그인이 필요합니다.' }, 401);
+            }
+            return c.json({ error: `권한이 부족합니다. (${permission})` }, 403);
+        }
+        return next();
+    });
+}

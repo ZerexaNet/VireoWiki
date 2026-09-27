@@ -1,0 +1,121 @@
+---
+// 이미지 관리(관리자) 페이지 셸. 기존 public/admin-media.html 과 동일한 마커/구조를 유지하되,
+// header/sidebar/footer 를 빌드 타임에 컴포넌트로 인라인한다(런타임 placeholder 주입 불필요).
+// base CDN 은 BaseLayout 이 빌드 타임에 인라인(베이킹) — PAGE_BUNDLES['/admin-media.html']=['base']기준으로 베이킹.
+// admin.css 는 관리자 전용 스타일로 head 슬롯에서 직접 로드.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Sidebar from '../components/Sidebar.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout pagePath="/admin-media.html" title="管理后台 - 图片管理 - CloudWiki">
+    <Fragment slot="head">
+        <link rel="stylesheet" href="/css/admin.css" />
+        <!-- 테마 FOUC 방지: CSS 로드 후 즉시 테마 적용 -->
+        <script is:inline>try{var t=localStorage.getItem('themeMode');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+    </Fragment>
+
+    <!-- ── 네비게이션 바 ── -->
+    <Header />
+
+    <div class="wiki-layout justify-content-center">
+        <div class="wiki-container">
+            <div class="admin-container">
+                <div class="mb-4">
+                    <a href="/admin" class="btn btn-wiki-outline btn-sm"><i class="mdi mdi-arrow-left"></i> 返回管理后台</a>
+                </div>
+
+                <h2 class="mb-4">
+                    <i class="mdi mdi-image-multiple"></i> 图片管理
+                </h2>
+                <p class="text-muted mb-3">
+                    搜索和管理已上传的图片。
+                </p>
+
+                <!-- 쓰레기 수집기 카드 (최고 관리자 전용 — 클라이언트에서 노출 제어) -->
+                <div class="card shadow-sm border-0 mb-4" id="gcCard" style="display: none">
+                    <div class="card-header py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="mdi mdi-delete-sweep"></i> 垃圾回收
+                            </h5>
+                            <button class="btn btn-wiki btn-sm" onclick="runGarbageCollector()" id="gcRunBtn">
+                                <i class="mdi mdi-magnify-scan"></i> 查找未使用图片
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" id="gcBody" style="display: none">
+                        <div id="gcStatus" class="text-muted text-center py-3"></div>
+                        <div class="media-list-scroll">
+                            <div id="gcList"></div>
+                        </div>
+                        <div id="gcActions" class="text-center mt-3" style="display: none">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="gcSelectAll()">
+                                        全选
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="gcDeselectAll()">
+                                        取消全选
+                                    </button>
+                                </div>
+                                <button class="btn btn-wiki-danger btn-sm" onclick="gcDeleteSelected()" id="gcDeleteBtn">
+                                    <i class="mdi mdi-delete-forever"></i> 删除所选
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header py-3">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <h5 class="mb-0">图片列表</h5>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <select id="mediaSortSelect" class="form-select form-select-sm" style="width: auto" onchange="changeMediaSort()">
+                                    <option value="date_desc">最近上传优先</option>
+                                    <option value="date_asc">最早上传优先</option>
+                                    <option value="name_asc">文件名 A–Z</option>
+                                    <option value="name_desc">文件名 Z–A</option>
+                                    <option value="size_desc">大文件优先</option>
+                                    <option value="size_asc">小文件优先</option>
+                                </select>
+                                <input type="text" id="mediaSearchInput" class="form-control form-control-sm" placeholder="搜索文件名..." style="width: 250px" />
+                                <button class="btn btn-wiki btn-sm" onclick="searchMedia()">
+                                    搜索
+                                </button>
+                            </div>
+                        </div>
+                        <div class="media-tag-filter">
+                            <label for="mediaTagInput"><i class="mdi mdi-tag-multiple-outline"></i> 搜索标签</label>
+                            <div class="category-tag-container" id="mediaTagContainer">
+                                <input type="text" id="mediaTagInput" class="category-tag-input" placeholder="(按回车或逗号添加，显示包含所有标签的图片)" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="media-list-scroll">
+                            <div id="mediaList">
+                                <div class="text-center text-muted py-3">正在加载...</div>
+                            </div>
+                        </div>
+                        <nav id="mediaPagination" class="mt-3" aria-label="图片分页"></nav>
+                        <div id="mediaTotalInfo" class="text-muted small text-center mt-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <aside class="wiki-sidebar d-none" id="wikiSidebar">
+            <Sidebar />
+        </aside>
+    </div>
+
+    <!-- ── 푸터 ── -->
+    <Footer />
+
+    <Fragment slot="scripts">
+        <script type="module" src="/dist/common.js" is:inline></script>
+        <script type="module" src="/dist/admin-media.js" is:inline></script>
+    </Fragment>
+</BaseLayout>

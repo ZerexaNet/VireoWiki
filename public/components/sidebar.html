@@ -1,0 +1,29 @@
+<style>
+    .trending-ticker-wrapper .trending-item-link {
+        height: 38px;
+        line-height: 1.2;
+    }
+</style>
+
+<!-- ── 사이드바 (Offcanvas) ── -->
+<div class="offcanvas-lg offcanvas-end border-0" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+    <div class="offcanvas-header border-bottom d-lg-none">
+        <h5 class="offcanvas-title fw-bold" id="mobileSidebarLabel">
+            <span class="wiki-logo-container">
+                <i class="mdi mdi-book-open-page-variant text-primary"></i>
+            </span> <span class="app-wiki-name">CloudWiki</span>
+        </h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"
+            data-bs-target="#mobileSidebar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column p-0 p-lg-3 sidebar-section-pc-only">
+        <ul class="navbar-nav mb-auto w-100" id="sidebar-nav-list">
+            <!-- ── 커스텀 사이드바 항목 표시 영역 ── -->
+            <div id="custom-sidebar-content" style="display: contents;"></div>
+        </ul>
+
+        <div class="mt-auto pt-3 border-top text-center text-muted small d-lg-none">
+            &copy; <span class="app-wiki-name">CloudWiki</span>
+        </div>
+    </div>
+</div>

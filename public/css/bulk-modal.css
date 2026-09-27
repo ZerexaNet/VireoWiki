@@ -1,0 +1,397 @@
+/* ── 일괄/권한 관리 모달 공통 스타일 ──
+ *
+ * 사용처:
+ *   - edit.html: 하위 문서 일괄 카테고리 적용 (src/client/edit/bulk-category.ts)
+ *   - index.html: 권한 관리 모달 (src/client/permissions/permissions-modal.ts)
+ *   - admin-bulk-manage.html: 문서 대량 관리(삭제·이동) 체크박스 표 (src/client/pages/admin-bulk-manage.ts)
+ *     — 모달이 아닌 페이지지만 동일한 `.bulkcat-*` 체크박스 표 마크업을 공유한다.
+ *
+ * 원래 edit.css 후단(라인 3473-3748)에 있던 정의를 분리해 문서 열람 페이지에서도
+ * edit.css 전체를 로드하지 않고 모달 스타일만 가져갈 수 있게 했다.
+ */
+
+.bulk-modal-section-card {
+    border: 1px solid var(--wiki-border);
+    border-radius: var(--wiki-radius-lg);
+    background: var(--wiki-card-bg);
+    padding: 1rem 1.125rem;
+    box-shadow: var(--wiki-shadow-sm);
+}
+
+.bulk-modal-section-muted {
+    background: color-mix(in srgb, var(--wiki-text-muted) 6%, var(--wiki-card-bg));
+}
+
+.bulk-modal-inline-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--wiki-space-2);
+    flex-wrap: wrap;
+}
+
+/* 라디오/체크박스 옵션 행 — 좁아지면 줄바꿈한다. */
+.bulkcat-option-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.bulkcat-option-row .form-check-inline {
+    margin-right: 0;
+}
+.bulkcat-option-label {
+    min-width: 84px;
+    font-weight: 600;
+}
+
+/* ACL 플래그 체크박스 묶음 — 좁아지면 줄바꿈한다. */
+.bulkcat-flag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+}
+
+.bulkcat-modal {
+    text-align: left;
+    color: var(--wiki-text);
+    letter-spacing: -0.01em;
+    display: flex;
+    flex-direction: column;
+    gap: var(--wiki-space-5);
+}
+
+.bulkcat-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--wiki-space-2);
+}
+
+.bulkcat-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--wiki-space-3);
+    flex-wrap: wrap;
+    margin: 0;
+}
+
+.bulkcat-section-title {
+    margin: 0;
+    font-size: var(--wiki-fs-body);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--wiki-text);
+}
+.bulkcat-section-title-label {
+    margin: 0;
+    cursor: pointer;
+}
+
+.bulkcat-section-hint {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--wiki-text-muted);
+    line-height: 1.5;
+}
+
+.bulkcat-counter {
+    font-size: 0.8rem;
+    color: var(--wiki-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.bulkcat-prefix-line {
+    display: flex;
+    align-items: center;
+    gap: var(--wiki-space-2);
+    font-size: 0.8rem;
+    color: var(--wiki-text-muted);
+}
+.bulkcat-prefix-label {
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    font-size: 0.7rem;
+}
+.bulkcat-prefix-code {
+    background: var(--wiki-code-bg);
+    border: 1px solid var(--wiki-border);
+    border-radius: var(--wiki-radius-sm);
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    color: var(--wiki-text);
+}
+
+/* 하위 문서 트리 패널 ── 카드 표면 */
+.bulkcat-subpages-panel {
+    max-height: 340px;
+    overflow-y: auto;
+    /* 좁은 폭에서 행이 줄바꿈되지 않고 패널 내부에서 가로 스크롤되도록 한다. */
+    overflow-x: auto;
+    border: 1px solid var(--wiki-border);
+    border-radius: var(--wiki-radius-lg);
+    background: var(--wiki-card-bg);
+    box-shadow: var(--wiki-shadow-sm);
+}
+
+.bulkcat-subpages-panel > .bulkcat-warning {
+    margin: 0;
+    padding: 0.5rem 0.875rem;
+    border-bottom: 1px solid var(--wiki-border);
+    background: color-mix(in srgb, var(--wiki-warning, #F59E0B) 12%, transparent);
+    color: var(--wiki-text);
+    font-size: 0.8rem;
+}
+
+/* 마스터 "전체" 체크박스 행 — 트리 상단 sticky */
+.bulkcat-master-row {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--wiki-space-3);
+    padding: 0.5rem 0.875rem;
+    background: var(--wiki-bg);
+    border-bottom: 1px solid var(--wiki-border);
+    font-weight: 600;
+}
+.bulkcat-master-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--wiki-space-2);
+    margin: 0;
+    cursor: pointer;
+    user-select: none;
+}
+.bulkcat-master-text {
+    font-size: var(--wiki-fs-base);
+    color: var(--wiki-text);
+    letter-spacing: -0.01em;
+}
+.bulkcat-master-count {
+    font-size: var(--wiki-fs-sm);
+    color: var(--wiki-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.bulkcat-master-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* 행 테이블 */
+.bulkcat-subpages-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    font-size: var(--wiki-fs-base);
+}
+.bulkcat-subpages-table tr[data-page-id] {
+    transition: background-color var(--wiki-dur-instant) var(--wiki-ease);
+}
+.bulkcat-subpages-table tr[data-page-id] + tr[data-page-id] > td {
+    border-top: 1px solid var(--wiki-border);
+}
+.bulkcat-subpages-table tr[data-page-id]:hover {
+    background: var(--wiki-bg);
+}
+.bulkcat-subpages-table td {
+    padding: 0.4rem 0.875rem;
+    vertical-align: middle;
+    /* 슬러그·칩이 줄바꿈하지 않고 패널 가로 스크롤로 확장되도록 한다. */
+    white-space: nowrap;
+}
+.bulkcat-subpages-table tr[data-page-id] > td:first-child {
+    padding-left: calc(var(--bulkcat-depth, 0) * 1.25em + 0.875rem);
+    width: 60%;
+}
+
+.bulkcat-row-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--wiki-space-2);
+    margin: 0;
+    cursor: pointer;
+    user-select: none;
+}
+.bulkcat-slug {
+    font-size: 0.8rem;
+    color: var(--wiki-text);
+    background: transparent;
+    padding: 0;
+    word-break: break-all;
+}
+
+.bulkcat-row-cats-cell {
+    text-align: right;
+    white-space: nowrap;
+}
+.bulkcat-row-categories {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: var(--wiki-space-1);
+    justify-content: flex-end;
+}
+.bulkcat-row-categories-empty {
+    font-size: var(--wiki-fs-sm);
+    color: var(--wiki-text-muted);
+    font-style: italic;
+}
+.bulkcat-cat-chip {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: var(--wiki-radius-full);
+    background: color-mix(in srgb, var(--wiki-primary) 10%, transparent);
+    color: var(--wiki-primary);
+    border: 1px solid color-mix(in srgb, var(--wiki-primary) 20%, transparent);
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+.bulkcat-cat-chip.is-danger {
+    background: color-mix(in srgb, var(--wiki-danger, #EF4444) 12%, transparent);
+    color: var(--wiki-danger, #EF4444);
+    border-color: color-mix(in srgb, var(--wiki-danger, #EF4444) 28%, transparent);
+}
+
+.bulkcat-subpages-table tr.bulkcat-row-touched {
+    background: color-mix(in srgb, var(--wiki-warning, #F59E0B) 10%, transparent);
+}
+.bulkcat-subpages-table tr.bulkcat-row-touched:hover {
+    background: color-mix(in srgb, var(--wiki-warning, #F59E0B) 16%, transparent);
+}
+
+/* 하위문서 패널 빈/로딩 상태는 표준 .empty-state / 인라인 로딩(window.ui*)으로 통합 */
+
+/* 카테고리 입력 / 옵션 */
+.bulkcat-tag-container {
+    margin: 0;
+}
+
+.bulkcat-persist-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--wiki-space-2);
+    margin: var(--wiki-space-1) 0 0;
+    font-size: var(--wiki-fs-base);
+    color: var(--wiki-text);
+    cursor: pointer;
+    user-select: none;
+}
+.bulkcat-persist-row .form-check-input {
+    margin: 0;
+}
+.bulkcat-persist-sub {
+    color: var(--wiki-text-muted);
+    font-size: 0.78rem;
+    font-weight: 400;
+}
+
+/* 기존 자동 규칙 표 */
+.bulkcat-rules-wrap {
+    border: 1px solid var(--wiki-border);
+    border-radius: var(--wiki-radius-lg);
+    background: var(--wiki-card-bg);
+    box-shadow: var(--wiki-shadow-sm);
+    /* 모바일 등 좁은 폭에서 셀 텍스트가 줄바꿈되며 레이아웃이 깨지는 대신,
+       표를 내부에서 가로로 확장하고 컨테이너에 가로 스크롤을 둔다. */
+    overflow-x: auto;
+}
+.bulkcat-rules-empty {
+    padding: 0.875rem 1rem;
+    font-size: 0.8rem;
+    color: var(--wiki-text-muted);
+    text-align: center;
+}
+.bulkcat-rules-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    font-size: var(--wiki-fs-base);
+}
+.bulkcat-rules-table thead th {
+    padding: 0.5rem 0.875rem;
+    text-align: left;
+    font-weight: 700;
+    font-size: var(--wiki-fs-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--wiki-text-muted);
+    background: var(--wiki-bg);
+    border-bottom: 1px solid var(--wiki-border);
+    white-space: nowrap;
+}
+.bulkcat-rules-table tbody td {
+    padding: 0.5rem 0.875rem;
+    border-top: 1px solid var(--wiki-border);
+    vertical-align: middle;
+    color: var(--wiki-text);
+    white-space: nowrap;
+}
+.bulkcat-rules-table tbody tr:first-child td {
+    border-top: none;
+}
+.bulkcat-rules-table .text-end {
+    text-align: right;
+}
+
+/* 권한 관리 모달 — 편집 허용 명단 */
+.perm-allow-list {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--wiki-border);
+    border-radius: var(--wiki-radius-lg);
+    background: var(--wiki-card-bg);
+    overflow: hidden;
+    max-height: 240px;
+    overflow-y: auto;
+}
+.perm-allow-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.75rem;
+    font-size: var(--wiki-fs-base);
+    color: var(--wiki-text);
+}
+.perm-allow-item + .perm-allow-item {
+    border-top: 1px solid var(--wiki-border);
+}
+.perm-allow-item-meta {
+    flex: 1;
+    min-width: 0;
+}
+.perm-allow-item-meta .name {
+    font-weight: 600;
+    line-height: 1.3;
+    word-break: break-word;
+}
+.perm-allow-item-meta .sub {
+    color: var(--wiki-text-muted);
+    font-size: 0.72rem;
+    line-height: 1.3;
+}
+.perm-acl-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--wiki-fs-sm);
+    padding: 2px 8px;
+    border-radius: var(--wiki-radius-full);
+}
+.perm-acl-status.is-on {
+    background: color-mix(in srgb, var(--wiki-success, #10B981) 14%, transparent);
+    color: var(--wiki-success, #10B981);
+    border: 1px solid color-mix(in srgb, var(--wiki-success, #10B981) 30%, transparent);
+}
+.perm-acl-status.is-warn {
+    background: color-mix(in srgb, var(--wiki-warning, #F59E0B) 14%, transparent);
+    color: var(--wiki-warning, #F59E0B);
+    border: 1px solid color-mix(in srgb, var(--wiki-warning, #F59E0B) 30%, transparent);
+}
+.perm-acl-status.is-off {
+    background: color-mix(in srgb, var(--wiki-text-muted) 14%, transparent);
+    color: var(--wiki-text-muted);
+    border: 1px solid color-mix(in srgb, var(--wiki-text-muted) 24%, transparent);
+}

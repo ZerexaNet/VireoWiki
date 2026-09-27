@@ -1,0 +1,178 @@
+name = "vireowiki" # 可按部署环境调整 Worker 名称
+main = "src/index.ts"
+compatibility_date = "2026-03-01"
+
+# Vite 클라이언트 빌드를 deploy 전에 자동 실행한다
+# - 입력: src/client/*.ts
+# - 출력: public/dist/*.js (Cloudflare Workers Assets로 서빙됨)
+[build]
+command = "npm run build"
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+run_worker_first = ["/", "/w/*", "/wiki/*", "/mypage", "/edit", "/memo", "/profile/*", "/search", "/admin", "/admin-media", "/admin-bulk-manage", "/tickets", "/tickets/*", "/setup-profile", "/error", "/sitemap.xml", "/robots.txt", "/login", "/recent-changes", "/explore", "/all", "/components-json-builder", "/auth/discord", "/auth/discord/callback", "/auth/nodeloc", "/auth/nodeloc/callback", "/auth/refresh-picture", "/blog", "/blog/*", "/blog-edit", "/qr-login/*", "/sw.js"]
+
+
+[[d1_databases]]
+binding = "DB"
+database_name = ""
+database_id = ""
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = ""
+
+# === RAG(AI Search) 인덱싱 전용 R2 버킷 ===
+# RAG 플러그인(RAG_SEARCH_ENABLED="true")이 켜지면 각 문서의 "현행 본문"을 이 버킷에 미러링한다.
+# 이 버킷을 Cloudflare 대시보드에서 AI Search(구 AutoRAG) 데이터 소스로 등록하면 인덱싱이 자동 관리된다.
+# 플러그인을 쓰지 않으면 빈 값으로 둬도 된다.
+[[r2_buckets]]
+binding = "RAG_BUCKET"
+bucket_name = ""
+
+# === Workers AI 바인딩 (AI Search / AutoRAG 질의용) ===
+# RAG 본문 검색에 사용. 블록 그대로 사용.
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "KV"
+id = ""
+
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "" # 원하는 이름으로 수정
+
+# === 관리자 잡 러너 Durable Object (선택) ===
+# AdminJobDO: 최고 관리자 전용 싱글턴 잡 러너 (역링크 전수 재인덱싱 / 대량 이동 / 대량 삭제 / RAG 백필).
+# 클래스 구현은 DO 전용 Worker(cloudwiki-do, 저장소의 do-worker/)가 소유하고 본체는 script_name 으로
+# 바인딩만 한다. Cloudflare 는 DO 를 구현(export)하는 Worker 에 프리뷰 URL 을 만들지 않으므로
+# (bind 는 무관), 클래스 소유가 분리돼 있어야 본체의 브랜치 프리뷰가 동작한다.
+# 사용법: do-worker/ 를 먼저 배포한 뒤 아래 블록의 주석을 해제하고 본체를 배포한다.
+# 세팅법: docs/durable-object-worker.md
+# DO 를 쓰지 않아도 위키는 정상 동작한다 (관리자 잡 러너 API 만 503).
+# [[durable_objects.bindings]]
+# name = "ADMIN_JOB_DO"
+# class_name = "AdminJobDO"
+# script_name = "cloudwiki-do"
+
+# === 마이그레이션 (과거 설치 업그레이드 시만) ===
+# 신규 설치는 이 블록이 필요 없다 (DO 클래스는 cloudwiki-do 쪽 마이그레이션으로 생성된다).
+# 과거 버전(v3 이전 — DO 클래스가 본체 코드 안에 있던 시절) 설치를 업그레이드할 때만,
+# 첫 재배포 전 아래를 주석 해제해 본체의 클래스 네임스페이스를 정리한다. 적용은 1회이며
+# 적용된 태그는 이후 배포에서 스킵되므로 주석 해제한 채 둬도 무방하다. 실행 중인 잡의
+# 진행 상태(커서)만 폐기되므로 잡이 running 중일 때는 배포하지 말 것.
+# ⚠️ 2단계 배포: 이 마이그레이션을 적용하는 배포에는 위의 ADMIN_JOB_DO 바인딩 블록이 **같이
+# 있으면 안 된다** — 바인딩과 deleted_classes 가 공존하면 배포가 실패한다(code 10061).
+# ① 마이그레이션만 주석 해제(바인딩은 주석 처리한 채 유지)하고 1회 배포(클래스 삭제)
+# → ② 바인딩 주석을 해제하고 재배포(script_name 연결). 마이그레이션은 적용된 태그가 스킵되므로
+#    재주석 처리해도 무방하지만 필수는 아니다.
+# [[migrations]]
+# tag = "v4-move-admin-job-to-do-worker"
+# deleted_classes = ["AdminJobDO"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1.0
+
+[vars]
+WIKI_HOME_PAGE = "" #위키 홈페이지로 쓸 문서 제목
+# === RAG(AI Search) 보조 검색 플러그인 ===
+# "true" 면 활성화: 문서 변경 시 본문을 RAG_BUCKET 에 미러링하고, /search 의 RAG 체크박스와
+# MCP search_rag 도구를 노출한다. RAG_BUCKET·AI 바인딩이 모두 구성돼야 실제로 동작한다.
+RAG_SEARCH_ENABLED = "false"
+# AI Search(AutoRAG) 인스턴스 이름 — Cloudflare 대시보드에서 만든 인스턴스 이름과 일치해야 한다.
+RAG_AUTORAG_NAME = ""
+# RAG_SEARCH_ENABLED / RAG_AUTORAG_NAME 은 본체용 (AdminJobDO 가 쓰는 JOB_SUBREQUEST_BUDGET
+# 은 do-worker/wrangler example.toml 로 이동했다.)
+
+# 启用的登录提供方，以英文逗号分隔
+# 주의: 이미 사용자가 가입시 이용한 공급자를 목록에서 제거하면 오류가 발생합니다.
+AUTH_PROVIDERS = "google,discord" # NodeLoc 社区部署可改为 "nodeloc"
+# NodeLoc OAuth（现行 www.nodeloc.com/oauth-provider OIDC）
+NODELOC_CLIENT_ID = ""
+NODELOC_REDIRECT_URI = "https://你的域名/auth/nodeloc/callback"
+# NODELOC_CLIENT_SECRET → Cloudflare Workers Secret；启用时将 nodeloc 加入 AUTH_PROVIDERS
+# Google OAuth
+GOOGLE_CLIENT_ID = ""
+GOOGLE_REDIRECT_URI = "https://도메인/auth/google/callback"
+# GOOGLE_CLIENT_SECRET은 Cloudflare Workers 대시보드에서 비밀 변수로 저장
+
+# Discord OAuth
+DISCORD_CLIENT_ID = ""
+DISCORD_REDIRECT_URI = "https://도메인/auth/discord/callback"
+# DISCORD_CLIENT_SECRET → Cloudflare Workers 대시보드에서 비밀 변수로 저장
+
+TURNSTILE_SITE_KEY = ""
+# TURNSTILE_SECRET_KEY 는 Cloudflare Workers 대시보드에서 Secret에 저장
+
+# CF_ACCOUNT_ID, CF_API_TOKEN 미설정시 작동에는 문제가 없으나, 통계 조회 불가.
+# CF_ACCOUNT_ID, CF_API_TOKEN은 Cloudflare Workers 대시보드에서 Secret에 저장 (Analytics Engine 통계 조회용)
+
+
+MEDIA_PUBLIC_URL = "https://도메인/media"
+MAX_UPLOAD_SIZE = "15728640" # 15MB, 변경 가능
+WIKI_NAME = "VireoWiki" # 全站显示的 Wiki 名称
+
+# Public 폴더에서 해당 이미지들을 교체하세요.
+WIKI_LOGO_URL = "/vireo-mark.svg"
+WIKI_FAVICON_URL = "/vireo-mark.svg"
+
+SUPER_ADMIN_EMAILS = "test@example.com, test2@example.com" # 콤마로 구분하여 여러 명 지정 가능
+SELECTED_ICONS_ONLY = "false" # false 권장, true시 public/icons.json에 있는 아이콘만 자동완성에 들어감. (성능 개선 용도가 아님)
+# 아이콘 선택 json 추출기 : https://vialinks.xyz/p/icons
+MCP_MODE = "open" # MCP 서버 모드: "disabled" (사용 안 함, 기본값), "open" (전체 개방)
+ALLOW_CRAWL = "true" # robots.txt/사이트맵 관리: "true" (크롤링 허용, 사이트맵 자동 생성, 봇 정책은 src/robots-txt.ts 직접 수정), "false" (전체 차단, 사이트맵 비활성화)
+ENABLE_CONCURRENT_EDIT_DETECTION = "true" # 문서 동시편집 감지 (KV)
+EDIT_REQUEST_ENABLED = "false" # 편집 요청: "true" 시 ACL 미달 사용자의 편집을 편집 요청으로 보류(검토자 승인/반려). edit_acl_min_age_days > 0 필요.
+WIKI_VISIBILITY = "open" # 문서 열람 권한: "open" (비로그인 사용자도 열람 가능), "closed" (로그인 필요)
+LAYOUT_MODE = "default" # 문서 조회 페이지 레이아웃 모드: "default" (우측 사이드바에 트렌딩/최근 변경), "left-toc" (좌측 사이드바에 현재 문서 목차, 우측 숨김), "right-toc"(좌측 사이드바에 현재 목차, 좌측 숨김) "docs" (좌측=슬래시 그룹 문서 트리, 우측=현재 문서 목차, 기술 문서 스타일), "wide" (좌우 사이드바 숨김, 본문 중앙 풀폭 몰입 읽기, 목차는 플로팅 버튼)
+WIKI_THEME = "default" # 컬러 테마(스킨): "default" (빌트인 색). 추가 스킨은 scripts/themes/<이름>.mjs 파일로 정의(index.mjs 에 등록) 후 이름 지정 시 빌드 타임에 색 토큰 교체. 멀티 스킨(WIKI_THEMES) 모드에서는 사용자 미선택 시 기본 선택 스킨으로 쓰인다. 스킨이 다크 모드 전용(darkOnly, 예: "astro")이면 활성인 동안 밝기가 다크로 고정되고 라이트/다크 토글이 숨겨진다.
+WIKI_THEMES = "default,astro,vector,bootstrap,via" # 사용자 선택형 멀티 스킨 허용 목록(콤마 구분, THEMES 키, 예: "default,astro,vector"). 2개 이상이면 각 스킨을 html[data-wiki-theme] 로 스코프 베이킹하고 개인 설정 모달에서 사용자가 전환(브라우저 한정). 비우면 단일 스킨 모드(WIKI_THEME 만 적용).
+EMAIL_RESTRICTION = "" # 이메일 도메인 가입 제한 설정: "" 또는 "none" (제한 없음), "whitelist" (허용 도메인만), "blacklist" (차단 도메인 제외)
+EMAIL_LIST = "example.com, example.example.com" # 콤마로 구분된 도메인 목록 (EMAIL_RESTRICTION이 whitelist 또는 blacklist일 때 사용)
+ENABLED_EXTENSIONS = "" # 확장 기능 활성화, 쉼표로 구분. 예 : "freq,extension1,extension2"
+
+
+# 로그인 페이지에서 노출할 메시지 및 약관
+LOGIN_MESSAGE = ""
+# 로그인 페이지에서 해당하는 버튼 클릭시 아래에 설정된 문서를 위키 문법 렌더링 없이 텍스트 원문으로 표시
+PRIVACY_POLICY = "위키/개인정보처리방침"
+TERMS_OF_SERVICE = "위키/이용약관"
+WIKI_SYNTAX = "위키/위키 문법 가이드" # 문법 가이드 문서 제목 입력, 에디터 페이지와 MCP 도구에서 문법 도움말은 해당 문서로 안내됨.
+
+# 구글 애널리스틱스, 애드센스등 외부 스크립트 삽입용
+CUSTOM_HEADER = """
+
+"""
+
+# 사이드바 / 푸터 내용 커스터마이징
+# 위키에 내장된 빌더(배포 도메인 기준 /components-json-builder)에서 제작 후
+# 나온 결과물 json을 붙여넣으세요. 예: https://도메인/components-json-builder
+
+SIDEBAR = """
+
+"""
+FOOTER = """
+
+"""
+
+# === Discord Webhook ===
+# DISCORD_COMMUNITY_WEBHOOK_URL, DISCORD_ADMIN_WEBHOOK_URL 은 Workers 대시보드에서 시크릿으로 설정
+# URL 이 비어있으면 해당 채널은 자동 비활성. EVENTS 가 비어있으면 모든 이벤트 차단(긴급 음소거).
+DISCORD_ADMIN_EVENTS = "signup_pending,signup_rejected,ticket_create,ticket_status,user_ban,user_role_change,super_admin_action,pending_edit"
+DISCORD_COMMUNITY_EVENTS = "user_joined,discussion_create,announcement_publish"
+WIKI_PUBLIC_BASE_URL = "https://도메인"
+
+# === Web Push (VAPID) ===
+# VAPID 공개키 (P-256 uncompressed point, base64url 65바이트). 클라이언트에 노출됨.
+# 비밀키 는 wrangler secret 으로 등록:
+#   wrangler secret put VAPID_PRIVATE_KEY
+# 빈 값이면 Web Push 기능이 자동 비활성화됩니다.
+VAPID_PUBLIC_KEY = ""
+VAPID_SUBJECT = "" # 예: mailto:admin@example.com
+
+
+[triggers]
+crons = ["0 0 * * *"] # 매일 자정 (UTC 기준)에 실행
