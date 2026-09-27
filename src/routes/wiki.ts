@@ -1,0 +1,4085 @@
+import { Hono, type Context } from 'hono';
+import type { Env, Page, Revision, User } from '../types';
+import { requireAuth, requireAdmin, requirePermission } from '../middleware/session';
+import { normalizeSlug, isR2OnlyNamespace, isMapNamespace, subtreeSlugRange } from '../utils/slug';
+import { sqlContains } from '../utils/sqlText';
+import { computePageMetricsTracked } from '../utils/pageMetrics';
+import { SLUG_FORBIDDEN_CHARS, TITLE_FORBIDDEN_CHARS, TITLE_MAX_LENGTH, normalizeTitleInput } from '../utils/validation';
+import { getEnabledExtensions } from '../utils/extensions';
+import { buildMapDocument, buildGroupTree, MAP_CACHE_MAX_AGE_SECONDS } from '../utils/mapDocument';
+import { safeJSON } from '../utils/json';
+import {
+    invalidatePageCache,
+    invalidateBacklinkCaches,
+    refreshRecentChangesCache,
+    invalidateRevisionContentCache,
+} from '../utils/cacheInvalidation';
+import { ROLE_CASE_SQL, enrichRoles, RBAC } from '../utils/role';
+import { fetchMediaTags } from '../utils/mediaTags';
+import { createNotifications } from '../utils/notification';
+import { loadAllPalettes, loadPalettesForPage } from '../utils/palettes';
+import { extractTransclusionTargets, findTemplateCalls } from '../shared/transclusion';
+import { stripLineLeadingZeroWidth } from '../shared/normalize';
+import { extractPageLinks } from '../shared/links';
+import { cleanupUnauthorizedSubscriptions } from '../utils/pageAccessCleanup';
+import { collectRevisionR2Keys, buildHardDeleteStatements } from '../utils/pageDeletion';
+import { commitPageMutation } from '../utils/pagePipeline/commit';
+import { withFtsRecovery } from '../utils/ftsRecovery';
+import { mergeEditSummary, capUserSummary } from '../utils/editSummary';
+import { ensurePendingEditsSummaryMigration } from '../utils/pendingEditsSummaryMigration';
+import { ensureRevisionsVirtualMigration } from '../utils/revisionsVirtualMigration';
+import { ensureEditorNoteMigration } from '../utils/editorNoteMigration';
+import { ensurePatrolTable } from '../utils/patrolMigration';
+
+const wiki = new Hono<Env>();
+
+/**
+ * candidate(슬러그 또는 title 후보) 가 다른 페이지의 slug 또는 title 과 충돌하는지 검사.
+ * 호출 경로는 항상 slug 만 매칭하지만, slug↔title / title↔title 동명이인이 존재하면
+ * 표시·검색 결과에서 혼란을 일으키므로 사전에 차단한다.
+ *
+ * 소프트 삭제 페이지도 포함해 검사한다 — `slug UNIQUE` 와 `idx_pages_title_unique`
+ * 부분 인덱스 모두 deleted_at 을 조건으로 두지 않기 때문이다. precheck 에서 빠뜨리면
+ * 이후 INSERT/UPDATE 가 SQLITE_CONSTRAINT 로 실패하면서 R2 리비전 등 부분 적용이 남는다.
+ *
+ * @param excludePageId 자기 자신의 page id (UPDATE 흐름) — null 이면 모든 행을 검사 (INSERT).
+ */
+export async function findConflictingPage(
+    db: D1Database,
+    candidate: string,
+    excludePageId: number | null,
+): Promise<{ slug: string; matchedColumn: 'slug' | 'title'; isDeleted: boolean } | null> {
+    const row = await db
+        .prepare(
+            `SELECT slug,
+                    CASE WHEN slug = ?1 THEN 'slug' ELSE 'title' END AS matched,
+                    deleted_at
+             FROM pages
+             WHERE (slug = ?1 OR title = ?1)
+               AND (?2 IS NULL OR id != ?2)
+             LIMIT 1`,
+        )
+        .bind(candidate, excludePageId)
+        .first<{ slug: string; matched: 'slug' | 'title'; deleted_at: number | null }>();
+    return row ? { slug: row.slug, matchedColumn: row.matched, isDeleted: !!row.deleted_at } : null;
+}
+
+// 문서 본문 저장(생성/수정)은 통합 파이프라인 commitPageMutation(src/utils/pagePipeline)으로
+// 위임한다. 직접 PUT 도 승인(pending/mcp) 경로와 동일하게 이 파이프라인을 거치므로 리비전 저장·
+// 재색인·캐시 무효화·주시자 알림이 단일 소스에서 일관되게 실행된다(주시자 수집/알림 로직은
+// src/utils/pagePipeline/notifyWatchers.ts).
+
+/**
+ * 편집 요청 전역 토글(wrangler.toml `EDIT_REQUEST_ENABLED`) 조회.
+ * "true" 일 때만 활성. 배포 타임 고정값이므로 env 문자열 비교로 판정한다.
+ */
+export function isEditRequestEnabled(env: Env['Bindings']): boolean {
+    return env.EDIT_REQUEST_ENABLED === 'true';
+}
+
+/**
+ * 신뢰되지 않은 사용자의 편집을 pending_edits 편집 요청으로 보류한다.
+ * - revisions/pages 를 건드리지 않으므로 공개 화면은 마지막 승인본을 계속 노출한다.
+ * - (author_id, slug) UNIQUE 로 작성자×슬러그당 1건만 유지 — 재제출 시 UPSERT 로 교체.
+ * - 검토자(관리자)에게 인앱+푸시 알림, admin Discord 채널 웹훅을 best-effort 발송.
+ *   비공개 문서는 본문/제목 노출 방지를 위해 웹훅을 생략한다.
+ * 반환: 생성/갱신된 pending_edit.id (UI 응답용).
+ */
+async function holdPendingEdit(
+    c: Context<Env>,
+    user: User,
+    input: {
+        pageId: number | null;
+        slug: string;
+        action: 'create' | 'update';
+        baseRevisionId: number | null;
+        baseVersion: number;
+        content: string;
+        category: string | null;
+        redirectTo: string | null;
+        title: string | null;
+        hasTitleChange: boolean;
+        summary: string | null;       // 요청자 사용자 입력분(≤255자). 자동요약은 autoSummary 에 분리 보관.
+        autoSummary: string | null;   // 요청자 자동요약분(길이 제한 없음). 승인 시 summary 와 병합.
+        isPrivate: boolean;       // 검토자 접근 게이팅용 (현재 또는 결과가 비공개면 true)
+        editAcl: string | null;   // applyEditAcl=true 일 때 승인 시 적용할 직렬화 edit_acl (update 전용)
+        applyEditAcl: boolean;    // 이 편집이 edit_acl 을 바꾸려는 경우만 true (direct-save 의 willUpdateEditAcl 과 동일)
+        categoryAclChoices: string | null; // create 보류본의 원본 category_acl_choices(JSON 문자열). 승인 시 재생용. update 는 불필요(null).
+    },
+): Promise<number> {
+    const db = c.env.DB;
+    // 레거시 DB(auto_summary 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 INSERT.
+    await ensurePendingEditsSummaryMigration(db);
+    // (author_id, slug) UNIQUE 충돌 시 최신 내용으로 교체 (UPSERT).
+    const row = await db
+        .prepare(
+            `INSERT INTO pending_edits
+                (page_id, slug, action, author_id, base_revision_id, base_version,
+                 content, category, redirect_to, title, has_title_change, summary, auto_summary,
+                 is_private, edit_acl, apply_edit_acl, category_acl_choices, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
+             ON CONFLICT(author_id, slug) DO UPDATE SET
+                page_id = excluded.page_id,
+                action = excluded.action,
+                base_revision_id = excluded.base_revision_id,
+                base_version = excluded.base_version,
+                content = excluded.content,
+                category = excluded.category,
+                redirect_to = excluded.redirect_to,
+                title = excluded.title,
+                has_title_change = excluded.has_title_change,
+                summary = excluded.summary,
+                auto_summary = excluded.auto_summary,
+                is_private = excluded.is_private,
+                edit_acl = excluded.edit_acl,
+                apply_edit_acl = excluded.apply_edit_acl,
+                category_acl_choices = excluded.category_acl_choices,
+                updated_at = unixepoch()
+             RETURNING id`
+        )
+        .bind(
+            input.pageId,
+            input.slug,
+            input.action,
+            user.id,
+            input.baseRevisionId,
+            input.baseVersion,
+            input.content,
+            input.category,
+            input.redirectTo,
+            input.title,
+            input.hasTitleChange ? 1 : 0,
+            input.summary,
+            // 신규 포맷 보류본은 auto_summary 를 항상 non-null(자동요약 없으면 빈 문자열)로 저장한다.
+            // 그래야 마이그레이션 이전 레거시 행(auto_summary IS NULL — summary 에 자동요약이 이미 합쳐짐)
+            // 과 구분되어, 승인 시 자동요약을 다시 합치는 중복을 피할 수 있다(pending-edits approve 참고).
+            input.autoSummary ?? '',
+            input.isPrivate ? 1 : 0,
+            input.editAcl,
+            input.applyEditAcl ? 1 : 0,
+            input.categoryAclChoices,
+        )
+        .first<{ id: number }>();
+    const pendingEditId = row?.id ?? 0;
+
+    // 검토자(관리자) 알림 — 신뢰 사용자(aged/이전 편집자)는 문서 배너로 발견하므로 폭주를 막고자
+    // 인앱/푸시는 관리자에 한정한다. 작성자 본인은 제외.
+    c.executionCtx.waitUntil((async () => {
+        try {
+            const { results } = await db
+                .prepare(
+                    "SELECT id FROM users WHERE (role = 'admin' OR role = 'super_admin') AND id != ?"
+                )
+                .bind(user.id)
+                .all<{ id: number }>();
+            const adminIds = (results || []).map(r => r.id);
+            if (adminIds.length === 0) return;
+            // 검토는 문서 열람 페이지(편집 버튼 배지/드롭다운)에서 수행한다.
+            const link = `/w/${encodeURIComponent(input.slug)}`;
+            const actionLabel = input.action === 'create' ? '새 문서' : '문서 수정';
+            const content = `${user.name}님이 "${input.slug}" ${actionLabel} 편집 요청을 제출했습니다.`;
+            await createNotifications(c.env, c.executionCtx, adminIds.map(uid => ({
+                userId: uid,
+                type: 'pending_edit',
+                content,
+                link,
+                refId: pendingEditId,
+                push: {
+                    title: '편집 요청',
+                    body: content,
+                    url: link,
+                    tag: `pending_edit:${pendingEditId}`,
+                },
+            })));
+        } catch (e) {
+            console.error('holdPendingEdit notify failed:', e);
+        }
+    })());
+
+    // Discord admin 채널 웹훅 (비공개 문서는 생략).
+    if (!input.isPrivate) {
+        dispatchDiscord(c.env, c.executionCtx, pendingEditCreated({
+            slug: input.slug,
+            action: input.action,
+            actor: { name: user.name, picture: user.picture },
+            summary: input.summary,
+            env: c.env,
+        }));
+    }
+
+    return pendingEditId;
+}
+
+/**
+ * page_links 및 page_categories 테이블을 갱신하는 D1 배치 문 생성
+ */
+export function buildLinkAndCategoryStatements(
+    db: D1Database,
+    pageId: number,
+    content: string,
+    category: string | null
+): D1PreparedStatement[] {
+    const stmts: D1PreparedStatement[] = [];
+
+    // page_links 갱신: 기존 삭제 후 재삽입
+    // source_type='page' 필터 + blog=0 양쪽 — 마이그레이션 backfill 이전 legacy
+    // 블로그 행(source_type='page' DEFAULT + blog=1) 이 pageId 와 같은 id 일 때
+    // 잘못 삭제되지 않도록 blog=0 도 함께 매칭한다. (pages.id, blog_posts.id,
+    // discussion_comments.id, ticket_comments.id 가 정수 공간을 공유함)
+    stmts.push(db.prepare(
+        "DELETE FROM page_links WHERE source_page_id = ? AND source_type = 'page' AND blog = 0"
+    ).bind(pageId));
+    const links = extractPageLinks(content);
+    for (const link of links) {
+        stmts.push(
+            db.prepare(
+                "INSERT INTO page_links (source_page_id, target_slug, link_type, blog, source_type) VALUES (?, ?, ?, 0, 'page')"
+            ).bind(pageId, link.target_slug, link.link_type)
+        );
+    }
+
+    // page_categories 갱신: 기존 삭제 후 재삽입
+    stmts.push(db.prepare('DELETE FROM page_categories WHERE page_id = ?').bind(pageId));
+    if (category) {
+        const cats = category.split(',').map(c => c.trim()).filter(c => c);
+        for (const cat of cats) {
+            stmts.push(
+                db.prepare('INSERT OR IGNORE INTO page_categories (page_id, category) VALUES (?, ?)')
+                    .bind(pageId, cat)
+            );
+        }
+    }
+
+    return stmts;
+}
+
+/**
+ * page_links 만 갱신하는 D1 배치 문 생성 (page_categories 는 건드리지 않음).
+ * 리비전 되돌리기처럼 본문은 교체되지만 카테고리(별도 테이블)는 유지해야 하는
+ * 경로에서 역링크 추적을 본문과 일치시키기 위해 사용된다.
+ */
+export function buildLinksOnlyStatements(
+    db: D1Database,
+    pageId: number,
+    content: string
+): D1PreparedStatement[] {
+    const stmts: D1PreparedStatement[] = [];
+    stmts.push(db.prepare(
+        "DELETE FROM page_links WHERE source_page_id = ? AND source_type = 'page' AND blog = 0"
+    ).bind(pageId));
+    const links = extractPageLinks(content);
+    for (const link of links) {
+        stmts.push(
+            db.prepare(
+                "INSERT INTO page_links (source_page_id, target_slug, link_type, blog, source_type) VALUES (?, ?, ?, 0, 'page')"
+            ).bind(pageId, link.target_slug, link.link_type)
+        );
+    }
+    return stmts;
+}
+
+/**
+ * page_categories 만 갱신하는 D1 배치 문 생성 (page_links 는 건드리지 않음).
+ * 카테고리 일괄 적용 / 자동 prefix 룰 hook 에서 사용된다.
+ */
+export function buildCategoryOnlyStatements(
+    db: D1Database,
+    pageId: number,
+    category: string | null
+): D1PreparedStatement[] {
+    const stmts: D1PreparedStatement[] = [];
+    stmts.push(db.prepare('DELETE FROM page_categories WHERE page_id = ?').bind(pageId));
+    if (category) {
+        const cats = category.split(',').map(c => c.trim()).filter(c => c);
+        for (const cat of cats) {
+            stmts.push(
+                db.prepare('INSERT OR IGNORE INTO page_categories (page_id, category) VALUES (?, ?)')
+                    .bind(pageId, cat)
+            );
+        }
+    }
+    return stmts;
+}
+
+/**
+ * 카테고리 문자열(쉼표 구분) 을 trim/공백제거/중복제거 한 배열로 정규화.
+ */
+export function splitCategoryString(s: string | null | undefined): string[] {
+    if (!s) return [];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of s.split(',')) {
+        const v = raw.trim();
+        if (!v) continue;
+        if (seen.has(v)) continue;
+        seen.add(v);
+        out.push(v);
+    }
+    return out;
+}
+
+/**
+ * "카테고리:이름" 슬러그에서 자동 적용할 카테고리명을 반환한다.
+ * 카테고리 패턴(한글·영문·숫자·공백만 허용)에 맞지 않으면 null 반환.
+ */
+export function getCategoryDocAutoCategory(slug: string): string | null {
+    const prefix = '카테고리:';
+    if (!slug.startsWith(prefix)) return null;
+    const name = slug.slice(prefix.length).trim();
+    if (!name) return null;
+    if (!/^[가-힣a-zA-Z0-9\s]+$/.test(name)) return null;
+    return name;
+}
+
+/**
+ * slug 가 룰의 prefix/... 형태에 매칭되면 해당 룰의 카테고리들을 합집합한다.
+ * 반환은 새 category 문자열 (쉼표 구분). 기존 카테고리 순서를 보존한 뒤 신규 카테고리만 뒤에 붙인다.
+ */
+export function mergeCategoriesFromRules(
+    slug: string,
+    currentCategory: string | null | undefined,
+    rules: { prefix: string; categories: string }[]
+): string {
+    const base = splitCategoryString(currentCategory);
+    const seen = new Set<string>(base);
+    for (const rule of rules) {
+        if (!rule.prefix) continue;
+        if (!slug.startsWith(rule.prefix + '/')) continue;
+        for (const cat of splitCategoryString(rule.categories)) {
+            if (!seen.has(cat)) {
+                seen.add(cat);
+                base.push(cat);
+            }
+        }
+    }
+    return base.join(',');
+}
+
+/**
+ * 현재 카테고리에서 toRemove 항목들을 차집합으로 제거. 기존 순서를 보존하며,
+ * 정규화는 splitCategoryString 정책을 그대로 따른다. 결과가 비면 빈 문자열을
+ * 반환하며 호출자가 pages.category 에 NULL 로 매핑한다.
+ */
+export function subtractCategoryString(
+    currentCategory: string | null | undefined,
+    toRemove: string | null | undefined
+): string {
+    const removeSet = new Set(splitCategoryString(toRemove));
+    if (removeSet.size === 0) return splitCategoryString(currentCategory).join(',');
+    return splitCategoryString(currentCategory)
+        .filter(c => !removeSet.has(c))
+        .join(',');
+}
+
+/**
+ * 신규 페이지 생성 시점에 적용되는 prefix 룰 / 카테고리 ACL 머지 로직.
+ * `/api/w/:slug PUT(create)` 와 MCP 제출안 승인(create) 가 공유한다.
+ *
+ * 입력 카테고리·private·edit_acl 에 다음을 차례로 적용해 최종값을 계산한다:
+ *   1) `category_prefix_rules` 의 합집합 (slug 가 prefix/ 로 시작하는 모든 룰)
+ *   2) "카테고리:이름" 슬러그의 자동 카테고리 prepend
+ *   3) `doc_setting_prefix_rules`: is_private/edit_acl(가장 긴 매치) + 카테고리 합집합
+ *      - 카테고리 전용 룰(is_private/edit_acl 모두 null)은 longest-match 후보에서 제외
+ *      - adminExplicitlySetEditAcl 가 true 면 prefix-rule edit_acl 이 입력값을 덮어쓰지 않는다
+ *   4) `category_acl` 템플릿을 effectiveCategory 의 각 카테고리에 머지
+ *      - explicitSet(=호출자 입력으로 명시된 카테고리): categoryAclChoices 의 mode 를 따른다
+ *        (키 누락이면 적용 안 함; 비관리자의 'overwrite' → 'merge' 다운그레이드)
+ *      - prefix-rule 로 자동 추가된 카테고리: 사용자 prompt 불가 → 기본 'merge'
+ *
+ * 오류는 console.error 후 그 단계만 스킵한다(콜드 스타트 마이그레이션 race 대비).
+ */
+export async function applyCreatePrefixRulesAndCategoryAcls(
+    db: D1Database,
+    slug: string,
+    input: {
+        category: string | null;
+        isPrivate: number;
+        editAcl: string | null;
+        adminExplicitlySetEditAcl: boolean;
+        categoryAclChoices: Record<string, unknown> | null;
+        isAdmin: boolean;
+    }
+): Promise<{ effectiveCategory: string | null; finalIsPrivate: number; finalEditAcl: string | null }> {
+    let effectiveCategory: string | null = input.category || null;
+    let finalIsPrivate = input.isPrivate;
+    let finalEditAcl: string | null = input.editAcl;
+
+    // 1. category_prefix_rules 합집합
+    try {
+        const ruleRows = await db
+            .prepare('SELECT prefix, categories FROM category_prefix_rules')
+            .all<{ prefix: string; categories: string }>();
+        const merged = mergeCategoriesFromRules(slug, effectiveCategory, ruleRows.results || []);
+        effectiveCategory = merged || null;
+    } catch (e) {
+        console.error('category_prefix_rules lookup failed (create):', e);
+    }
+
+    // 2. "카테고리:이름" 자동 카테고리 prepend
+    const _autoCategory = getCategoryDocAutoCategory(slug);
+    if (_autoCategory) {
+        const cats = splitCategoryString(effectiveCategory);
+        if (!cats.includes(_autoCategory)) cats.unshift(_autoCategory);
+        effectiveCategory = cats.join(',');
+    }
+
+    // 3. doc_setting_prefix_rules: is_private/edit_acl(longest match) + categories(합집합)
+    try {
+        await ensureDocSettingPrefixRulesMigration(db);
+        const ruleRows = await db
+            .prepare('SELECT prefix, is_private, edit_acl, categories FROM doc_setting_prefix_rules')
+            .all<{ prefix: string; is_private: number | null; edit_acl: string | null; categories: string | null }>();
+        let bestLen = -1;
+        let privateOverride: number | null = null;
+        let aclOverride: string | null = null;
+        for (const r of ruleRows.results || []) {
+            if (!slug.startsWith(r.prefix + '/')) continue;
+            if (r.is_private === null && r.edit_acl === null) continue;
+            if (r.prefix.length > bestLen) {
+                bestLen = r.prefix.length;
+                privateOverride = r.is_private;
+                aclOverride = r.edit_acl;
+            }
+        }
+        if (privateOverride !== null) finalIsPrivate = privateOverride;
+        if (aclOverride !== null && finalEditAcl === null && !input.adminExplicitlySetEditAcl) {
+            finalEditAcl = serializeEditAcl(parseEditAcl(aclOverride));
+        }
+
+        const catRules = (ruleRows.results || [])
+            .filter(r => r.categories)
+            .map(r => ({ prefix: r.prefix, categories: r.categories as string }));
+        if (catRules.length > 0) {
+            const merged = mergeCategoriesFromRules(slug, effectiveCategory, catRules);
+            effectiveCategory = merged || null;
+        }
+    } catch (e) {
+        console.error('doc_setting_prefix_rules lookup failed (create):', e);
+    }
+
+    // 4. category_acl 템플릿 머지
+    try {
+        const explicitCats = splitCategoryString(input.category);
+        const effectiveCats = splitCategoryString(effectiveCategory);
+        const explicitSet = new Set(explicitCats);
+        const choicesRaw = (input.categoryAclChoices && typeof input.categoryAclChoices === 'object' && !Array.isArray(input.categoryAclChoices))
+            ? input.categoryAclChoices
+            : null;
+
+        const apply: { name: string; mode: CategoryAclMode }[] = [];
+        for (const cat of effectiveCats) {
+            if (explicitSet.has(cat)) {
+                if (choicesRaw && Object.prototype.hasOwnProperty.call(choicesRaw, cat)) {
+                    let mode = normalizeCategoryAclMode(choicesRaw[cat]);
+                    if (!input.isAdmin && mode === 'overwrite') mode = 'merge';
+                    if (mode !== 'ignore') apply.push({ name: cat, mode });
+                }
+            } else {
+                apply.push({ name: cat, mode: 'merge' });
+            }
+        }
+
+        if (apply.length > 0) {
+            const templates = await getCategoryAclsBatch(db, apply.map(a => a.name));
+            let layered: EditAcl | null = parseEditAcl(finalEditAcl);
+            let mutated = false;
+            for (const a of apply) {
+                const tpl = templates.get(a.name);
+                if (!tpl) continue;
+                layered = applyCategoryAclToPage(layered, tpl, a.mode);
+                mutated = true;
+            }
+            if (mutated) {
+                finalEditAcl = serializeEditAcl(layered);
+            }
+        }
+    } catch (e) {
+        console.error('category_acl apply failed (create):', e);
+    }
+
+    return { effectiveCategory, finalIsPrivate, finalEditAcl };
+}
+
+/**
+ * 본문에서 최상위 `{{...}}` 트랜스클루전/익스텐션 호출을 공유 스캐너(findTemplateCalls)로 찾아,
+ * 호출의 "이름 토큰"(첫 `|` 이전 · `#섹션` 제외)이 variants 의 from 과 정확히 일치하면 그 이름만
+ * to 로 치환한다. 파라미터(`|k=v`)·섹션 앵커(`#sec`)·나머지 본문은 그대로 보존하며, 여러 줄·
+ * 파라미터 값의 중괄호(`{bg:#fff}{color:#000}`)가 있어도 닫는 `}}` 를 정확히 찾는다.
+ * (과거 naive 정규식 `\{\{\s*<from>\s*(#...)?\}\}` 은 파라미터 있는 호출을 닫는 `}}` 경계에서
+ *  놓쳐, 파라미터를 쓴 틀 참조가 이름 변경 후에도 옛 슬러그를 가리키는 채로 남았다.)
+ * 코드블록/인라인 코드는 호출 전에 마스킹돼 있다고 가정한다(rewriteContentForRename).
+ */
+function rewriteTransclusionCallNames(
+    text: string,
+    variants: { from: string; to: string; anchorPolicy?: 'any' | 'anchored' | 'bare' }[]
+): string {
+    const calls = findTemplateCalls(text);
+    if (calls.length === 0) return text;
+    let out = '';
+    let cursor = 0;
+    for (const call of calls) {
+        out += text.slice(cursor, call.start);
+        const raw = call.raw;
+        // 이름 토큰 = 첫 `|`(파라미터 시작) 이전, 그 안에서 `#섹션` 분리 — extractTransclusionTargets
+        // 의 `split('|')[0].split('#')[0]` 정규화와 동일.
+        const pipeIdx = raw.indexOf('|');
+        const head = pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw;
+        const rest = pipeIdx >= 0 ? raw.slice(pipeIdx) : '';
+        const hashIdx = head.indexOf('#');
+        const secPart = hashIdx >= 0 ? head.slice(hashIdx) : '';
+        const name = (hashIdx >= 0 ? head.slice(0, hashIdx) : head).trim();
+        const variant = variants.find(v => v.from === name);
+        // 앵커 유무로 참조 대상이 갈린다: `{{Foo}}` 는 `틀:Foo`(틀), `{{Foo#s}}` 는 일반 문서
+        // Foo 의 섹션(render.ts _parseSectionRef). 그래서 변형별 적용 정책을 둔다:
+        //   'any'      — 앵커 무관(명시 `틀:`/익스텐션 접두 변형)
+        //   'anchored' — 앵커 있는 호출만(일반 문서 이동 = 섹션 트랜스클루전만)
+        //   'bare'     — 앵커 없는 호출만(틀 이동의 무접두 shorthand `{{Foo}}`; `{{Foo#s}}` 는 일반 문서라 제외)
+        const hasAnchor = secPart.length > 1 && secPart.slice(1).trim() !== '';
+        const policy = variant ? (variant.anchorPolicy || 'any') : 'any';
+        const policyOk = policy === 'any' || (policy === 'anchored' ? hasAnchor : !hasAnchor);
+        if (variant && policyOk) {
+            out += `{{${variant.to}${secPart}${rest}}}`;
+        } else {
+            out += text.slice(call.start, call.fullEnd);
+        }
+        cursor = call.fullEnd;
+    }
+    out += text.slice(cursor);
+    return out;
+}
+
+/**
+ * 문서 주소 변경 시 사용될 본문 재작성 헬퍼.
+ * - 코드블럭(```...```)과 인라인 코드(`...`)는 마스킹하여 보존
+ * - `[[oldSlug]]`, `[[oldSlug|표시]]`, `[[oldSlug#섹션]]`, `[[oldSlug#섹션|표시]]`를 새 슬러그로 치환
+ * - isTemplateMove === true일 때만 `{{...}}` 치환 (`틀:`, `template:`, `템플릿:` 접두사 변형 포함)
+ * - 일반 문서 이동은 섹션 트랜스클루전 `{{oldSlug#섹션}}` 헤드만 치환(앵커 없는 `{{oldSlug}}`=`틀:`의미라 제외)
+ * - `틀:` 이동의 무접두 shorthand `{{Foo}}` 는 앵커 없는 호출만 치환(`{{Foo#s}}` 는 일반 문서 Foo 섹션이라 제외)
+ * - 익스텐션 슬러그(콜론 포함, 틀 접두사 아님)는 `{{namespace:Name}}` 형태 치환
+ * - 원문과 결과가 동일하면 호출자가 새 리비전 생성을 생략할 수 있도록 문자열 비교로 판단
+ */
+export function rewriteContentForRename(
+    content: string,
+    oldSlug: string,
+    newSlug: string
+): string {
+    if (!content || oldSlug === newSlug) return content;
+
+    // 1) 코드블럭 및 인라인 코드 마스킹 (extractPageLinks의 cleaned 정책과 일치)
+    const fences: string[] = [];
+    let masked = content.replace(/```[\s\S]*?```/g, (m) => {
+        fences.push(m);
+        return `\u0000FENCE${fences.length - 1}\u0000`;
+    });
+    const inlines: string[] = [];
+    masked = masked.replace(/`[^`\n]+`/g, (m) => {
+        inlines.push(m);
+        return `\u0000INLINE${inlines.length - 1}\u0000`;
+    });
+
+    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const templatePrefixes = ['틀:', 'template:', '템플릿:'];
+    const matchedOldPrefix = templatePrefixes.find(p => oldSlug.startsWith(p));
+    const matchedNewPrefix = templatePrefixes.find(p => newSlug.startsWith(p));
+    const isTemplateMove = Boolean(matchedOldPrefix && matchedNewPrefix);
+
+    const oldHasColon = oldSlug.includes(':');
+    const isExtensionMove = oldHasColon && !matchedOldPrefix;
+
+    // 2) [[wikilink]] 치환
+    // - 접두사 간에는 별칭이 아니라 서로 다른 문서를 가리키므로(예: `template:Foo`와 `틀:Foo`는
+    //   서로 다른 페이지), 정확히 `[[oldSlug ...]]` 형태만 치환한다.
+    {
+        const re = new RegExp(
+            '\\[\\[\\s*' + escapeRe(oldSlug) + '\\s*(#[^\\]|]*)?(\\|[^\\]]*)?\\]\\]',
+            'g'
+        );
+        masked = masked.replace(re, (_m, sec, disp) => {
+            const secPart = sec ?? '';
+            const dispPart = disp ?? '';
+            return `[[${newSlug}${secPart}${dispPart}]]`;
+        });
+    }
+
+    // 3) {{template}} / {{extension}} 치환 — 공유 스캐너(rewriteTransclusionCallNames)로 호출의
+    //    이름 부분만 안전하게 치환한다(파라미터·멀티라인·중괄호 포함 호출도 정확히 매칭).
+    const callVariants: { from: string; to: string; anchorPolicy?: 'any' | 'anchored' | 'bare' }[] = [];
+    if (isTemplateMove) {
+        // 접두사가 다른 `{{template:Foo}}` / `{{템플릿:Foo}}` 등은 각각 다른 문서를 가리키므로
+        // 건드리지 않는다. 명시 접두 변형은 앵커 무관(`{{틀:Foo}}`·`{{틀:Foo#s}}` 모두 틀 참조).
+        callVariants.push({ from: oldSlug, to: newSlug });
+        if (matchedOldPrefix === '틀:' && matchedNewPrefix === '틀:') {
+            // `{{Foo}}`(접두사 없음)는 파서가 `틀:`을 붙여 해석하므로 함께 갱신하되, `{{Foo#s}}`
+            // 는 일반 문서 Foo 의 섹션 트랜스클루전이라 이 틀 이동과 무관 — 앵커 없는 호출만.
+            callVariants.push({
+                from: oldSlug.substring(matchedOldPrefix.length),
+                to: newSlug.substring(matchedNewPrefix.length),
+                anchorPolicy: 'bare',
+            });
+        }
+    } else if (isExtensionMove) {
+        callVariants.push({ from: oldSlug, to: newSlug });
+    } else {
+        // 일반 문서 이동(Foo → Bar): 앵커 없는 `{{Foo}}` 는 `틀:Foo` 를 의미하므로 그대로 두되,
+        // 섹션 트랜스클루전 `{{Foo#s-1}}` 은 일반 문서 Foo 를 가리키므로(render.ts _parseSectionRef)
+        // 그 헤드만 `{{Bar#s-1}}` 로 갱신한다 — 그러지 않으면 이동 후 옛(사라진) 슬러그를 fetch 한다.
+        callVariants.push({ from: oldSlug, to: newSlug, anchorPolicy: 'anchored' });
+    }
+    if (callVariants.length > 0) {
+        masked = rewriteTransclusionCallNames(masked, callVariants);
+    }
+
+    // 4) 마스킹 역순 복원
+    masked = masked.replace(/\u0000INLINE(\d+)\u0000/g, (_m, i) => inlines[Number(i)]);
+    masked = masked.replace(/\u0000FENCE(\d+)\u0000/g, (_m, i) => fences[Number(i)]);
+
+    return masked;
+}
+
+/**
+ * 역링크 문서의 본문을 일괄 재작성한다.
+ * - page_links 테이블에서 정확히 oldSlug를 target_slug로 갖는 모든 문서를 찾아
+ *   최신 리비전의 본문을 R2에서 가져와 rewriteContentForRename으로 치환하고,
+ *   새 리비전 업로드 → revisions INSERT → pages UPDATE(낙관적 잠금) → page_links 재구축 순으로 처리.
+ * - 틀 접두사(`틀:`/`template:`/`템플릿:`) 간에는 서로 별칭이 아니므로 교차 접두사 변형은 대상에서 제외한다.
+ * - 최대 200개까지만 처리하며, 초과분은 skipped로 반환한다.
+ */
+async function rewriteBacklinksForRename(
+    c: any,
+    oldSlug: string,
+    newSlug: string,
+    user: { id: number; role: string },
+    rbac: RBAC
+): Promise<{ updated: string[]; skipped: string[]; conflicts: string[]; total: number }> {
+    const db: D1Database = c.env.DB;
+    const MAX_BACKLINKS = 200;
+
+    // 대상 target_slug: 정확히 oldSlug만 사용한다.
+    // `틀:`, `template:`, `템플릿:` 접두사는 이 코드베이스에서 별칭이 아니라 서로 다른 문서를
+    // 가리키므로(예: `template:Foo`는 `틀:Foo`와 별개 문서), 다른 접두사를 포함시키면 관계 없는
+    // 문서의 링크가 함께 재작성되어 본문이 손상될 수 있다. extractPageLinks()가 `{{Foo}}`를 항상
+    // `틀:Foo`로 저장하므로 `틀:Foo` 이동 시 bare 형태의 틀 호출도 자연스럽게 포함된다.
+    const targetSlugs: string[] = [oldSlug];
+
+    const placeholders = targetSlugs.map(() => '?').join(', ');
+    // 주의: 이 함수는 move 핸들러가 pages.slug를 newSlug로 UPDATE한 *이후*에 호출된다.
+    // 이동된 페이지 자체(now slug=newSlug)도 page_links에 oldSlug를 target_slug로 가진
+    // 자기참조 행이 남아 있을 수 있으므로, 그 페이지도 결과에 포함시켜 본문의
+    // [[oldSlug]] 자기참조를 [[newSlug]]로 갱신해야 한다. 따라서 slug 기반 제외는 두지 않는다.
+    const { results: sourcePages } = await db
+        .prepare(`
+            SELECT DISTINCT p.id, p.slug, p.version, p.content, p.category,
+                p.last_revision_id, p.edit_acl
+            FROM page_links pl
+            JOIN pages p ON pl.source_page_id = p.id
+            WHERE p.deleted_at IS NULL
+              AND pl.blog = 0
+              AND pl.source_type = 'page'
+              AND pl.link_type IN ('wikilink', 'template', 'extension')
+              AND pl.target_slug IN (${placeholders})
+        `)
+        .bind(...targetSlugs)
+        .all<{
+            id: number; slug: string; version: number; content: string;
+            category: string | null; last_revision_id: number | null;
+            edit_acl: string | null;
+        }>();
+
+    const total = sourcePages.length;
+    const updated: string[] = [];
+    const skipped: string[] = [];
+    const conflicts: string[] = [];
+
+    const targets = sourcePages.slice(0, MAX_BACKLINKS);
+    const overflow = sourcePages.slice(MAX_BACKLINKS);
+    for (const p of overflow) skipped.push(p.slug);
+
+    const origin = new URL(c.req.url).origin;
+    const enabledExtensions = getEnabledExtensions(c.env);
+
+    const isAdmin = rbac.can(user.role, 'admin:access');
+    for (const page of targets) {
+        // 안전망: edit_acl 에 admin_only 가 있고 비관리자면 스킵 (정상 관리자는 통과)
+        if (!isAdmin) {
+            const acl = parseEditAcl(page.edit_acl);
+            if (acl && acl.flags.includes('admin_only')) {
+                skipped.push(page.slug);
+                continue;
+            }
+        }
+
+        // 최신 리비전 본문 추출
+        let currentContent = '';
+        try {
+            if (page.last_revision_id) {
+                const rev = await db
+                    .prepare('SELECT content, r2_key FROM revisions WHERE id = ?')
+                    .bind(page.last_revision_id)
+                    .first<{ content: string; r2_key: string | null }>();
+                if (rev) {
+                    currentContent = await getRevisionContent(c.env.MEDIA, rev, origin);
+                } else {
+                    currentContent = page.content || '';
+                }
+            } else {
+                currentContent = page.content || '';
+            }
+        } catch (e) {
+            console.error('Failed to read revision for backlink rewrite:', page.slug, e);
+            skipped.push(page.slug);
+            continue;
+        }
+
+        const rewritten = rewriteContentForRename(currentContent, oldSlug, newSlug);
+
+        // 변화 없음: revision 생성 없이 page_links만 재동기화
+        if (rewritten === currentContent) {
+            try {
+                const stmts = buildLinkAndCategoryStatements(db, page.id, rewritten, page.category);
+                await db.batch(stmts);
+            } catch (e) {
+                console.error('Failed to resync page_links:', page.slug, e);
+            }
+            continue;
+        }
+
+        const newVersion = page.version + 1;
+        const isR2Only = isR2OnlyNamespace(page.slug, enabledExtensions);
+
+        // 1) R2 업로드
+        let r2Key: string;
+        try {
+            r2Key = await uploadRevisionToR2(c.env.MEDIA, page.id, newVersion, rewritten);
+        } catch (e) {
+            console.error('R2 upload failed for backlink rewrite:', page.slug, e);
+            skipped.push(page.slug);
+            continue;
+        }
+
+        // 2) revisions INSERT
+        let revisionId: number;
+        try {
+            const revResult = await db
+                .prepare(
+                    'INSERT INTO revisions (page_id, page_version, content, r2_key, summary, author_id) VALUES (?, ?, ?, ?, ?, ?)'
+                )
+                .bind(page.id, newVersion, '', r2Key, `[자동] 주소 변경: ${oldSlug} → ${newSlug}`, user.id)
+                .run();
+            revisionId = revResult.meta.last_row_id as number;
+        } catch (e) {
+            console.error('revisions INSERT failed for backlink rewrite:', page.slug, e);
+            await c.env.MEDIA.delete(r2Key).catch(() => {});
+            skipped.push(page.slug);
+            continue;
+        }
+
+        // 3) pages UPDATE (낙관적 잠금)
+        const contentToStore = isR2Only ? '' : rewritten;
+        const metrics = computePageMetricsTracked(rewritten, isR2Only);
+        let pagesUpdated = 0;
+        try {
+            const upd = await db
+                .prepare(
+                    `UPDATE pages
+                     SET content = ?, last_revision_id = ?, version = ?,
+                         rows = ?, characters = ?, updated_at = unixepoch()
+                     WHERE id = ? AND version = ?`
+                )
+                .bind(contentToStore, revisionId, newVersion, metrics.rows, metrics.characters, page.id, page.version)
+                .run();
+            pagesUpdated = (upd.meta?.changes ?? (upd as any).changes ?? 0) as number;
+        } catch (e) {
+            console.error('pages UPDATE failed for backlink rewrite:', page.slug, e);
+            pagesUpdated = 0;
+        }
+
+        if (!pagesUpdated) {
+            // 중간 편집 충돌: 롤백
+            await db.prepare('DELETE FROM revisions WHERE id = ?').bind(revisionId).run().catch(() => {});
+            await c.env.MEDIA.delete(r2Key).catch(() => {});
+            conflicts.push(page.slug);
+            continue;
+        }
+
+        // 4) page_links / page_categories 재구축
+        try {
+            const stmts = buildLinkAndCategoryStatements(db, page.id, rewritten, page.category);
+            // D1 배치 상한(약 50) 고려해 chunk 분할
+            const chunkSize = 40;
+            for (let i = 0; i < stmts.length; i += chunkSize) {
+                await db.batch(stmts.slice(i, i + chunkSize));
+            }
+        } catch (e) {
+            console.error('Failed to rebuild page_links after rewrite:', page.slug, e);
+        }
+
+        updated.push(page.slug);
+    }
+
+    // 5) 캐시 일괄 무효화
+    if (updated.length > 0) {
+        c.executionCtx.waitUntil(
+            Promise.allSettled(updated.map(slug => invalidatePageCache(c, slug)))
+        );
+    }
+
+    // 6) admin_log 기록
+    if (updated.length > 0) {
+        c.executionCtx.waitUntil(
+            db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
+                .bind(
+                    'doc_move_backlinks',
+                    `역링크 일괄 갱신: ${oldSlug} → ${newSlug} (${updated.length}개 갱신, ${skipped.length}개 건너뜀, ${conflicts.length}개 충돌)`,
+                    user.id
+                )
+                .run()
+                .catch((e: any) => console.error('Failed to write admin_log for backlinks:', e))
+        );
+    }
+
+    return { updated, skipped, conflicts, total };
+}
+
+import { uploadRevisionToR2, getRevisionContent, insertVirtualRevision } from '../utils/r2';
+import { renamePageMirror, removePageMirror, isRagSearchEnabled } from '../utils/rag';
+import { loadActiveAnnouncements } from '../utils/announcements';
+import type { AnnouncementDTO } from '../shared/api/announcement';
+import {
+    parseEditAcl,
+    serializeEditAcl,
+    normalizeEditAcl,
+    evaluateEditAcl,
+    getEditAclMinAgeDays,
+    findPrefixRuleEditAcl,
+    isTrustedEditor,
+    loadDocPrefixPrivacyRules,
+    prefixRulesForcePrivate,
+    type EditAcl,
+} from '../utils/editAcl';
+import { dispatchDiscord } from '../utils/webhook/discord';
+import { pendingEditCreated } from '../utils/webhook/events/pendingEdit';
+import {
+    getCategoryAcl,
+    getCategoryAclsBatch,
+    isAdminOnlyCategory,
+    applyCategoryAclToPage,
+    normalizeCategoryAclMode,
+    type CategoryAclMode,
+} from '../utils/categoryAcl';
+import { ensureDocSettingPrefixRulesMigration } from '../utils/docSettingPrefixRulesMigration';
+/**
+ * GET /config
+ * 동적 설정 (위키 이름 등) 반환
+ */
+wiki.get('/config', async (c) => {
+    // 공지 정보 조회 — 삭제된 블로그 포스트와 연동된 항목은 자동 제외.
+    let announcements: AnnouncementDTO[] = [];
+    if (!(c.env.WIKI_VISIBILITY === 'closed' && !c.get('user'))) {
+        try {
+            const active = await loadActiveAnnouncements(c.env.DB);
+            announcements = active.map(a => ({
+                id: a.id,
+                title: a.title,
+                announcedTime: a.announcedTime,
+                url: a.url ?? (a.postId !== null ? `/blog/${a.postId}` : null),
+                icon: a.icon,
+                postId: a.postId,
+            }));
+        } catch (e) {
+            // 마이그레이션 미적용 등으로 컬럼이 없을 때도 /config 자체는 동작해야 함
+            console.error('announcements lookup failed:', e);
+        }
+    }
+
+    // 모든 커스텀 팔레트를 동봉 — index/blog 의 SSR 경로는 _usedPalettes (사용된 부분집합) 를
+    // 우선 사용하므로 이 필드는 사실상 무시되지만, revisions/discussions/tickets/mypage 등
+    // SSR _usedPalettes 도 options.palettes 도 없는 비-SSR 렌더 경로는 이 폴백으로 동작한다.
+    let palettes: Record<string, unknown> = {};
+    try {
+        palettes = await loadAllPalettes(c.env.DB);
+    } catch (e) {
+        console.error('loadAllPalettes for /config failed:', e);
+    }
+
+    return c.json({
+        wikiName: c.env.WIKI_NAME || 'CloudWiki',
+        termsOfServiceSlug: normalizeSlug(c.env.TERMS_OF_SERVICE || ''),
+        privacyPolicySlug: normalizeSlug(c.env.PRIVACY_POLICY || ''),
+        wikiLogoUrl: c.env.WIKI_LOGO_URL || '',
+        wikiFaviconUrl: c.env.WIKI_FAVICON_URL || '',
+        wikiVisibility: c.env.WIKI_VISIBILITY === 'closed' ? 'closed' : 'open',
+        layoutMode: (c.env.LAYOUT_MODE === 'left-toc' || c.env.LAYOUT_MODE === 'right-toc' || c.env.LAYOUT_MODE === 'docs' || c.env.LAYOUT_MODE === 'wide') ? c.env.LAYOUT_MODE : 'default',
+        selectedIconsOnly: c.env.SELECTED_ICONS_ONLY === 'true',
+        enableConcurrentEditDetection: c.env.ENABLE_CONCURRENT_EDIT_DETECTION !== 'false',
+        turnstileSiteKey: c.env.TURNSTILE_SITE_KEY || '',
+        enabledExtensions: getEnabledExtensions(c.env),
+        // RAG(AI Search) 보조 본문 검색이 동작 가능한 상태인지 — /search 의 RAG 체크박스 노출 게이트.
+        ragSearchEnabled: isRagSearchEnabled(c.env),
+        mediaPublicUrl: c.env.MEDIA_PUBLIC_URL || '',
+        announcements,
+        palettes,
+    });
+});
+
+/**
+ * GET /palettes
+ * 모든 커스텀 팔레트(palettes 테이블) 반환. 편집기 자동완성/모달과 실시간 미리보기에서 사용.
+ * 문서 열람 페이지는 SSR 의 _usedPalettes (사용된 부분집합) 를 쓰므로 호출하지 않는다.
+ * WIKI_VISIBILITY='closed' 인 사이트에서는 로그인 사용자에게만 노출.
+ */
+wiki.get('/palettes', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    return c.json({ palettes: await loadAllPalettes(c.env.DB) });
+});
+
+/**
+ * GET /w/search-titles
+ * 자동완성용 제목 검색 (최대 5개)
+ * Query: q (검색어), type (link | template)
+ */
+wiki.get('/w/search-titles', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    const q = c.req.query('q') || '';
+    const type = c.req.query('type') || 'link';
+    const exclude = c.req.query('exclude') || '';
+
+    let query = `SELECT slug FROM pages WHERE deleted_at IS NULL`;
+    if (!canSeePrivate) query += ' AND is_private = 0';
+    const params: any[] = [];
+
+    if (type === 'template') {
+        const enabledExtensions = getEnabledExtensions(c.env);
+        const namespaceLikes = ["slug LIKE '틀:%'", ...enabledExtensions.map(() => "slug LIKE ?")];
+        query += ` AND (${namespaceLikes.join(' OR ')})`;
+        enabledExtensions.forEach(ext => params.push(`${ext}:%`));
+    } else {
+        query += " AND slug NOT LIKE '이미지:%'";
+    }
+
+    // 틀 자동완성에서 자기 자신 제외
+    if (exclude) {
+        query += ' AND slug != ?';
+        params.push(exclude);
+    }
+
+    if (q.length > 0) {
+        // LIKE 대신 instr() — 긴 입력에서 D1 의 50바이트 패턴 한도에 걸리지 않는다 (sqlContains 주석).
+        query += ` AND ${sqlContains('slug')}`;
+        params.push(q);
+        query += ' ORDER BY slug ASC';
+    } else {
+        // 빈 쿼리: 최근 수정 순 반환
+        query += ' ORDER BY updated_at DESC';
+    }
+
+    query += ' LIMIT 5';
+
+    const { results } = await db.prepare(query).bind(...params).all();
+    return c.json({ results });
+});
+
+
+/**
+ * GET /w/search-categories
+ * 카테고리 자동완성용 검색 (최대 8개)
+ * Query: q (검색어)
+ */
+wiki.get('/w/search-categories', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const isAdmin = !!(user && rbac.can(user.role, 'admin:access'));
+    const q = c.req.query('q') || '';
+
+    // context=search: 검색 페이지의 카테고리 필터 자동완성용 호출.
+    // 검색의 카테고리 필터(src/routes/search.ts)는 ACL 무관 정확 일치라 비관리자도
+    // admin_only 카테고리로 검색이 가능하다. 따라서 검색 컨텍스트에서는 admin_only 제외를
+    // 적용하지 않되, 대신 /api/search·/api/w/category 와 동일하게 호출자가 볼 수 있는 문서
+    // (소프트 삭제 제외, 비공개는 wiki:private 보유자만)에 연결된 카테고리만 추천해
+    // 비공개/삭제 문서에만 달린 카테고리명이 노출되지 않게 한다.
+    const searchContext = c.req.query('context') === 'search';
+
+    let rows: { category: string }[];
+    if (searchContext) {
+        // 검색 페이지의 '비공개 포함' 토글과 가시성을 맞춘다: wiki:private 보유자라도
+        // include_private=0 이면 /api/search 와 동일하게 비공개 문서를 제외해, 비공개 문서에만
+        // 달린 카테고리가 추천됐다가 선택 시 결과 0건이 되는 불일치를 막는다.
+        const canSeePrivate = !!(user && rbac.can(user.role, 'wiki:private'));
+        const includePrivate = c.req.query('include_private') !== '0';
+        const effectiveSeePrivate = canSeePrivate && includePrivate;
+        const privacy = effectiveSeePrivate ? '' : ' AND p.is_private = 0';
+        const like = q.length > 0 ? ` AND ${sqlContains('pc.category')}` : '';
+        const stmt = db.prepare(
+            `SELECT DISTINCT pc.category FROM page_categories pc
+             JOIN pages p ON p.id = pc.page_id
+             WHERE p.deleted_at IS NULL${privacy}${like}
+             ORDER BY pc.category ASC LIMIT 8`
+        );
+        const bound = q.length > 0 ? stmt.bind(q) : stmt;
+        rows = (await bound.all<{ category: string }>()).results;
+        return c.json({ results: rows.map(r => r.category) });
+    }
+
+    // 편집 컨텍스트(기본): 비관리자에게 admin_only 카테고리(category_acl.edit_acl 에 admin_only
+    // 플래그) 를 제외한다. 마이그레이션 호환: category_acl 행 자체가 없는 카테고리는 레거시
+    // admin_categories 도 차단 대상. 단, category_acl 행이 존재하면 그 값이 단일 소스 — admin 이
+    // 새 UI 에서 admin_only 를 해제하면 레거시 admin_categories 행이 살아 있어도 잠금이 풀린다.
+    const adminFilter = isAdmin
+        ? ''
+        : ` AND NOT (
+            EXISTS (
+                SELECT 1 FROM category_acl ca
+                 WHERE ca.name = page_categories.category
+                   AND ca.edit_acl IS NOT NULL
+                   AND ca.edit_acl LIKE '%"admin_only"%'
+            )
+            OR (
+                NOT EXISTS (
+                    SELECT 1 FROM category_acl ca2
+                     WHERE ca2.name = page_categories.category
+                )
+                AND EXISTS (
+                    SELECT 1 FROM admin_categories ac
+                     WHERE ac.name = page_categories.category
+                )
+            )
+          )`;
+
+    if (q.length > 0) {
+        const { results } = await db
+            .prepare(`SELECT DISTINCT category FROM page_categories WHERE ${sqlContains('category')}${adminFilter} ORDER BY category ASC LIMIT 8`)
+            .bind(q)
+            .all<{ category: string }>();
+        rows = results;
+    } else {
+        const { results } = await db
+            .prepare(`SELECT DISTINCT category FROM page_categories WHERE 1=1${adminFilter} ORDER BY category ASC LIMIT 8`)
+            .all<{ category: string }>();
+        rows = results;
+    }
+
+    return c.json({ results: rows.map(r => r.category) });
+});
+
+/**
+ * POST /w/check-category
+ * 에디터 chip 생성 시 사전 검증.
+ * Body: { category: string }
+ * 응답: { ok: boolean, reason?: 'admin_only' | 'invalid', edit_acl?: EditAcl | null }
+ *  - ok=false 이면 chip 을 UI 에서 제거하고 경고 표시.
+ *  - ok=true 이고 edit_acl 이 있으면 클라이언트가 overwrite/merge/ignore 모드를 사용자에게 묻는다.
+ */
+wiki.post('/w/check-category', requireAuth, async (c) => {
+    const db = c.env.DB;
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const isAdmin = rbac.can(user.role, 'admin:access');
+
+    const body = await c.req.json<{ category?: unknown }>().catch(() => ({} as { category?: unknown }));
+    const raw = typeof body.category === 'string' ? body.category.trim() : '';
+    if (!raw) {
+        return c.json({ ok: false, reason: 'invalid' as const });
+    }
+    if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(raw)) {
+        return c.json({ ok: false, reason: 'invalid' as const });
+    }
+
+    // 새 category_acl 우선, 행이 없으면 레거시 admin_categories 폴백 — isAdminOnlyCategory 와 동일 우선순위.
+    // 레거시 행만 있는 카테고리도 비관리자에게 즉시 chip 차단을 노출해야 한다 (서버 save 거부와 일관).
+    const acl = await getCategoryAcl(db, raw);
+    const effectiveAdminOnly = await isAdminOnlyCategory(db, raw);
+    if (effectiveAdminOnly && !isAdmin) {
+        return c.json({ ok: false, reason: 'admin_only' as const });
+    }
+
+    // 응답 ACL: category_acl 행이 있으면 그 값, 없는데 레거시로 admin_only 판정된 경우 합성.
+    const effectiveAcl = acl ?? (effectiveAdminOnly ? { flags: ['admin_only' as const] } : null);
+    return c.json({ ok: true, edit_acl: effectiveAcl });
+});
+
+
+/**
+ * GET /w/recent-changes
+ * 위키 전체에서 가장 최근에 수정된 문서 10개
+ */
+wiki.get('/w/recent-changes', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+
+    // 비공개 페이지 열람 권한이 있는 응답은 캐시하지 않는다 (퍼블릭 캐시 누출 방지)
+    const cache = caches.default;
+    const cacheKey = c.req.url;
+    if (!canSeePrivate) {
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+            return new Response(cached.body, cached);
+        }
+    }
+
+    const privateFilter = canSeePrivate ? '' : ' AND p.is_private = 0';
+    // author_name 은 '가장 최근 리비전(가상 포함, created_at 기준)'의 작성자로 도출한다.
+    // last_revision_id 는 가상 리비전(ACL 변경·이동 등)에서 갱신되지 않으므로, 그 기준으로는
+    // 방금 권한을 바꾼 관리자가 아니라 직전 본문 편집자가 작성자로 표시되는 오귀속이 생긴다.
+    // 본문 리비전만 있는 일반 문서에선 최신 리비전 == last_revision_id 라 결과가 동일하다.
+    const { results } = await db.prepare(`
+        SELECT p.slug, p.updated_at, u.name as author_name
+        FROM pages p
+        LEFT JOIN revisions r ON r.id = (
+            SELECT id FROM revisions
+            WHERE page_id = p.id AND deleted_at IS NULL AND purged_at IS NULL
+            ORDER BY created_at DESC, id DESC LIMIT 1
+        )
+        LEFT JOIN users u ON r.author_id = u.id
+        WHERE p.deleted_at IS NULL${privateFilter}
+        ORDER BY p.updated_at DESC LIMIT 10
+    `).all();
+
+    const body = JSON.stringify(safeJSON({ changes: results }));
+    // 비공개 페이지를 볼 수 있는 응답은 중간 캐시/브라우저가 저장하지 못하도록 Cache-Control 자체를 private/no-store 로 둔다.
+    const response = new Response(body, {
+        status: 200,
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Cache-Control': canSeePrivate ? 'private, no-store' : 'public, max-age=60',
+        },
+    });
+    if (!canSeePrivate) {
+        c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+    }
+    return response;
+});
+
+/**
+ * GET /w/admin-categories
+ * 관리자 전용 카테고리(category_acl.edit_acl 에 admin_only 플래그 포함) 목록.
+ * 편집 페이지에서 UI 표시용으로 조회한다 (admin_categories 화이트리스트 시절의 호환 엔드포인트).
+ *
+ * 마이그레이션 호환: category_acl 행이 없는 admin_categories 의 카테고리도 함께 노출.
+ * 단 category_acl 행이 있는 카테고리는 그 행을 단일 소스로 사용 — admin 이 새 UI 에서 admin_only 를
+ * 해제하면 레거시 admin_categories 행이 살아 있어도 목록에 포함되지 않는다.
+ * 운영 환경에서 흡수 마이그레이션 + DROP admin_categories 완료 후 두 번째 SELECT 절은 제거 가능.
+ */
+wiki.get('/w/admin-categories', async (c) => {
+    const db = c.env.DB;
+    const { results } = await db
+        .prepare(`
+            SELECT name FROM category_acl
+              WHERE edit_acl IS NOT NULL AND edit_acl LIKE '%"admin_only"%'
+            UNION
+            SELECT name FROM admin_categories
+              WHERE NOT EXISTS (
+                  SELECT 1 FROM category_acl ca WHERE ca.name = admin_categories.name
+              )
+            ORDER BY name ASC
+        `)
+        .all<{ name: string }>();
+    return c.json({ categories: (results || []).map(r => r.name) });
+});
+
+/**
+ * GET /w/templates
+ * 틀(템플릿) 문서 목록.
+ * - 기본(param 미지정): "템플릿으로 시작하기"(문서 전체 교체) 플로우용 — 기존대로
+ *   `템플릿:` 네임스페이스만 반환한다. 인라인 partial(`틀:`/`template:`)이 섞이면
+ *   새 문서를 partial 로 덮어쓸 수 있어 제외한다.
+ * - `?inline=1`: 인라인 틀 삽입 모달({{틀}} 호출)용 — 트랜스클루전 틀 네임스페이스
+ *   3종(`틀:`/`template:`/`템플릿:`) 전체를 반환한다(익스텐션 네임스페이스는 제외).
+ * Query: q (검색어, LIKE 매칭)
+ */
+wiki.get('/w/templates', async (c) => {
+    // closed 가시성에서는 비로그인 호출을 차단한다(/w/:slug·/w/search-titles 와 동일).
+    // 그러지 않으면 로그인 없이 틀 슬러그 목록을 열거할 수 있다.
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    const privateFilter = canSeePrivate ? '' : ' AND is_private = 0';
+    const q = c.req.query('q');
+    // 인라인 삽입 모달만 3종 접두사 전체를 검색한다. 문서 교체 플로우는 `템플릿:` 유지.
+    const inline = c.req.query('inline') === '1';
+    const nsFilter = inline
+        ? `(slug LIKE '틀:%' OR slug LIKE 'template:%' OR slug LIKE '템플릿:%')`
+        : `slug LIKE '템플릿:%'`;
+
+    if (q) {
+        const orderLimit = inline ? 'ORDER BY slug ASC LIMIT 30' : 'ORDER BY created_at DESC';
+        const { results } = await db
+            .prepare(`SELECT slug FROM pages WHERE ${nsFilter} AND ${sqlContains('slug')} AND deleted_at IS NULL${privateFilter} ${orderLimit}`)
+            .bind(q)
+            .all();
+        return c.json({ templates: results });
+    } else {
+        const limit = inline ? 20 : 10;
+        const { results } = await db
+            .prepare(`SELECT slug FROM pages WHERE ${nsFilter} AND deleted_at IS NULL${privateFilter} ORDER BY created_at DESC LIMIT ${limit}`)
+            .all();
+        return c.json({ templates: results });
+    }
+});
+
+/**
+ * GET /random
+ * 단일 랜덤 문서 반환 (접근 가능한 문서 중)
+ */
+wiki.get('/w/random', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    let query = `
+        SELECT slug
+        FROM pages
+        WHERE deleted_at IS NULL
+    `;
+    if (!canSeePrivate) query += ' AND is_private = 0';
+    // 관리자 페이지, 틀, 이미지, 카테고리 등 배제
+    query += " AND slug NOT LIKE '이미지:%' AND slug NOT LIKE '틀:%' AND slug NOT LIKE 'template:%' AND slug NOT LIKE '템플릿:%' AND slug NOT LIKE '카테고리:%'";
+
+    query += ' ORDER BY RANDOM() LIMIT 1';
+
+    const page = await db.prepare(query).first<{ slug: string }>();
+
+    if (!page) {
+        return c.json({ error: '랜덤 문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    return c.json(safeJSON({ slug: page.slug }));
+});
+
+/**
+ * GET /w/recent-revisions
+ * 위키 전체에서 가장 최근 리비전 내역 (모든 문서 대상)
+ * - 삭제되지 않은 문서의 리비전만 표시
+ * Query: offset (기본 0), limit (기본 10, 최대 50)
+ */
+wiki.get('/w/recent-revisions', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    const privateFilter = canSeePrivate ? '' : ' AND p.is_private = 0';
+    const isAdmin = !!user && rbac.can(user.role, 'admin:access');
+    // 비관리자에게는 삭제된 리비전 자체가 존재하지 않는 것처럼 가린다.
+    const revDeletedFilter = isAdmin ? '' : ' AND r.deleted_at IS NULL';
+    const offset = Math.max(0, parseInt(c.req.query('offset') || '0', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '10', 10)));
+
+    // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
+    await ensureRevisionsVirtualMigration(db);
+    await ensurePatrolTable(db);
+    const onlyUnpatrolled = isAdmin && c.req.query('unpatrolled') === '1';
+    const patrolFilter = onlyUnpatrolled ? ' AND rp.revision_id IS NULL' : '';
+    const adminCols = isAdmin ? ', r.deleted_at, r.purged_at' : '';
+    // 가상 리비전(비-본문 변경 기록)은 전역 최근 리비전 피드에서 제외한다.
+    // (열람/비교가 불가능하고, 주소 이동 등은 이미 최근 변경/admin_log 가 커버한다.)
+    const listQuery = `
+        SELECT r.id, r.page_id, r.page_version, r.summary, r.created_at,
+               p.slug,
+               u.id as author_id, u.name as author_name, u.picture as author_picture,
+               ${ROLE_CASE_SQL} as author_role,
+               u.email as _author_email${adminCols}${isAdmin ? ', rp.patroller_id, rp.patrolled_at' : ''}
+        FROM revisions r
+        JOIN pages p ON r.page_id = p.id
+        LEFT JOIN users u ON r.author_id = u.id
+        LEFT JOIN revision_patrols rp ON rp.revision_id = r.id
+        WHERE p.deleted_at IS NULL AND r.is_virtual = 0${privateFilter}${revDeletedFilter}${patrolFilter}
+        ORDER BY r.created_at DESC LIMIT ? OFFSET ?`;
+    const countQuery = `
+        SELECT COUNT(*) as total
+        FROM revisions r
+        JOIN pages p ON r.page_id = p.id
+        LEFT JOIN revision_patrols rp ON rp.revision_id = r.id
+        WHERE p.deleted_at IS NULL AND r.is_virtual = 0${privateFilter}${revDeletedFilter}${patrolFilter}`;
+
+    const [listResult, countResult] = await db.batch([
+        db.prepare(listQuery).bind(limit, offset),
+        db.prepare(countQuery),
+    ]);
+
+    const results = listResult.results;
+    const rawTotal = (countResult.results[0] as any)?.total;
+    const parsedTotal = Number(rawTotal);
+    const total = Number.isFinite(parsedTotal) ? parsedTotal : 0;
+
+    enrichRoles(results, 'author_role', '_author_email', c.env);
+
+    return c.json(safeJSON({ revisions: results, total, has_more: offset + results.length < total }));
+});
+
+/** POST /w/:slug/revisions/:id/patrol — only administrators can mark a visible edit reviewed. */
+wiki.post('/w/:slug/revisions/:id/patrol', requireAdmin, async (c) => {
+    const id = Number(c.req.param('id'));
+    if (!Number.isSafeInteger(id) || id <= 0) return c.json({ error: '无效的修订版本' }, 400);
+    const slug = normalizeSlug(c.req.param('slug'));
+    const db = c.env.DB;
+    await ensureRevisionsVirtualMigration(db);
+    await ensurePatrolTable(db);
+    const revision = await db.prepare(`SELECT r.id, r.author_id, r.is_virtual, r.deleted_at, r.purged_at
+        FROM revisions r JOIN pages p ON p.id = r.page_id
+        WHERE r.id = ? AND p.slug = ? AND p.deleted_at IS NULL`)
+        .bind(id, slug).first<{ id: number; author_id: number | null; is_virtual: number; deleted_at: number | null; purged_at: number | null }>();
+    if (!revision || revision.is_virtual || revision.deleted_at || revision.purged_at) {
+        return c.json({ error: '此修订版本不可巡查' }, 404);
+    }
+    const user = c.get('user')!;
+    if (revision.author_id === user.id) return c.json({ error: '不能巡查自己的编辑' }, 403);
+    await db.prepare('INSERT OR IGNORE INTO revision_patrols (revision_id, patroller_id) VALUES (?, ?)')
+        .bind(id, user.id).run();
+    return c.json({ ok: true });
+});
+
+/**
+ * GET /w/all-pages
+ * 모든 문서 목록 (정렬 + 페이지네이션)
+ * Query: offset (기본 0), limit (기본 20, 최대 50),
+ *        sort (slug_asc, slug_desc, created_asc, created_desc,
+ *              updated_asc, updated_desc, category_asc, category_desc,
+ *              chars_desc, chars_asc)
+ */
+wiki.get('/w/all-pages', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    const offset = Math.max(0, parseInt(c.req.query('offset') || '0', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+    const sort = c.req.query('sort') || 'slug_asc';
+
+    const sortMap: Record<string, string> = {
+        slug_asc: 'p.slug COLLATE NOCASE ASC',
+        slug_desc: 'p.slug COLLATE NOCASE DESC',
+        created_asc: 'p.created_at ASC',
+        created_desc: 'p.created_at DESC',
+        updated_asc: 'p.updated_at ASC',
+        updated_desc: 'p.updated_at DESC',
+        category_asc: 'p.category COLLATE NOCASE ASC, p.slug COLLATE NOCASE ASC',
+        category_desc: 'p.category COLLATE NOCASE DESC, p.slug COLLATE NOCASE ASC',
+        chars_desc: 'COALESCE(p.characters, 0) DESC, p.slug COLLATE NOCASE ASC',
+        chars_asc: 'COALESCE(p.characters, 0) ASC, p.slug COLLATE NOCASE ASC',
+    };
+    const orderBy = sortMap[sort] || sortMap['slug_asc'];
+
+    const whereClause = 'p.deleted_at IS NULL'
+        + (canSeePrivate ? '' : ' AND p.is_private = 0')
+        + (sort === 'chars_asc' ? ' AND p.characters IS NOT NULL' : '');
+
+    const countQuery = `SELECT COUNT(*) as total FROM pages p WHERE ${whereClause}`;
+    const listQuery = `SELECT p.slug, p.category, p.created_at, p.updated_at, p.characters FROM pages p WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`;
+
+    const [countResult, listResult] = await db.batch([
+        db.prepare(countQuery),
+        db.prepare(listQuery).bind(limit, offset),
+    ]);
+
+    const rawTotal = (countResult.results[0] as any)?.total;
+    const parsedTotal = Number(rawTotal);
+    const total = Number.isFinite(parsedTotal) ? parsedTotal : 0;
+    const results = listResult.results;
+
+    return c.json(safeJSON({ pages: results, total }));
+});
+
+/**
+ * GET /w/all-index
+ * /all(모든 문서 보기) 페이지 전용 — 모든 문서를 페이지네이션 없이 1회 반환한다.
+ * 네임스페이스 분리 / 최상위·하위 계층 / 초성 그룹핑 / 정렬은 모두 클라이언트가 수행한다
+ * (카테고리 페이지의 "전량 로드 후 클라 그룹핑" 선례와 동일).
+ * 가시성: closed && 비로그인 → 401. 비관리자(wiki:private 불가)는 is_private=0 만.
+ * 각 행의 edit_acl 은 서버에서 parseEditAcl 로 정규화해 flags 배열(또는 null)로 내려준다.
+ */
+wiki.get('/w/all-index', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+
+    const whereClause = 'p.deleted_at IS NULL' + (canSeePrivate ? '' : ' AND p.is_private = 0');
+    const { results } = await db
+        .prepare(
+            `SELECT p.slug, p.title, p.category, p.edit_acl, p.updated_at, p.created_at, p.characters
+             FROM pages p WHERE ${whereClause} ORDER BY p.slug COLLATE NOCASE ASC`
+        )
+        .all<{
+            slug: string; title: string | null; category: string | null; edit_acl: string | null;
+            updated_at: number | null; created_at: number | null; characters: number | null;
+        }>();
+
+    const minAgeDays = await getEditAclMinAgeDays(db);
+    const pages = (results || []).map(r => ({
+        slug: r.slug,
+        title: r.title,
+        category: r.category,
+        acl: parseEditAcl(r.edit_acl)?.flags ?? null,
+        updated_at: r.updated_at,
+        created_at: r.created_at,
+        characters: r.characters,
+    }));
+
+    return c.json(safeJSON({ pages, min_age_days: minAgeDays, total: pages.length }));
+});
+
+/**
+ * GET /w/all-categories
+ * /all 페이지 카테고리 탭 전용 — 모든 카테고리 + 문서 수 + ACL 잠금 여부.
+ * 비관리자에게는 admin_only 카테고리를 제외한다(/w/category-suggest 의 adminFilter 와 동일 정책).
+ * 문서 수는 가시성 게이트를 통과하는(비관리자는 공개) 문서만 집계한다.
+ */
+wiki.get('/w/all-categories', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const isAdmin = rbac.can(user?.role ?? 'guest', 'admin:access');
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+
+    const privacy = canSeePrivate ? '' : ' AND p.is_private = 0';
+    const adminFilter = isAdmin
+        ? ''
+        : ` AND NOT (
+            EXISTS (
+                SELECT 1 FROM category_acl ca
+                 WHERE ca.name = pc.category
+                   AND ca.edit_acl IS NOT NULL
+                   AND ca.edit_acl LIKE '%"admin_only"%'
+            )
+            OR (
+                NOT EXISTS (
+                    SELECT 1 FROM category_acl ca2
+                     WHERE ca2.name = pc.category
+                )
+                AND EXISTS (
+                    SELECT 1 FROM admin_categories ac
+                     WHERE ac.name = pc.category
+                )
+            )
+          )`;
+
+    const { results } = await db
+        .prepare(
+            `SELECT pc.category AS name, COUNT(*) AS count
+             FROM page_categories pc JOIN pages p ON p.id = pc.page_id
+             WHERE p.deleted_at IS NULL${privacy}${adminFilter}
+             GROUP BY pc.category ORDER BY pc.category COLLATE NOCASE ASC`
+        )
+        .all<{ name: string; count: number }>();
+
+    const cats = results || [];
+    const aclMap = await getCategoryAclsBatch(db, cats.map(r => r.name));
+    const categories = cats.map(r => ({
+        name: r.name,
+        count: Number(r.count) || 0,
+        acl: aclMap.get(r.name)?.flags ?? null,
+    }));
+
+    return c.json(safeJSON({ categories }));
+});
+
+/**
+ * GET /w/wiki-stats
+ * 위키 통계 (문서 개수, 편집 횟수)
+ * sqlite_sequence 테이블의 pages, revisions 데이터 참조
+ */
+wiki.get('/w/wiki-stats', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const db = c.env.DB;
+
+    const [pageCountRow, revisionCountRow] = await Promise.all([
+        db.prepare(`SELECT seq FROM sqlite_sequence WHERE name = 'pages'`).first<{ seq: number }>(),
+        db.prepare(`SELECT seq FROM sqlite_sequence WHERE name = 'revisions'`).first<{ seq: number }>(),
+    ]);
+
+    return c.json({
+        page_count: pageCountRow?.seq ?? 0,
+        revision_count: revisionCountRow?.seq ?? 0,
+    });
+});
+
+/**
+ * GET /w/:slug
+ * 문서 조회 (공개)
+ * - 리다이렉트 처리: 문서가 없고 리다이렉트가 존재하면 대상 문서 반환 (redirected_from 포함)
+ * - 비공개 문서: 관리자만 접근 가능
+ */
+wiki.get('/w/:slug', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const slug = c.req.param('slug');
+    const db = c.env.DB;
+    const user = c.get('user');
+    const cache = caches.default;
+    const cacheKey = c.req.url;
+    const nocache = c.req.query('nocache') === 'true';
+    // for_edit=true 응답은 편집자 전용 editor_note 를 포함할 수 있다. for_edit URL 은 게스트도
+    // 추측 가능하므로, 이 응답을 공유/브라우저 캐시에 저장하거나 캐시에서 서빙하면 권한 검사
+    // 이전에 캐시 히트로 editor_note 가 노출될 수 있다 → for_edit 요청은 캐시를 우회한다.
+    const forEdit = c.req.query('for_edit') === 'true';
+
+    // "map:<base>" 슬러그는 실제 문서가 아니라 가상 트리 뷰. 권한자에게는 비공개 자식이 보이지만
+    // 비로그인 응답이 글로벌 캐시에 들어가 있을 수 있어, map: 슬러그의 cache.match 는 비로그인 요청
+    // (`!user`) 에서만 수행한다. 그래야 권한자가 anonymous 캐시에 갇히지 않는다.
+    if (isMapNamespace(slug)) {
+        const rbac = c.get('rbac') as RBAC;
+        const isAdmin = !!user && rbac.can(user.role, 'admin:access');
+        // SPA 라우터가 ?perms=1 로 호출할 때도 SSR 분기와 동일하게 처리. 비관리자가 쿼리를 강제로 켜도 무시.
+        const permsQueryRaw = c.req.query('perms');
+        const showPerms = isAdmin && permsQueryRaw === '1';
+        // 비로그인 사용자의 ?perms=1 요청으로 캐시가 오염되지 않도록 perms 쿼리가 있으면 글로벌 매치를 건너뛴다.
+        if (!user && !nocache && permsQueryRaw == null) {
+            const cached = await cache.match(cacheKey);
+            if (cached) return new Response(cached.body, cached);
+        }
+        const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+        const baseSlug = slug.substring('map:'.length);
+        const mapResult = await buildMapDocument({ db, baseSlug, canSeePrivate, showPerms });
+        const mapDoc = {
+            slug,
+            title: slug,
+            is_map_doc: true,
+            _ssrShowPerms: showPerms,
+            content: mapResult.markdown,
+            created_at: 0,
+            updated_at: 0,
+        };
+        const safeForSharedCache = !user && !mapResult.hasPrivateChildren && !showPerms;
+        if (safeForSharedCache && !nocache) {
+            // map: 캐시는 자식 mutation 시 자동 무효화되지 않으므로 staleness 윈도우를 짧게 유지.
+            const fresh = c.json(mapDoc, 200, { 'Cache-Control': `public, max-age=${MAP_CACHE_MAX_AGE_SECONDS}` });
+            c.executionCtx.waitUntil(cache.put(cacheKey, fresh.clone()));
+            return fresh;
+        }
+        return c.json(mapDoc, 200, { 'Cache-Control': 'private, no-store' });
+    }
+
+    // 캐시 확인 (map: 분기는 위에서 자체적으로 처리했으므로 이 시점에는 일반 슬러그만 남는다)
+    // for_edit 요청은 캐시를 우회한다(editor_note 노출 방지).
+    let response = forEdit ? undefined : await cache.match(cacheKey);
+    if (response && !nocache) {
+        // 캐시된 응답은 불변(immutable)이므로, 전역 미들웨어가 헤더를 수정할 수 있도록 복제하여 반환
+        return new Response(response.body, response);
+    }
+
+    // "이미지:파일명" 슬러그는 media 테이블에서 먼저 조회해 이미지 문서로 반환한다.
+    // 대응되는 미디어가 없으면 레거시 pages 엔트리가 존재할 수 있으므로 일반 문서 조회로 폴스루한다.
+    if (slug.startsWith('이미지:')) {
+        const filename = slug.substring('이미지:'.length);
+        const mediaRow = await db.prepare(
+            `SELECT m.id, m.r2_key, m.filename, m.mime_type, m.size, m.content, m.created_at,
+                    u.name as uploader_name
+             FROM media m LEFT JOIN users u ON m.uploader_id = u.id
+             WHERE m.filename = ? LIMIT 1`
+        ).bind(filename).first<{
+            id: number; r2_key: string; filename: string; mime_type: string;
+            size: number; content: string; created_at: number; uploader_name: string | null;
+        }>();
+
+        if (mediaRow) {
+            const tags = await fetchMediaTags(db, mediaRow.id);
+
+            const imageDoc = {
+                slug,
+                is_image_doc: true,
+                media: {
+                    id: mediaRow.id,
+                    r2_key: mediaRow.r2_key,
+                    filename: mediaRow.filename,
+                    mime_type: mediaRow.mime_type,
+                    size: mediaRow.size,
+                    uploader_name: mediaRow.uploader_name,
+                    url: `/media/${mediaRow.r2_key}`,
+                    tags,
+                },
+                content: mediaRow.content || '',
+                updated_at: mediaRow.created_at,
+                created_at: mediaRow.created_at,
+            };
+
+            // for_edit 요청은 캐시 조회를 우회하므로(위 cache.match 스킵) 저장해도 재사용되지 않는
+            // 죽은 엔트리가 된다. "for_edit 은 캐시를 우회한다" 불변식을 지키기 위해 저장도 건너뛴다.
+            if (!nocache && !forEdit) {
+                response = c.json(imageDoc, 200, { 'Cache-Control': 'public, max-age=86400' });
+                c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+                return response;
+            }
+            return c.json(imageDoc);
+        }
+        // mediaRow 부재 시 아래 일반 pages 조회로 폴스루 (legacy 이미지: 슬러그 호환)
+    }
+
+    let page = await db
+        .prepare('SELECT * FROM pages WHERE slug = ?')
+        .bind(slug)
+        .first<Page>();
+
+    const rbac = c.get("rbac") as RBAC;
+    const isAdmin = user && rbac.can(user.role, 'admin:access');
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+
+    // 비공개 문서는 wiki:private 권한이 없는 사용자에게는 본문/메타데이터를 노출하지 않고
+    // "비공개 문서" 안내만 전달한다. 삭제 분기보다 먼저 평가해 비공개·삭제 동시 상태에서
+    // 비공개 사실이 우선 노출되도록 한다.
+    if (page && page.is_private === 1 && !canSeePrivate) {
+        return c.json(
+            { error: '비공개 문서입니다.', is_private: true },
+            403,
+            { 'Cache-Control': 'private, no-store' }
+        );
+    }
+
+    if (page && page.deleted_at && !isAdmin) {
+        return c.json(
+            { error: '삭제된 문서입니다.', is_deleted: true },
+            410,
+            { 'Cache-Control': 'no-store, must-revalidate' }
+        );
+    }
+
+    // 원본(리다이렉트 이전) 슬러그의 비공개 여부 기록.
+    // private 슬러그가 public 으로 리다이렉트되어 page 가 public 대상으로 교체되면 이후 캐시 분기에서
+    // page.is_private === 0 으로 보이기 때문에, 캐시 키(URL=원본 슬러그)에 public 응답이 저장돼
+    // 권한 없는 후속 요청이 200 을 받아 "비공개 슬러그가 존재함" 이 누출된다. 별도로 추적해 차단.
+    const sourceWasPrivate = !!(page && page.is_private === 1);
+
+    let redirectedFrom: string | null = null;
+    const redirectParam = c.req.query('redirect');
+
+    // 문서 내 리다이렉트 설정 확인 (soft redirect)
+    if (page && page.redirect_to && redirectParam !== 'no') {
+        const targetSlug = page.redirect_to;
+        let targetPage = await db
+            .prepare('SELECT * FROM pages WHERE slug = ?')
+            .bind(targetSlug)
+            .first<Page>();
+
+        if (targetPage && targetPage.deleted_at && !isAdmin) {
+            targetPage = null;
+        }
+
+        if (targetPage && targetPage.is_private === 1 && !canSeePrivate) {
+            targetPage = null;
+        }
+
+        if (targetPage) {
+            page = targetPage;
+            redirectedFrom = slug;
+        }
+        // 만약 대상 문서가 없으면, 원래 문서를 그대로 보여줍니다.
+    }
+
+    if (!page) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    // R2-only 네임스페이스인 경우, 본문이 비어있다면 최신 리비전에서 본문을 가져옵니다.
+    const origin = new URL(c.req.url).origin;
+    const enabledExtensionsRead = getEnabledExtensions(c.env);
+    if (isR2OnlyNamespace(page.slug, enabledExtensionsRead) && (!page.content || page.content === '')) {
+        if (page.last_revision_id) {
+            const lastRev = await db.prepare('SELECT content, r2_key FROM revisions WHERE id = ?').bind(page.last_revision_id).first<{ content: string, r2_key: string | null }>();
+            if (lastRev) {
+                page.content = await getRevisionContent(c.env.MEDIA, lastRev, origin);
+            }
+        }
+    }
+
+    // 본문이 참조하는 커스텀 팔레트만 응답에 동봉 (SPA 네비게이션 시에도 정확한 팔레트로
+    // 렌더되도록 — SSR 의 _usedPalettes 는 초기 페이지 첫 로드에만 유효하다).
+    let usedPalettes: Record<string, unknown> = {};
+    // 응답이 공유 캐시(Cloudflare edge)에 저장될 조건: 공개 페이지이고 !nocache.
+    // 캐시 가능 응답은 사용자 권한별로 갈라지지 않아야 하므로, canSeePrivate 효과는
+    // 비-캐시 응답(비공개 페이지 / nocache=true) 에서만 적용한다.
+    const willShareCache = !(page.is_private === 1 || sourceWasPrivate) && !nocache && !forEdit;
+    const palettePerm = canSeePrivate && !willShareCache;
+    try {
+        // page.content 를 함께 넘겨 page_links 인덱스가 아직 비동기로 갱신 중일 때도
+        // 본문이 참조한 팔레트가 누락되지 않게 폴백.
+        usedPalettes = await loadPalettesForPage(db, page.id, page.content, palettePerm);
+    } catch (e) {
+        console.error('loadPalettesForPage failed:', e);
+    }
+
+    const result = safeJSON({ ...page, redirected_from: redirectedFrom, used_palettes: usedPalettes });
+
+    // 편집 메모(editor_note)는 편집기 로딩(for_edit=true) 시에만 wiki:edit 권한자에게 노출한다.
+    // 일반 열람·SPA 네비게이션·검색 등에서는 응답에서 제거한다.
+    const canEdit = !!user && rbac.can(user.role, 'wiki:edit');
+    if (!(c.req.query('for_edit') === 'true' && canEdit)) {
+        delete (result as Record<string, unknown>).editor_note;
+    }
+
+    // 비공개 페이지는 권한 있는 사용자에게만 노출되므로, 공유 캐시/브라우저 캐시에 저장되지 않도록 한다.
+    // sourceWasPrivate 가 true 이면 리다이렉트로 page 가 public 으로 바뀌어도 캐시 키(원본 private 슬러그)에 저장하면 안 된다.
+    if (page.is_private === 1 || sourceWasPrivate) {
+        response = c.json(result, 200, { 'Cache-Control': 'private, no-store' });
+    } else if (forEdit) {
+        // 편집기 로딩 응답은 editor_note 를 포함할 수 있으므로 공유(엣지)/브라우저 캐시에
+        // 저장하지 않는다. (canEdit 이 아니어서 editor_note 가 제거된 경우에도 캐시 오염 방지)
+        response = c.json(result, 200, { 'Cache-Control': 'private, no-store' });
+    } else if (!nocache) {
+        response = c.json(result, 200, { 'Cache-Control': 'public, max-age=86400' });
+        c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+    } else {
+        response = c.json(result);
+    }
+
+    return response;
+});
+
+/**
+ * GET /w/:slug/version
+ * 문서의 현재 버전만 반환하는 경량 엔드포인트.
+ *
+ * 본문/메타데이터를 싣지 않고 `version`(+ `updated_at`)만 내려보내, 클라이언트가
+ * 문서 로드 시 1회 호출해 "지금 화면에 렌더된 버전"이 최신인지 확인하는 용도다.
+ * 공개 문서 SSR/`/w/:slug` 응답은 엣지 캐시(최대 24h)되므로, 캐시 무효화가
+ * colo-local best-effort 인 특성상 다른 colo 에서 오래된 본문을 받을 수 있다.
+ * 이 엔드포인트는 항상 D1 최신값을 반영해야 하므로 응답 자체는 절대 캐시하지 않는다(no-store).
+ */
+wiki.get('/w/:slug/version', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401, { 'Cache-Control': 'no-store' });
+    }
+    const slug = c.req.param('slug');
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+
+    const page = await db
+        .prepare('SELECT slug, version, updated_at, is_private, deleted_at FROM pages WHERE slug = ?')
+        .bind(slug)
+        .first<{ slug: string; version: number; updated_at: number; is_private: number; deleted_at: number | null }>();
+
+    if (!page) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404, { 'Cache-Control': 'no-store' });
+    }
+
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    if (page.is_private === 1 && !canSeePrivate) {
+        return c.json({ error: '비공개 문서입니다.', is_private: true }, 403, { 'Cache-Control': 'no-store' });
+    }
+
+    const isAdmin = !!user && rbac.can(user.role, 'admin:access');
+    if (page.deleted_at && !isAdmin) {
+        return c.json({ error: '삭제된 문서입니다.', deleted: true }, 410, { 'Cache-Control': 'no-store' });
+    }
+
+    return c.json(
+        { slug: page.slug, version: page.version, updated_at: page.updated_at },
+        200,
+        { 'Cache-Control': 'no-store' }
+    );
+});
+
+/**
+ * PUT /w/:slug
+ * 문서 생성 또는 수정 (로그인 필수)
+ * Body: { content, summary, expected_version? }
+ * - 슬러그(URL 파라미터)가 곧 문서의 식별자이자 표시 이름이다.
+ *   요청 본문에 별도 title 필드는 없다(있어도 무시).
+ */
+/**
+ * GET /w/:slug/edit-permission
+ * 편집 페이지 진입 시점 ACL 사전 검사.
+ *
+ * - 페이지가 존재하면 그 행의 edit_acl, 없으면 doc_setting_prefix_rules 의 prefix 룰 ACL 을 평가.
+ * - 관리자(admin:access) 는 항상 allowed=true.
+ * - 비로그인 사용자는 그대로 401 (편집 진입 자체가 막혀야 하므로 wiki:edit 권한도 함께 검사).
+ *
+ * 응답 형식:
+ *   { allowed, reason?, acl: EditAcl | null, source: 'page'|'prefix_rule'|'none', min_age_days, is_private }
+ *
+ * 저장 단계(PUT) 가드는 그대로 유지된다 — 본 엔드포인트는 UX 보조용.
+ */
+wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
+    const slug = normalizeSlug(c.req.param('slug'));
+    if (!slug) return c.json({ error: '문서 제목이 비어 있습니다.' }, 400);
+
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const db = c.env.DB;
+
+    // 기본 권한 — wiki:edit 가 없으면 그 자체로 차단 (관리자 admin:access 는 우회).
+    const isAdmin = rbac.can(user.role, 'admin:access');
+    if (!rbac.can(user.role, 'wiki:edit') && !isAdmin) {
+        return c.json({
+            allowed: false,
+            reason: 'no_permission',
+            acl: null,
+            source: 'none',
+            min_age_days: 0,
+            is_private: 0,
+        });
+    }
+
+    // PUT 가드와 동일한 슬러그-수준 차단 (페이지 존재 여부와 무관) — 진입 검사가 통과한 뒤
+    // 저장 단계에서 같은 사유로 거부당해 본문이 날아가는 것을 막는다.
+
+    // 1) 메인 문서는 관리자만 편집 가능.
+    const mainSlug = normalizeSlug(c.env.WIKI_NAME || 'CloudWiki').toLowerCase();
+    if (slug.toLowerCase() === mainSlug && !isAdmin) {
+        return c.json({
+            allowed: false,
+            reason: 'main_page',
+            acl: null,
+            source: 'none',
+            min_age_days: 0,
+            is_private: 0,
+        });
+    }
+
+    // 2) "이미지:" 네임스페이스 — 일반 편집 흐름으로 다룰 수 없다.
+    if (slug.startsWith('이미지:')) {
+        return c.json({
+            allowed: false,
+            reason: 'image_namespace',
+            acl: null,
+            source: 'none',
+            min_age_days: 0,
+            is_private: 0,
+        });
+    }
+
+    // 3) "map:" 네임스페이스 — 가상 뷰 전용이므로 일반 편집 흐름으로 다룰 수 없다.
+    if (slug.startsWith('map:')) {
+        return c.json({
+            allowed: false,
+            reason: 'map_namespace',
+            acl: null,
+            source: 'none',
+            min_age_days: 0,
+            is_private: 0,
+        });
+    }
+
+    const page = await db
+        .prepare('SELECT id, is_private, edit_acl, deleted_at FROM pages WHERE slug = ?')
+        .bind(slug)
+        .first<{ id: number; is_private: number; edit_acl: string | null; deleted_at: number | null }>();
+
+    const minAge = await getEditAclMinAgeDays(db);
+
+    // 소프트 삭제된 페이지는 PUT 경로에서 비관리자에게 410 으로 거부되고, 관리자도 같은 슬러그
+    // INSERT 가 UNIQUE 제약으로 막힌다 (복원은 별도 POST /restore 경로). 신규 생성 케이스로 빠지면
+    // 진입 검사가 통과해 본문 작성 후 저장 단계에서 작업이 날아가므로 명시적으로 거부한다.
+    if (page && page.deleted_at) {
+        return c.json({
+            allowed: false,
+            reason: 'deleted',
+            acl: null,
+            source: 'page',
+            min_age_days: minAge,
+            is_private: page.is_private,
+        });
+    }
+
+    if (page && !page.deleted_at) {
+        const acl = parseEditAcl(page.edit_acl);
+        const hasAdminOnly = !!acl && acl.flags.includes('admin_only');
+
+        // 관리자는 admin_only 가 없는 ACL 은 우회. admin_only 가 있으면 evaluateEditAcl 이 통과시킨다.
+        if (isAdmin && !hasAdminOnly) {
+            return c.json({
+                allowed: true,
+                acl,
+                source: page.edit_acl ? 'page' : 'none',
+                min_age_days: minAge,
+                is_private: page.is_private,
+            });
+        }
+        if (page.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
+            return c.json({
+                allowed: false,
+                reason: 'private',
+                acl: null,
+                source: 'page',
+                min_age_days: minAge,
+                is_private: 1,
+            });
+        }
+        if (acl && acl.flags.length > 0) {
+            const ev = await evaluateEditAcl(db, acl, user, page.id, minAge, isAdmin);
+            // admin_only(관리자 전용) 실패는 비공개와 동일하게 취급해 편집 요청 모드를 제공하지 않는다(하드 거부).
+            // 그 외 ACL 미달은 편집 요청 기능이 켜져 있으면 에디터 진입을 허용한다(edit_request) —
+            // 저장 단계(PUT)에서 편집 요청으로 보류되고, 승인 시 ACL 이 다시 강제된다.
+            //
+            // 비관리자는 admin_only 가 포함된 ACL 을 절대 통과할 수 없으므로, decisive(첫 실패 플래그)가
+            // aged/page_editor 등 다른 플래그여도 하드 거부해야 한다 — ev.decisive 순서에 의존하지 않고
+            // 'admin_only 포함 + 비관리자' 로 직접 판정한다(플래그 저장 순서 무관).
+            const isAdminOnlyFail = hasAdminOnly && !isAdmin;
+            const editRequest = !ev.allowed && !isAdminOnlyFail && isEditRequestEnabled(c.env);
+            return c.json({
+                allowed: ev.allowed || editRequest,
+                edit_request: editRequest,
+                reason: ev.allowed ? undefined : (isAdminOnlyFail ? 'admin_only' : 'edit_acl'),
+                decisive: ev.decisive,
+                acl,
+                source: 'page',
+                min_age_days: minAge,
+                is_private: page.is_private,
+            });
+        }
+        return c.json({
+            allowed: true,
+            acl: null,
+            source: 'none',
+            min_age_days: minAge,
+            is_private: page.is_private,
+        });
+    }
+
+    // 페이지 미존재 — 신규 생성 케이스. prefix 룰의 비공개/ACL 평가.
+    // 비공개를 강제하는 prefix 룰(하위 문서 일괄 규칙 포함)은 비공개=관리자 전용 동등 취급이므로,
+    // wiki:private 이 없는 사용자는 편집 요청 모드 없이 하드 거부한다(저장 단계 create 가드와 일치).
+    if (!rbac.can(user.role, 'wiki:private')) {
+        const rules = await loadDocPrefixPrivacyRules(db);
+        if (prefixRulesForcePrivate(rules, slug)) {
+            return c.json({
+                allowed: false,
+                reason: 'private',
+                acl: null,
+                source: 'prefix_rule',
+                min_age_days: minAge,
+                is_private: 1,
+            });
+        }
+    }
+    const ruleAcl = await findPrefixRuleEditAcl(db, slug);
+    const ruleHasAdminOnly = !!ruleAcl && ruleAcl.flags.includes('admin_only');
+    if (!ruleAcl || ruleAcl.flags.length === 0 || (isAdmin && !ruleHasAdminOnly)) {
+        return c.json({
+            allowed: true,
+            acl: ruleAcl,
+            source: ruleAcl ? 'prefix_rule' : 'none',
+            min_age_days: minAge,
+            is_private: 0,
+        });
+    }
+    // 신규 문서이므로 page_editor 는 항상 false (pageId=null).
+    const ev = await evaluateEditAcl(db, ruleAcl, user, null, minAge, isAdmin);
+    // admin_only(관리자 전용) 실패는 비공개와 동일하게 편집 요청 모드 없이 하드 거부.
+    // 그 외 ACL 미달은 편집 요청 기능이 켜져 있으면 진입 허용(저장 시 create 보류).
+    // ev.decisive 순서에 의존하지 않고 'admin_only 포함 + 비관리자' 로 직접 판정한다(플래그 저장 순서 무관).
+    const isAdminOnlyFail = ruleHasAdminOnly && !isAdmin;
+    const editRequest = !ev.allowed && !isAdminOnlyFail && isEditRequestEnabled(c.env);
+    return c.json({
+        allowed: ev.allowed || editRequest,
+        edit_request: editRequest,
+        reason: ev.allowed ? undefined : (isAdminOnlyFail ? 'admin_only' : 'edit_acl'),
+        decisive: ev.decisive,
+        acl: ruleAcl,
+        source: 'prefix_rule',
+        min_age_days: minAge,
+        is_private: 0,
+    });
+});
+
+wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
+    const slug = normalizeSlug(c.req.param('slug'));
+
+    // 슬러그가 비어 있으면 거부 (normalizeSlug 가 앞뒤 슬래시/공백을 모두 떼어낸 결과)
+    if (!slug) {
+        return c.json({ error: '문서 제목이 비어 있습니다.' }, 400);
+    }
+
+    // 슬러그 유효성 검사: 금지 문자 포함 여부
+    if (SLUG_FORBIDDEN_CHARS.test(slug)) {
+        return c.json({ error: '제목에 사용할 수 없는 특수문자가 포함되어 있습니다.' }, 400);
+    }
+
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const body = await c.req.json<{
+        content: string;
+        summary?: string;
+        /** 자동요약분(클라이언트가 백그라운드에서 생성). 사용자 입력분(summary)과 분리 전송 — 길이 제한 없음. */
+        auto_summary?: string;
+        category?: string;
+        is_private?: number;
+        edit_acl?: unknown;
+        redirect_to?: string;
+        expected_version?: number;
+        turnstileToken?: string;
+        title?: string | null;
+        editor_note?: string | null;
+        /**
+         * 신규 적용 카테고리에 대한 ACL 머지 모드.
+         * 키: 카테고리명, 값: 'overwrite' | 'merge' | 'ignore'.
+         * 에디터 chip 생성 시점에 사용자가 선택한 값을 전송한다.
+         * 키 자체가 누락된 경우 = 레거시 클라이언트 → 명시적 카테고리에 대한 자동 ACL 적용 비활성.
+         */
+        category_acl_choices?: Record<string, unknown>;
+    }>();
+
+    // 대체 title 검증 — slug 와 별개로 모든 특수문자 허용하되 제어문자만 차단.
+    // body 에 title 키가 명시되어 있을 때만 변경 의도로 해석한다. (undefined = 기존값 유지)
+    // 잘못된 타입(숫자/객체 등) 은 null 로 정규화 후 "기존 title 삭제" 로 처리되면 데이터가
+    // 조용히 손실되므로, title 키가 있을 때는 string | null 만 허용하고 그 외엔 400.
+    const hasTitleInBody = Object.prototype.hasOwnProperty.call(body, 'title');
+    if (hasTitleInBody && body.title !== null && typeof body.title !== 'string') {
+        return c.json({ error: '대체 제목은 문자열 또는 null 이어야 합니다.' }, 400);
+    }
+    const requestedTitle = hasTitleInBody ? normalizeTitleInput(body.title) : undefined;
+    if (requestedTitle && TITLE_FORBIDDEN_CHARS.test(requestedTitle)) {
+        return c.json({ error: '대체 제목에 제어문자는 사용할 수 없습니다.' }, 400);
+    }
+    if (requestedTitle && requestedTitle.length > TITLE_MAX_LENGTH) {
+        return c.json({ error: `대체 제목은 ${TITLE_MAX_LENGTH}자 이하여야 합니다.` }, 400);
+    }
+
+    // Turnstile 검증
+    if (c.env.TURNSTILE_SECRET_KEY) {
+        const token = body.turnstileToken;
+        if (!token) {
+            return c.json({ error: 'Turnstile 검증이 필요합니다.' }, 403);
+        }
+        // idempotency_key 를 양쪽 시도에 동일하게 전달해 첫 요청이 Cloudflare에 도달 후
+        // 응답이 손실된 경우에도 재시도가 캐시된 성공 결과를 받을 수 있도록 한다.
+        const idempotencyKey = crypto.randomUUID();
+        const makeTsFormData = () => {
+            const fd = new FormData();
+            fd.append('secret', c.env.TURNSTILE_SECRET_KEY!);
+            fd.append('response', token);
+            fd.append('remoteip', c.req.header('cf-connecting-ip') || '');
+            fd.append('idempotency_key', idempotencyKey);
+            return fd;
+        };
+        // siteverify 는 간헐적 네트워크 오류가 발생할 수 있으므로 fetch 실패 시 1회 재시도.
+        // success: false 는 토큰 소비 후 실패일 수 있어 재시도하지 않는다.
+        let tsData: { success: boolean };
+        try {
+            const tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+                method: 'POST',
+                body: makeTsFormData(),
+            });
+            tsData = await tsRes.json<{ success: boolean }>();
+        } catch {
+            // 네트워크 오류 시 1회 재시도
+            try {
+                const tsRes2 = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+                    method: 'POST',
+                    body: makeTsFormData(),
+                });
+                tsData = await tsRes2.json<{ success: boolean }>();
+            } catch {
+                return c.json({ error: 'Turnstile 검증에 실패했습니다. 다시 시도해주세요.' }, 403);
+            }
+        }
+        if (!tsData!.success) {
+            return c.json({ error: 'Turnstile 검증에 실패했습니다. 다시 시도해주세요.' }, 403);
+        }
+    }
+
+    const isAdmin = rbac.can(user.role, 'admin:access');
+    const db = c.env.DB;
+
+    // editor_note 컬럼이 없는 레거시 DB 대비 idempotent 런타임 마이그레이션.
+    await ensureEditorNoteMigration(db);
+
+    // 메인 문서는 관리자만 편집 가능 (slug 기준 판단)
+    const mainSlug = normalizeSlug(c.env.WIKI_NAME || 'CloudWiki').toLowerCase();
+    if (normalizeSlug(slug).toLowerCase() === mainSlug) {
+        if (!isAdmin) {
+            return c.json({ error: '메인 문서는 관리자만 편집할 수 있습니다.' }, 403);
+        }
+    }
+
+    // "이미지:" 접두사 문서는 media 테이블 기반의 이미지 문서 전용이며,
+    // content 수정은 /api/media/doc/:filename 엔드포인트로만 가능하다.
+    if (slug.startsWith('이미지:')) {
+        return c.json({ error: '"이미지:"는 이미지 문서 전용 네임스페이스이므로 일반 문서 제목으로 사용할 수 없습니다.' }, 403);
+    }
+
+    // "map:" 접두사 문서는 하위 문서 트리를 합성해 보여주는 가상 뷰 전용이므로
+    // 일반 문서로 생성/수정할 수 없다.
+    if (slug.startsWith('map:')) {
+        return c.json({ error: '"map:"은 지도 뷰 전용 네임스페이스이므로 일반 문서 제목으로 사용할 수 없습니다.' }, 403);
+    }
+
+    // "카테고리:이름" 슬러그는 자동 카테고리를 항상 포함시킨다 (제거 불가).
+    // admin-only 체크보다 먼저 수행해 자동 주입된 카테고리도 동일하게 검증받도록 한다.
+    const _autoCategory = getCategoryDocAutoCategory(slug);
+    if (_autoCategory) {
+        const cats = splitCategoryString(body.category);
+        if (!cats.includes(_autoCategory)) cats.unshift(_autoCategory);
+        body.category = cats.join(',');
+        // 서버가 강제하는 카테고리이므로 클라이언트 값(ignore/배열 등)을 신뢰하지 않고 항상 'merge' 로 덮어쓴다.
+        // 배열 등 비-plain 객체가 들어오면 나중의 ACL 머지 로직이 Array.isArray 로 걸러내므로 교체한다.
+        if (!body.category_acl_choices || typeof body.category_acl_choices !== 'object' || Array.isArray(body.category_acl_choices)) {
+            body.category_acl_choices = {};
+        }
+        body.category_acl_choices[_autoCategory] = 'merge';
+    }
+
+    // 관리자 전용 카테고리 검증 — category_acl 의 admin_only 플래그 기준 (구 admin_categories 화이트리스트 대체).
+    if (body.category && !isAdmin) {
+        const cats = body.category.split(',').map(c => c.trim()).filter(c => c);
+        for (const cat of cats) {
+            if (await isAdminOnlyCategory(db, cat)) {
+                return c.json({ error: `"${cat}" 카테고리는 관리자만 적용할 수 있습니다.` }, 403);
+            }
+        }
+    }
+
+    if (body.content === undefined) {
+        return c.json({ error: 'content는 필수입니다.' }, 400);
+    }
+    if (typeof body.content !== 'string') {
+        return c.json({ error: 'content는 문자열이어야 합니다.' }, 400);
+    }
+
+    // CRLF/CR → LF 정규화. 클라이언트 환경(Windows 클립보드, 외부 임포트 등)에서
+    // \r 가 섞여 들어오면 렌더 파이프라인의 펜스/`:::`/폴드 정규식이 깨진다.
+    // 저장 시점에 한 번만 정규화하면 이후 모든 읽기 경로가 안전해진다.
+    body.content = body.content.replace(/\r\n?/g, '\n');
+    // 줄 시작의 제로폭 문자(U+200B ZWSP / U+FEFF BOM) 제거(코드펜스 본문은 보존).
+    // 모바일 IME·외부 앱 붙여넣기로 유입되면 눈에 보이지 않으면서 헤딩(#)/목록/인용 등
+    // 줄 시작 문법의 렌더링·에디터 하이라이팅을 깨뜨린다.
+    // 익스텐션(R2-only) 네임스페이스는 마크다운이 아닌 raw 데이터이므로 제외 —
+    // 클라이언트(edit/main.ts)의 isExtensionData 로드 정규화 제외와 동일 정책.
+    const isR2OnlyContent = isR2OnlyNamespace(slug, getEnabledExtensions(c.env));
+    if (!isR2OnlyContent) {
+        body.content = stripLineLeadingZeroWidth(body.content);
+    }
+
+    // 보안: 카테고리 특수문자 금지 (한글, 영문, 숫자, 공백, 쉼표만 허용)
+    if (body.category) {
+        const categoryPattern = /^[가-힣a-zA-Z0-9\s,]+$/;
+        if (!categoryPattern.test(body.category)) {
+            return c.json({ error: '카테고리에는 특수문자를 사용할 수 없습니다.' }, 400);
+        }
+    }
+
+    // 편집 요약: 클라이언트가 사용자 입력분(body.summary)과 자동요약분(body.auto_summary)을 분리 전송한다.
+    // 직접 저장(리비전)은 둘을 "<사용자입력> / <자동요약>" 으로 병합하고, 편집 요청 보류는 두 부분을
+    // 분리 보관한다(승인 시점에 병합 — 승인 편집기가 자동요약을 사용자 입력으로 오인해 다시 합치는 중복 방지).
+    // 사용자 입력분만 길이 제한(255자)을 적용하고, 자동요약분 길이 때문에 정상 편집을 거부하지 않는다.
+    // 잘못된 타입(문자열/null 외)은 정규화 시 문자열 메서드 호출로 500 이 되지 않도록 400 으로 막는다.
+    if (body.summary !== undefined && body.summary !== null && typeof body.summary !== 'string') {
+        return c.json({ error: '편집 요약은 문자열이어야 합니다.' }, 400);
+    }
+    if (body.auto_summary !== undefined && body.auto_summary !== null && typeof body.auto_summary !== 'string') {
+        return c.json({ error: '자동 편집 요약은 문자열이어야 합니다.' }, 400);
+    }
+    const userSummary = capUserSummary(body.summary);
+    const autoSummary = (typeof body.auto_summary === 'string' && body.auto_summary.trim())
+        ? body.auto_summary.trim()
+        : null;
+    const mergedSummary = mergeEditSummary(userSummary, autoSummary);
+
+    const existing = await db
+        .prepare('SELECT id, version, is_private, edit_acl, redirect_to, content, deleted_at, title, last_revision_id, category FROM pages WHERE slug = ?')
+        .bind(slug)
+        .first<{ id: number; version: number; is_private: number; edit_acl: string | null; redirect_to: string | null; content: string; deleted_at: number | null; title: string | null; last_revision_id: number | null; category: string | null }>();
+
+    // edit_acl body 입력 검증 (관리자만 반영). 비관리자는 기존 값 마스킹.
+    let requestedEditAcl: { provided: boolean; value: EditAcl | null } = { provided: false, value: null };
+    if (Object.prototype.hasOwnProperty.call(body, 'edit_acl')) {
+        const norm = normalizeEditAcl(body.edit_acl);
+        if ('error' in norm) {
+            return c.json({ error: norm.error }, 400);
+        }
+        requestedEditAcl = { provided: true, value: norm.value };
+    }
+
+    // 신규 title 이 다른 페이지의 slug 또는 title 과 충돌하면 거부.
+    // (자기 자신의 slug 와 같은 값을 title 로 적는 것도 의미가 없으므로 차단된다 — 그 경우 그냥 title 을 비우면 동일 표시.)
+    // 소프트 삭제 행도 충돌로 인정 — UNIQUE 인덱스가 deleted_at 무관하게 강제하기 때문.
+    if (requestedTitle) {
+        const selfId = existing?.id ?? null;
+        const conflict = await findConflictingPage(db, requestedTitle, selfId);
+        if (conflict) {
+            const deletedSuffix = conflict.isDeleted ? ' (소프트 삭제 상태 — 관리자가 복원 또는 영구 삭제해야 재사용 가능)' : '';
+            const msg = conflict.matchedColumn === 'slug'
+                ? `'${requestedTitle}' 는 이미 다른 문서의 제목으로 사용 중입니다.${deletedSuffix}`
+                : `'${requestedTitle}' 는 이미 다른 문서의 대체 제목으로 사용 중입니다.${deletedSuffix}`;
+            return c.json({ error: msg }, 409);
+        }
+    }
+
+    // 신규 슬러그 자체가 다른 문서의 title 과 충돌하는지 검사 (생성 흐름 한정).
+    // 기존 문서면 slug 자체는 바뀌지 않으므로 검사 불필요.
+    // (slug-slug 소프트 삭제 충돌은 기존 existing 분기에서 별도 안내 메시지로 처리.)
+    if (!existing) {
+        const slugTitleConflict = await findConflictingPage(db, slug, null);
+        if (slugTitleConflict && slugTitleConflict.matchedColumn === 'title') {
+            const deletedSuffix = slugTitleConflict.isDeleted ? ' (소프트 삭제 상태)' : '';
+            return c.json({ error: `'${slug}' 는 이미 다른 문서의 대체 제목과 같아 제목으로 사용할 수 없습니다.${deletedSuffix}` }, 409);
+        }
+    }
+
+    // 삭제된 문서는 권한자(admin:access)만 복원할 수 있고 일반 사용자의 편집은 불가.
+    // 일반 사용자가 동일 슬러그로 새 문서를 만들지 못하도록 명시적으로 차단한다.
+    if (existing && existing.deleted_at && !isAdmin) {
+        return c.json({ error: '삭제된 문서는 편집할 수 없습니다.', is_deleted: true }, 410);
+    }
+
+    let finalIsPrivate = 0;
+    let finalEditAcl: string | null = null;
+
+    if (existing && !existing.deleted_at) {
+        // expected_version === 0 은 "신규 생성 전용" 시멘틱이다. 기존 문서가 존재하면
+        // 본문 일치 여부와 무관하게 충돌로 처리해, 섹션 분리 등 race-condition 차단이
+        // 필요한 호출자가 결정론적으로 거부 응답을 받도록 한다.
+        if (body.expected_version === 0) {
+            return c.json(
+                { error: '같은 제목의 문서가 이미 존재합니다.', current_version: existing.version },
+                409
+            );
+        }
+
+        // 비공개 문서는 wiki:private 권한 없으면 편집 불가 (조회 단계에서도 막혀야 하지만 안전망)
+        if (existing.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
+            return c.json({ error: '비공개 문서는 편집할 수 없습니다.', is_private: true }, 403);
+        }
+
+        // edit_acl 평가 — admin_only 플래그가 없으면 관리자는 우회. 비공개 단계를 통과한 뒤 검사한다.
+        // 편집 요청 기능이 켜져 있으면 ACL 미달이어도 즉시 거부하지 않고 편집 요청(pending_edits)으로
+        // 보류한다(aclHeldForPending). 검토자 승인/반려 단계에서 reviewerAclFailResponse 가 동일 ACL 을
+        // 다시 강제하므로(admin_only 포함) 비관리자가 비관리자 보류본을 승인해 ACL 을 우회할 수 없다.
+        let aclHeldForPending = false;
+        const aclParsed = parseEditAcl(existing.edit_acl);
+        if (aclParsed && aclParsed.flags.length > 0) {
+            const hasAdminOnly = aclParsed.flags.includes('admin_only');
+            if (!isAdmin || hasAdminOnly) {
+                const minAge = await getEditAclMinAgeDays(db);
+                const ev = await evaluateEditAcl(db, aclParsed, user, existing.id, minAge, isAdmin);
+                if (!ev.allowed) {
+                    // admin_only(관리자 전용) 실패는 비공개와 동일하게 편집 요청 모드 없이 하드 거부한다 —
+                    // 편집 요청이 켜져 있어도 보류로 돌리지 않는다. 그 외 ACL 미달만 편집 요청으로 보류.
+                    // 비관리자는 admin_only 포함 ACL 을 절대 통과 못 하므로 decisive 순서와 무관하게 하드 거부.
+                    const isAdminOnlyFail = hasAdminOnly && !isAdmin;
+                    if (!isAdminOnlyFail && isEditRequestEnabled(c.env)) {
+                        aclHeldForPending = true;
+                    } else {
+                        return c.json({
+                            error: isAdminOnlyFail
+                                ? '이 문서는 관리자만 편집할 수 있습니다.'
+                                : '이 문서를 편집할 권한이 부족합니다.',
+                            edit_acl: aclParsed,
+                            min_age_days: minAge,
+                        }, 403);
+                    }
+                }
+            }
+        }
+
+        // 권한에 따른 비공개 상태 결정
+        finalIsPrivate = rbac.can(user.role, 'wiki:private') ? (body.is_private ?? existing.is_private) : existing.is_private;
+        // edit_acl 은 관리자(admin:access)만 변경 가능, 그리고 body 에 명시적으로 보낸 경우에만 갱신한다.
+        // 평범한 본문 저장이 request 시작 시점에 읽은 stale 값을 UPDATE 절에서 다시 써버려 admin 의 ACL 갱신을
+        // silent 하게 되돌리는 race 를 방지. 변경 의도가 없는 경우 column 자체를 UPDATE 에서 제외한다.
+        const adminExplicitlySetEditAcl = isAdmin && requestedEditAcl.provided;
+        let layeredAcl: EditAcl | null = adminExplicitlySetEditAcl
+            ? requestedEditAcl.value
+            : parseEditAcl(existing.edit_acl);
+
+        // 카테고리 ACL 머지 — 사용자가 chip 을 "새로 추가" 한 시점에 선택한 모드만 적용.
+        // category_acl_choices 키 자체가 없으면 (레거시 클라이언트) 자동 적용 건너뜀.
+        //
+        // 보안 1: 이미 페이지에 속한 카테고리에 대한 choice 는 무시한다. 그렇지 않으면 비관리자가
+        // body.category 를 그대로 두고 choices 만 위조해 (e.g. {"ExistingCat":"overwrite"})
+        // 페이지 edit_acl 을 임의로 갈아치울 수 있어 관리자만 변경 가능한 edit_acl 정책을 우회한다.
+        //
+        // 보안 2: 비관리자의 'overwrite' 모드는 'merge' 로 다운그레이드한다. overwrite 는 관리자가 설정한
+        // 강한 ACL 을 카테고리 템플릿(약한 ACL) 로 통째 교체할 수 있어 ACL 약화를 일으킨다.
+        // merge 는 flag 합집합(AND 평가)이므로 결과는 절대 약해지지 않는다.
+        let categoryAclMutated = false;
+        if (body.category_acl_choices && typeof body.category_acl_choices === 'object' && !Array.isArray(body.category_acl_choices)) {
+            const choices = body.category_acl_choices as Record<string, unknown>;
+            const explicitCats = splitCategoryString(body.category);
+            // 현재 페이지에 이미 적용된 카테고리 목록을 조회해 "이번 요청에서 신규 추가된" 것만 후보로 삼는다.
+            const existingCatRows = await db
+                .prepare('SELECT category FROM page_categories WHERE page_id = ?')
+                .bind(existing.id)
+                .all<{ category: string }>();
+            const existingCatSet = new Set((existingCatRows.results || []).map(r => r.category));
+            const newlyAdded = explicitCats.filter(c => !existingCatSet.has(c));
+            const targets = newlyAdded.filter(c => Object.prototype.hasOwnProperty.call(choices, c));
+            if (targets.length > 0) {
+                const templates = await getCategoryAclsBatch(db, targets);
+                for (const cat of targets) {
+                    const tpl = templates.get(cat);
+                    if (!tpl) continue;
+                    let mode: CategoryAclMode = normalizeCategoryAclMode(choices[cat]);
+                    if (!isAdmin && mode === 'overwrite') mode = 'merge';
+                    if (mode === 'ignore') continue;
+                    layeredAcl = applyCategoryAclToPage(layeredAcl, tpl, mode);
+                    categoryAclMutated = true;
+                }
+            }
+        }
+
+        const willUpdateEditAcl = adminExplicitlySetEditAcl || categoryAclMutated;
+        finalEditAcl = willUpdateEditAcl ? serializeEditAcl(layeredAcl) : existing.edit_acl;
+
+        // ── 기존 문서 수정 ──
+        // Optimistic Locking 체크
+        if (body.expected_version !== undefined && body.expected_version !== existing.version) {
+            // 내용이 완전히 동일하면 충돌로 보지 않고 진행 (Idempotent).
+            // 레거시 저장 본문은 CRLF 일 수 있으므로 비교 양쪽을 LF 로 정규화한다.
+            // (요청 본문은 이미 위에서 정규화됨) 제로폭 문자도 요청 본문과 동일하게
+            // 정규화해야 레거시 제로폭 오염 문서에서 내용 동일 판정이 어긋나 가짜 409 가 나지 않는다.
+            let existingNormalized = (existing.content || '').replace(/\r\n?/g, '\n');
+            if (!isR2OnlyContent) existingNormalized = stripLineLeadingZeroWidth(existingNormalized);
+            if (body.content !== existingNormalized) {
+                return c.json(
+                    {
+                        error: '편집 충돌이 발생했습니다. 다른 사용자가 문서를 수정했습니다.',
+                        current_version: existing.version,
+                        content: existingNormalized
+                    },
+                    409
+                );
+            }
+        }
+
+        // R2-only 네임스페이스 여부 확인 (낙관적 락 충돌 검사 시 R2 본문 비교에 사용)
+        const enabledExtensionsEdit = getEnabledExtensions(c.env);
+        const isR2Only = isR2OnlyNamespace(slug, enabledExtensionsEdit);
+
+        // Optimistic Locking 체크 시, R2-only 문서인 경우 R2에서 실제 본문을 가져와 비교
+        if (body.expected_version !== undefined && body.expected_version !== existing.version) {
+            let currentActualContent = existing.content;
+            if (isR2Only && (!currentActualContent || currentActualContent === '')) {
+                if (existing.id) {
+                    const lastRev = await db.prepare('SELECT content, r2_key FROM revisions WHERE page_id = ? AND page_version = ?').bind(existing.id, existing.version).first<{ content: string, r2_key: string | null }>();
+                    if (lastRev) {
+                        currentActualContent = await getRevisionContent(c.env.MEDIA, lastRev, new URL(c.req.url).origin);
+                    }
+                }
+            }
+            // 레거시 저장본은 CRLF 일 수 있으므로 비교/응답 양쪽을 LF 로 정규화.
+            // 제로폭 문자도 요청 본문과 동일 규칙으로 정규화(가짜 409 방지 — 위 existingNormalized 와 동일).
+            let currentNormalized = (currentActualContent || '').replace(/\r\n?/g, '\n');
+            if (!isR2Only) currentNormalized = stripLineLeadingZeroWidth(currentNormalized);
+
+            // 내용이 완전히 동일하면 충돌로 보지 않고 진행 (Idempotent)
+            if (body.content !== currentNormalized) {
+                return c.json(
+                    {
+                        error: '편집 충돌이 발생했습니다. 다른 사용자가 문서를 수정했습니다.',
+                        current_version: existing.version,
+                        content: currentNormalized
+                    },
+                    409
+                );
+            }
+        }
+
+        // ── 사람 편집 보류(pending changes) 분기 ──
+        // 전역 토글이 켜져 있고 편집자가 신뢰되지 않으면(비-aged·이 문서 미편집·비관리자)
+        // 즉시 리비전을 만들지 않고 검토 대기로 보류한다. 공개 화면은 마지막 승인본을 유지.
+        // ACL·비공개·동시편집 검증을 모두 통과한 직후 분기하므로, 보류본도 동일 사전조건을 만족한다.
+        if (isEditRequestEnabled(c.env)) {
+            const minAge = await getEditAclMinAgeDays(db);
+            // ACL 미달로 보류가 강제된 경우(aclHeldForPending)는 신뢰 여부와 무관하게 항상 보류한다 —
+            // ACL 을 통과하지 못한 편집이 신뢰 사용자라는 이유로 즉시 리비전이 되어선 안 된다.
+            if (aclHeldForPending || !(await isTrustedEditor(db, user, existing.id, minAge, isAdmin))) {
+                const finalTitleHold = hasTitleInBody ? requestedTitle ?? null : existing.title;
+                const pendingEditId = await holdPendingEdit(c, user, {
+                    pageId: existing.id,
+                    slug,
+                    action: 'update',
+                    baseRevisionId: existing.last_revision_id,
+                    baseVersion: existing.version,
+                    content: body.content,
+                    category: body.category || null,
+                    redirectTo: body.redirect_to || null,
+                    title: finalTitleHold,
+                    hasTitleChange: hasTitleInBody,
+                    // 보류본은 사용자 입력분/자동요약분을 분리 보관한다(승인 시점에 병합).
+                    summary: userSummary,
+                    autoSummary,
+                    // 현재 페이지 또는 이번 편집 결과가 비공개면 비공개로 게이팅(둘 중 하나라도 비공개면 비공개 문서 본문 노출 방지).
+                    isPrivate: existing.is_private === 1 || finalIsPrivate === 1,
+                    // direct-save 가 edit_acl 을 쓰는 경우(willUpdateEditAcl: 카테고리 ACL 머지 등)만 승인 시 적용.
+                    editAcl: finalEditAcl,
+                    applyEditAcl: willUpdateEditAcl,
+                    // update 의 카테고리 ACL 머지 결과는 edit_acl 로 이미 캡처되므로 choices 재생 불필요.
+                    categoryAclChoices: null,
+                });
+                return c.json(safeJSON({ pending: true, slug, pending_edit_id: pendingEditId }));
+            }
+        }
+
+        // ── 리비전 저장 + 후처리(재색인·캐시 무효화·주시자 알림)를 통합 파이프라인에 위임 ──
+        // R2 업로드 → revisions INSERT → pages UPDATE(version-CAS) → 링크/카테고리 재색인 →
+        // 3종 캐시 무효화 → 주시자 알림이 승인(pending/mcp) 경로와 동일한 단일 소스로 실행된다.
+        // 사람 편집이므로 요약에 [MCP] 접두를 붙이지 않는다(summaryRaw: true).
+        //
+        // 컬럼 쓰기 규칙은 인라인 구현과 동일하게 유지한다:
+        //   - title: body 에 키가 명시된 경우만 변경, 그 외 기존값(existing.title) 유지.
+        //   - edit_acl: admin 명시 변경 또는 카테고리 ACL 머지(willUpdateEditAcl) 일 때만 갱신.
+        //   - is_private: wiki:private 권한 게이트를 거친 최종값(finalIsPrivate)으로 항상 갱신.
+        const finalTitle = hasTitleInBody ? requestedTitle ?? null : existing.title;
+        let updateResult;
+        try {
+            updateResult = await commitPageMutation(c, {
+                kind: 'update',
+                origin: 'http_put',
+                actor: user,
+                slug,
+                content: body.content,
+                // 직접 저장 리비전은 사용자 입력분 + 자동요약분 병합본을 요약으로 쓴다.
+                summary: mergedSummary,
+                summaryRaw: true,
+                category: body.category || null,
+                redirectTo: body.redirect_to || null,
+                title: finalTitle,
+                editorNote: body.editor_note !== undefined ? (body.editor_note ?? null) : undefined,
+                // willUpdateEditAcl 이 아니면 undefined → 컬럼을 손대지 않아 다른 경로의 갱신을 stale 값으로 덮어쓰지 않는다.
+                editAcl: willUpdateEditAcl ? finalEditAcl : undefined,
+                isPrivateWrite: finalIsPrivate,
+                page: { id: existing.id, version: existing.version, category: existing.category, title: existing.title },
+                isPrivate: finalIsPrivate === 1,
+                rbac,
+            });
+        } catch (e: any) {
+            // version-CAS 실패(동시 수정) — 인라인 구현에는 없던 추가 안전망. SELECT 이후 다른 요청이
+            // 페이지를 앞서 갱신했으므로, SELECT 시점의 stale 한 existing 대신 "현재" 페이지의 버전·본문을
+            // 다시 읽어 반환한다(expected_version 충돌 응답과 동일하게 R2-only 문서는 최신 리비전 본문을
+            // R2 에서 가져온다). 클라이언트가 올바른 base 로 머지/재시도하게 한다.
+            if (e?.code === 'CONCURRENT_MODIFICATION') {
+                const fresh = await db
+                    .prepare('SELECT version, content FROM pages WHERE id = ?')
+                    .bind(existing.id)
+                    .first<{ version: number; content: string }>();
+                let currentContent = (fresh?.content ?? existing.content) || '';
+                if (isR2Only && currentContent === '' && fresh) {
+                    const lastRev = await db
+                        .prepare('SELECT content, r2_key FROM revisions WHERE page_id = ? AND page_version = ?')
+                        .bind(existing.id, fresh.version)
+                        .first<{ content: string; r2_key: string | null }>();
+                    if (lastRev) {
+                        currentContent = await getRevisionContent(c.env.MEDIA, lastRev, new URL(c.req.url).origin);
+                    }
+                }
+                const currentNormalized = currentContent.replace(/\r\n?/g, '\n');
+                return c.json({
+                    error: '편집 충돌이 발생했습니다. 다른 사용자가 문서를 수정했습니다.',
+                    current_version: fresh?.version ?? existing.version,
+                    content: currentNormalized,
+                }, 409);
+            }
+            // title 의 idx_pages_title_unique race 는 409 로 매핑(헬퍼가 리비전/R2 롤백을 이미 수행).
+            const msg = String(e?.message || e);
+            if (/UNIQUE|constraint/i.test(msg) && /title/i.test(msg)) {
+                console.error('D1 page UPDATE failed due to title UNIQUE race:', e);
+                return c.json({ error: '대체 제목이 다른 문서와 충돌했습니다. 잠시 후 다시 시도해주세요.' }, 409);
+            }
+            console.error('D1 page UPDATE failed:', e);
+            return c.json({ error: '문서 저장에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500);
+        }
+
+        return c.json(safeJSON({ slug, version: updateResult.new_version, revision_id: updateResult.revision_id }));
+    } else {
+        finalIsPrivate = rbac.can(user.role, 'wiki:private') ? (body.is_private ?? 0) : 0;
+        // edit_acl 은 관리자만 직접 지정 가능. 비관리자가 만든 신규 문서는 NULL 로 시작(아래 prefix 룰이 덮어쓸 수 있음).
+        finalEditAcl = isAdmin
+            ? (requestedEditAcl.provided ? serializeEditAcl(requestedEditAcl.value) : null)
+            : null;
+
+        // ── 새 문서 생성 ──
+        // (R2-only 여부·본문 저장 형태·메트릭 계산은 통합 파이프라인의 applyNewPageInsert 가 슬러그
+        //  기준으로 동일하게 처리하므로 여기서 따로 계산하지 않는다.)
+
+        // 자동 prefix 룰 / 카테고리 ACL 머지 — MCP 제출안 승인(create) 과 공유되는 헬퍼.
+        // - is_private / edit_acl 은 관리자가 작성한 prefix 룰이므로 생성자 RBAC 검사를 우회해 강제 적용한다.
+        //   비관리자의 body.is_private 입력은 위에서 이미 0 으로 마스크되어 있으므로 추가 처리 불필요.
+        // - edit_acl 은 관리자가 body 에 키를 명시한 경우(requestedEditAcl.provided=true) 그 의도를 보존한다.
+        const adminExplicitlySetEditAcl = isAdmin && requestedEditAcl.provided;
+        const categoryAclChoicesRaw = (body.category_acl_choices && typeof body.category_acl_choices === 'object' && !Array.isArray(body.category_acl_choices))
+            ? (body.category_acl_choices as Record<string, unknown>)
+            : null;
+        const prefixed = await applyCreatePrefixRulesAndCategoryAcls(db, slug, {
+            category: body.category || null,
+            isPrivate: finalIsPrivate,
+            editAcl: finalEditAcl,
+            adminExplicitlySetEditAcl,
+            categoryAclChoices: categoryAclChoicesRaw,
+            isAdmin: !!isAdmin,
+        });
+        let effectiveCategory = prefixed.effectiveCategory;
+        finalIsPrivate = prefixed.finalIsPrivate;
+        finalEditAcl = prefixed.finalEditAcl;
+
+        // 비공개로 강제되는 신규 문서(하위 문서 일괄 규칙 등 prefix 룰의 is_private)는 비공개=관리자 전용
+        // 동등 취급이므로, wiki:private 이 없는 사용자는 편집 요청 모드 없이 하드 거부한다.
+        if (finalIsPrivate === 1 && !rbac.can(user.role, 'wiki:private')) {
+            return c.json({ error: '비공개로 지정된 문서는 새로 생성할 수 없습니다.', is_private: true }, 403);
+        }
+
+        // 새 ACL 이 적용된 신규 페이지를 생성하기 전에, 생성자(비관리자)가 그 ACL 을 통과하는지 검증한다.
+        // 신규 페이지이므로 page_editor 플래그는 항상 false 로 평가 (pageId=null).
+        // 관리자(admin:access)는 admin_only 가 없는 ACL 을 우회 — admin:access 는 자기 자신이 직접 작성한
+        // ACL 도 만족하지 못할 수 있으므로 관리자 우회가 없으면 신규 ACL 자체를 만들 수 없게 된다.
+        // 편집 요청 기능이 켜져 있으면 생성 ACL 미달도 거부 대신 편집 요청(create 보류)으로 돌린다.
+        let createAclHeldForPending = false;
+        if (finalEditAcl) {
+            const aclForCreate = parseEditAcl(finalEditAcl);
+            if (aclForCreate && aclForCreate.flags.length > 0) {
+                const hasAdminOnly = aclForCreate.flags.includes('admin_only');
+                if (!isAdmin || hasAdminOnly) {
+                    const minAge = await getEditAclMinAgeDays(db);
+                    const ev = await evaluateEditAcl(db, aclForCreate, user, null, minAge, isAdmin);
+                    if (!ev.allowed) {
+                        // admin_only(관리자 전용) 실패는 비공개와 동일하게 편집 요청 모드 없이 하드 거부한다.
+                        // 그 외 생성 ACL 미달만 편집 요청(create 보류)으로 돌린다.
+                        // 비관리자는 admin_only 포함 ACL 을 절대 통과 못 하므로 decisive 순서와 무관하게 하드 거부.
+                        const isAdminOnlyFail = hasAdminOnly && !isAdmin;
+                        if (!isAdminOnlyFail && isEditRequestEnabled(c.env)) {
+                            createAclHeldForPending = true;
+                        } else {
+                            return c.json({
+                                error: isAdminOnlyFail
+                                    ? '이 슬러그로 시작하는 문서는 관리자만 새로 생성할 수 있습니다.'
+                                    : '이 슬러그로 시작하는 문서는 ACL 정책상 새로 생성할 수 없습니다.',
+                                edit_acl: aclForCreate,
+                                min_age_days: minAge,
+                            }, 403);
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── 사람 편집 보류(pending changes) 분기 (신규 문서 생성) ──
+        // 전역 토글이 켜져 있고 생성자가 신뢰되지 않으면 페이지를 만들지 않고 보류한다.
+        // pageId=null·base_version=0 으로 저장하며, 승인 시 applyNewPageInsert 가 prefix/카테고리 ACL 을 재적용한다.
+        // 보류본은 body.category(raw) 를 저장하고, 승인 시점에 prefix 룰을 다시 평가한다.
+        if (isEditRequestEnabled(c.env)) {
+            const minAge = await getEditAclMinAgeDays(db);
+            // 생성 ACL 미달로 보류가 강제된 경우(createAclHeldForPending)는 신뢰 여부와 무관하게 항상 보류.
+            if (createAclHeldForPending || !(await isTrustedEditor(db, user, null, minAge, isAdmin))) {
+                const pendingEditId = await holdPendingEdit(c, user, {
+                    pageId: null,
+                    slug,
+                    action: 'create',
+                    baseRevisionId: null,
+                    baseVersion: 0,
+                    content: body.content,
+                    category: body.category || null,
+                    redirectTo: body.redirect_to || null,
+                    title: requestedTitle ?? null,
+                    hasTitleChange: !!requestedTitle,
+                    // 보류본은 사용자 입력분/자동요약분을 분리 보관한다(승인 시점에 병합).
+                    summary: userSummary,
+                    autoSummary,
+                    isPrivate: finalIsPrivate === 1,
+                    // create 승인은 applyNewPageInsert 가 prefix/카테고리 ACL 을 재평가하므로 저장된 edit_acl 을 쓰지 않는다.
+                    editAcl: null,
+                    applyEditAcl: false,
+                    // direct-create 가 받은 category_acl_choices 를 그대로 저장해 승인 시 재생(ignore/merge 등 보존).
+                    categoryAclChoices: categoryAclChoicesRaw ? JSON.stringify(categoryAclChoicesRaw) : null,
+                });
+                return c.json(safeJSON({ pending: true, slug, pending_edit_id: pendingEditId, created: false }));
+            }
+        }
+
+        // ── 신규 페이지 INSERT + 첫 리비전 + 후처리(재색인·캐시 무효화)를 통합 파이프라인에 위임 ──
+        // ACL/카테고리/비공개는 위에서 prefix 룰·카테고리 ACL 로 이미 preResolved 했고, 파이프라인은
+        // 그 값을 그대로 INSERT 한다. 사람 편집이므로 요약에 [MCP] 접두를 붙이지 않는다(summaryRaw: true).
+        // 신규 문서 생성은 승인(mcp) 경로와 동일하게 주시자 알림을 보내지 않는다(notify: false).
+        let createResult;
+        try {
+            createResult = await commitPageMutation(c, {
+                kind: 'create',
+                origin: 'http_put',
+                actor: user,
+                slug,
+                content: body.content,
+                // 직접 생성 리비전은 사용자 입력분 + 자동요약분 병합본을 요약으로 쓴다.
+                summary: mergedSummary,
+                summaryRaw: true,
+                category: effectiveCategory ?? null,
+                editAcl: finalEditAcl,
+                redirectTo: body.redirect_to || null,
+                title: requestedTitle ?? null,
+                editorNote: body.editor_note ?? null,
+                isPrivate: finalIsPrivate === 1,
+                rbac,
+                notify: false,
+            });
+        } catch (e: any) {
+            // applyNewPageInsert 가 UNIQUE race(slug/title)를 명시적 코드로 던지는 경우 409 로 매핑
+            // (페이지/리비전/R2 롤백은 헬퍼가 이미 수행). precheck 와 INSERT 사이의 동시 생성 안내.
+            if (e?.code === 'TITLE_TAKEN') {
+                return c.json({ error: '대체 제목이 다른 문서와 충돌했습니다. 잠시 후 다시 시도해주세요.' }, 409);
+            }
+            if (e?.code === 'SLUG_TAKEN') {
+                return c.json({ error: '같은 제목의 문서가 동시에 생성되었습니다. 다시 시도해주세요.' }, 409);
+            }
+            // R2 업로드 실패 등 그 외 오류(헬퍼가 페이지/리비전 롤백을 이미 수행) — 인라인 구현과 동일하게 500 JSON.
+            console.error('Page create via pipeline failed:', e);
+            return c.json({ error: '문서 저장에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500);
+        }
+
+        return c.json(safeJSON({ slug, version: 1, revision_id: createResult.revision_id }), 201);
+    }
+});
+
+/**
+ * PUT /w/:slug/editor-note
+ * 편집 메모(editor_note)만 변경하는 전용 엔드포인트.
+ *
+ * 편집 메모는 리비전으로 추적되지 않는 편집자 전용 메모다. 본문 변경 없이 편집 메모만
+ * 바꿀 때 이 엔드포인트를 사용하며, 가상 리비전(is_virtual=1)으로 기록된다.
+ * 본문 수정과 함께 편집 메모를 변경할 때는 일반 PUT /w/:slug 의 body 에 editor_note 를
+ * 포함해 해당 일반 리비전에 병합한다.
+ */
+wiki.put('/w/:slug/editor-note', requireAuth, requirePermission('wiki:edit'), async (c) => {
+    const slug = normalizeSlug(c.req.param('slug'));
+    if (!slug) {
+        return c.json({ error: '문서 제목이 비어 있습니다.' }, 400);
+    }
+    if (SLUG_FORBIDDEN_CHARS.test(slug)) {
+        return c.json({ error: '제목에 사용할 수 없는 특수문자가 포함되어 있습니다.' }, 400);
+    }
+    if (slug.startsWith('이미지:') || slug.startsWith('map:')) {
+        return c.json({ error: '이 네임스페이스는 편집 메모를 지원하지 않습니다.' }, 403);
+    }
+
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const db = c.env.DB;
+    await ensureEditorNoteMigration(db);
+
+    const body = await c.req.json<{ editor_note?: string | null }>();
+    const note = (typeof body.editor_note === 'string' ? body.editor_note : null) ?? null;
+
+    const page = await db
+        .prepare('SELECT id, version, editor_note, is_private, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL')
+        .bind(slug)
+        .first<{ id: number; version: number; editor_note: string | null; is_private: number; edit_acl: string | null }>();
+
+    if (!page) {
+        return c.json({ error: '문서를 찾을 수 없거나 삭제된 상태입니다.' }, 404);
+    }
+
+    // 비공개 문서 가시성 게이트
+    if (page.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
+        return c.json({ error: '문서를 찾을 수 없거나 삭제된 상태입니다.' }, 404);
+    }
+
+    // edit_acl 검사 — admin_only 가 없으면 관리자 우회.
+    {
+        const acl = parseEditAcl(page.edit_acl);
+        if (acl && acl.flags.length > 0) {
+            const isAdmin = rbac.can(user.role, 'admin:access');
+            const hasAdminOnly = acl.flags.includes('admin_only');
+            if (!isAdmin || hasAdminOnly) {
+                const minAge = await getEditAclMinAgeDays(db);
+                const ev = await evaluateEditAcl(db, acl, user, page.id, minAge, isAdmin);
+                if (!ev.allowed) {
+                    return c.json({
+                        error: hasAdminOnly && ev.decisive === 'admin_only'
+                            ? '이 문서는 관리자만 편집할 수 있습니다.'
+                            : '이 문서를 편집할 권한이 부족합니다.',
+                    }, 403);
+                }
+            }
+        }
+    }
+
+    // 변경이 없으면 no-op
+    const currentNote = page.editor_note ?? null;
+    if ((note ?? null) === currentNote) {
+        return c.json({ slug, editor_note: note, unchanged: true });
+    }
+
+    await db.prepare('UPDATE pages SET editor_note = ?, updated_at = unixepoch() WHERE id = ?')
+        .bind(note, page.id).run();
+
+    // 가상 리비전 기록 (본문 변경 없음)
+    try {
+        await insertVirtualRevision(db, page.id, '[편집메모] 편집 메모 변경', user.id);
+    } catch (e) {
+        console.error('editor-note virtual revision failed:', e);
+    }
+
+    c.executionCtx.waitUntil(Promise.allSettled([
+        invalidatePageCache(c, slug),
+        refreshRecentChangesCache(c),
+    ]));
+
+    return c.json({ slug, editor_note: note });
+});
+
+/**
+ * GET /w/category/:category
+ * 카테고리별 문서 목록 (page_categories 테이블 기반)
+ * - 그룹핑/정렬/페이지네이션은 모두 클라이언트가 수행하므로 서버는 전체 행을 단일 응답으로 반환
+ *   (SQLite 정렬은 ASCII 기반 NOCASE 라 한글/일본어/알파벳 혼합 그룹 순서와 일치시키기 어렵다)
+ */
+wiki.get('/w/category/:category', async (c) => {
+    const category = c.req.param('category');
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    const privateFilter = canSeePrivate ? '' : ' AND p.is_private = 0';
+
+    const query = `
+        SELECT p.slug, p.updated_at
+        FROM page_categories pc
+        JOIN pages p ON pc.page_id = p.id
+        WHERE p.deleted_at IS NULL${privateFilter}
+          AND pc.category = ?
+        ORDER BY p.slug ASC
+    `;
+
+    const { results } = await db
+        .prepare(query)
+        .bind(category)
+        .all();
+
+    return c.json(safeJSON({ pages: results, total: results.length }));
+});
+
+/**
+ * GET /w/:slug/revisions
+ * 리비전 목록
+ */
+wiki.get('/w/:slug/revisions', async (c) => {
+    const slug = c.req.param('slug');
+    const offset = Math.max(0, parseInt(c.req.query('offset') || '0', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '10', 10)));
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const isAdmin = user && rbac.can(user.role, 'admin:access');
+
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    const page = await db
+        .prepare('SELECT id, deleted_at, is_private FROM pages WHERE slug = ?')
+        .bind(slug)
+        .first<{ id: number; deleted_at: number | null; is_private: number }>();
+
+    if (!page || (page.deleted_at && !isAdmin)) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    if (page.is_private === 1 && !canSeePrivate) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
+    await ensureRevisionsVirtualMigration(db);
+    // 비관리자에게는 삭제된 리비전 행 자체가 존재하지 않는 것처럼 가린다.
+    const revDeletedFilter = isAdmin ? '' : ' AND r.deleted_at IS NULL';
+    const countDeletedFilter = isAdmin ? '' : ' AND deleted_at IS NULL';
+    // fully_purged: 백엔드 하드 삭제 핸들러의 "완전히 정리됨" 가드와 동일 식.
+    // 부분 실패 상태(r2_key 남음 또는 content 남음)면 false 가 되어 UI 가 retry 버튼을 노출.
+    const adminCols = isAdmin
+        ? `, r.deleted_at, r.purged_at,
+           (CASE WHEN r.purged_at IS NOT NULL AND r.r2_key IS NULL AND r.content = '' THEN 1 ELSE 0 END) AS fully_purged`
+        : '';
+
+    const [countResult, listResult] = await db.batch([
+        db.prepare(`SELECT COUNT(*) as total FROM revisions WHERE page_id = ?${countDeletedFilter}`).bind(page.id),
+        db
+            .prepare(
+                `SELECT r.id, r.page_version, r.summary, r.created_at, r.is_virtual, u.id as author_id, u.name as author_name, u.picture as author_picture,
+                        ${ROLE_CASE_SQL} as author_role,
+                        u.email as _author_email${adminCols}
+           FROM revisions r
+           LEFT JOIN users u ON r.author_id = u.id
+           WHERE r.page_id = ?${revDeletedFilter}
+           ORDER BY r.created_at DESC
+           LIMIT ? OFFSET ?`
+            )
+            .bind(page.id, limit, offset),
+    ]);
+
+    const rawTotal = (countResult.results[0] as any)?.total;
+    const parsedTotal = Number(rawTotal);
+    const total = Number.isFinite(parsedTotal) ? parsedTotal : 0;
+
+    enrichRoles(listResult.results, 'author_role', '_author_email', c.env);
+
+    // 최신 리비전은 삭제 불가 — 클라이언트가 액션 버튼을 비활성화 할 수 있도록 동봉.
+    // 또한 가상 리비전이 목록 맨 위에 올 수 있어 위치 기반 "현재 버전" 판정이 어긋나므로,
+    // 클라이언트가 last_revision_id 로 본문 최신 리비전을 정확히 식별하도록 항상 내려준다.
+    const lastRevisionId = (await db.prepare('SELECT last_revision_id FROM pages WHERE id = ?').bind(page.id)
+        .first<{ last_revision_id: number | null }>())?.last_revision_id ?? null;
+
+    return c.json(safeJSON({
+        revisions: listResult.results,
+        total,
+        is_admin_view: isAdmin,
+        last_revision_id: lastRevisionId,
+        can_hard_delete: !!user && rbac.can(user.role, '*'),
+    }));
+});
+
+/**
+ * GET /w/:slug/revisions/:id
+ * 특정 리비전 내용
+ */
+wiki.get('/w/:slug/revisions/:id', async (c) => {
+    const revId = parseInt(c.req.param('id'));
+    const slug = c.req.param('slug');
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const isAdmin = user && rbac.can(user.role, 'admin:access');
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+
+    const page = await db
+        .prepare('SELECT id, deleted_at, is_private FROM pages WHERE slug = ?')
+        .bind(slug)
+        .first<{ id: number; deleted_at: number | null; is_private: number }>();
+
+    if (!page || (page.deleted_at && !isAdmin)) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    if (page.is_private === 1 && !canSeePrivate) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
+    await ensureRevisionsVirtualMigration(db);
+    const revision = await db
+        .prepare(
+            `SELECT r.id, r.page_id, r.page_version, r.content, r.r2_key, r.summary, r.author_id, r.created_at,
+                    r.deleted_at, r.purged_at, r.is_virtual,
+                    u.name as author_name
+       FROM revisions r
+       LEFT JOIN users u ON r.author_id = u.id
+       WHERE r.id = ? AND r.page_id = ?`
+        )
+        .bind(revId, page.id)
+        .first<{ id: number; page_id: number; page_version: number | null; content: string; r2_key: string | null; summary: string | null; author_id: number | null; created_at: number; deleted_at: number | null; purged_at: number | null; is_virtual: number; author_name: string | null }>();
+
+    if (!revision) {
+        return c.json({ error: '리비전을 찾을 수 없습니다.' }, 404);
+    }
+
+    // 비관리자에게는 삭제된 리비전이 존재하지 않는 것처럼 보여야 한다.
+    if (revision.deleted_at && !isAdmin) {
+        return c.json({ error: '리비전을 찾을 수 없습니다.' }, 404);
+    }
+
+    // 가상 리비전은 본문이 없다(비-본문 변경 기록). R2 조회를 건너뛰고 빈 본문으로 반환한다.
+    if (revision.is_virtual) {
+        return c.json(safeJSON({ ...revision, content: '', virtual: true }));
+    }
+
+    // 하드 삭제된 리비전은 R2 본문이 없으므로 빈 본문으로 반환 (관리자 전용 경로).
+    if (revision.purged_at) {
+        return c.json(safeJSON({
+            ...revision,
+            content: '',
+            purged: true,
+        }));
+    }
+
+    // r2_key가 있으면 R2에서 본문 조회
+    const origin = new URL(c.req.url).origin;
+    const content = await getRevisionContent(c.env.MEDIA, revision, origin);
+
+    return c.json(safeJSON({ ...revision, content }));
+});
+
+/**
+ * GET /w/:slug/revisions/:id/diff
+ * 특정 리비전과 이전 리비전의 내용을 비교용으로 반환
+ */
+wiki.get('/w/:slug/revisions/:id/diff', async (c) => {
+    const revId = parseInt(c.req.param('id'));
+    const slug = c.req.param('slug');
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const isAdmin = user && rbac.can(user.role, 'admin:access');
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+
+    const page = await db
+        .prepare('SELECT id, deleted_at, is_private FROM pages WHERE slug = ?')
+        .bind(slug)
+        .first<{ id: number; deleted_at: number | null; is_private: number }>();
+
+    if (!page || (page.deleted_at && !isAdmin)) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    if (page.is_private === 1 && !canSeePrivate) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
+    await ensureRevisionsVirtualMigration(db);
+    // 해당 리비전 조회
+    const revision = await db
+        .prepare(
+            `SELECT id, page_version, content, r2_key, page_id, created_at, deleted_at, purged_at, is_virtual
+       FROM revisions
+       WHERE id = ? AND page_id = ?`
+        )
+        .bind(revId, page.id)
+        .first<{ id: number; page_version: number | null; content: string; r2_key: string | null; page_id: number; created_at: number; deleted_at: number | null; purged_at: number | null; is_virtual: number }>();
+
+    if (!revision || (revision.deleted_at && !isAdmin)) {
+        return c.json({ error: '리비전을 찾을 수 없습니다.' }, 404);
+    }
+
+    // 가상 리비전은 본문이 없어 비교할 수 없다.
+    if (revision.is_virtual) {
+        return c.json({ error: '가상 리비전은 비교할 수 없습니다.' }, 409);
+    }
+
+    // 바로 이전 리비전 조회 — 비관리자에게는 살아있는(=deleted_at IS NULL) 직전 리비전과
+    // 짝지어 연속 삭제된 리비전을 자동으로 건너뛴다.
+    // 가상 리비전(is_virtual=1)은 본문이 없으므로 "이전 본문"으로 잡히지 않도록 제외한다.
+    const prevQuery = isAdmin
+        ? `SELECT id, page_version, content, r2_key, deleted_at, purged_at FROM revisions
+           WHERE page_id = ? AND id < ? AND is_virtual = 0
+           ORDER BY id DESC LIMIT 1`
+        : `SELECT id, page_version, content, r2_key, deleted_at, purged_at FROM revisions
+           WHERE page_id = ? AND id < ? AND deleted_at IS NULL AND is_virtual = 0
+           ORDER BY id DESC LIMIT 1`;
+    const prevRevision = await db
+        .prepare(prevQuery)
+        .bind(revision.page_id, revId)
+        .first<{ id: number; page_version: number | null; content: string; r2_key: string | null; deleted_at: number | null; purged_at: number | null }>();
+
+    // R2 or D1에서 본문 조회 — 하드 삭제된(purged) 리비전은 본문이 비어있으므로 R2 호출을 건너뛴다.
+    const origin = new URL(c.req.url).origin;
+    const fetchContent = (rev: { content: string; r2_key: string | null; purged_at: number | null }) =>
+        rev.purged_at ? Promise.resolve('') : getRevisionContent(c.env.MEDIA, rev, origin);
+    const [newContent, oldContent] = await Promise.all([
+        fetchContent(revision),
+        prevRevision ? fetchContent(prevRevision) : Promise.resolve(''),
+    ]);
+
+    return c.json(safeJSON({
+        old_content: oldContent,
+        new_content: newContent,
+        old_revision_id: prevRevision?.id ?? null,
+        new_revision_id: revision.id,
+        old_page_version: prevRevision?.page_version ?? null,
+        new_page_version: revision.page_version ?? null,
+    }));
+});
+
+/**
+ * GET /w/:slug/subdocs
+ * 하위 문서 목록 (제목이 '{slug}/'로 시작하는 문서들)
+ * - ?immediate=1 → 바로 아래 단계 자식만 (slug/A 만, slug/A/B 제외)
+ */
+wiki.get('/w/:slug/subdocs', async (c) => {
+    const slug = c.req.param('slug');
+    const immediate = c.req.query('immediate') === '1';
+    // public_only=1 → 열람 권한과 무관하게 비공개 문서를 항상 제외한다.
+    // (예: 에디터의 "하위 문서 구조 삽입"은 결과 링크가 모든 독자에게 노출되므로 공개 문서만 삽입)
+    const publicOnly = c.req.query('public_only') === '1';
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = !publicOnly && rbac.can(user?.role ?? 'guest', 'wiki:private');
+    const privateFilter = canSeePrivate ? '' : ' AND is_private = 0';
+
+    // LIKE 패턴은 D1 의 50바이트 한도에 걸려 긴(특히 한글) 슬러그에서 쿼리가 통째로 실패한다.
+    // prefix 범위 비교로 대체한다 — 상세 근거는 subtreeSlugRange 주석 참고.
+    const range = subtreeSlugRange(slug);
+    if (!range) return c.json(safeJSON({ subdocs: [] }));
+
+    if (immediate) {
+        // 바로 아래 단계만: `base/` 를 떼고 남은 부분에 '/' 가 없으면 직속 자식이다.
+        // length()/substr() 은 둘 다 문자(코드포인트) 단위라 JS 의 UTF-16 length 와 달리
+        // 서로게이트 페어(이모지 등)가 섞인 슬러그에서도 어긋나지 않는다.
+        const query = `
+            SELECT slug, updated_at
+            FROM pages
+            WHERE deleted_at IS NULL${privateFilter}
+              AND slug > ?1 AND slug < ?2
+              AND instr(substr(slug, length(?1) + 1), '/') = 0
+            ORDER BY slug ASC LIMIT 200
+        `;
+        const { results } = await db
+            .prepare(query)
+            .bind(range.lower, range.upper)
+            .all();
+        return c.json(safeJSON({ subdocs: results }));
+    }
+
+    const query = `
+        SELECT slug, updated_at
+        FROM pages
+        WHERE deleted_at IS NULL${privateFilter}
+          AND slug > ? AND slug < ?
+        ORDER BY slug ASC LIMIT 200
+    `;
+
+    const { results } = await db
+        .prepare(query)
+        .bind(range.lower, range.upper)
+        .all();
+
+    return c.json(safeJSON({ subdocs: results }));
+});
+
+/**
+ * GET /w/:slug/nav-tree
+ * docs 레이아웃 좌측 그룹 nav 사이드바용 트리. 그룹 루트는 슬러그 첫 세그먼트(`slug.split('/')[0]`).
+ * - 콜론 네임스페이스(`틀:`/`이미지:`)는 '/' 로 끊기지 않아 그대로 그룹 루트에 포함된다.
+ * - `map:` 가상 슬러그는 빈 트리를 반환해 클라이언트가 nav 를 숨기도록 한다.
+ * - 응답에 isCurrent 는 포함하지 않는다 — 같은 그룹의 문서들이 캐시를 공유하도록, 현재 문서
+ *   하이라이트는 클라이언트가 slug 매칭으로 처리한다. (캐시/권한 정책은 map: 분기와 동일)
+ */
+wiki.get('/w/:slug/nav-tree', async (c) => {
+    // 비공개 위키(WIKI_VISIBILITY=closed)에서는 비로그인 사용자가 그룹 트리로 슬러그 구조를
+    // 열람·열거할 수 없도록 캐시/DB 접근 전에 차단한다 (/api/w/:slug 등 다른 읽기 API 와 동일).
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
+        return c.json({ error: '로그인이 필요합니다.' }, 401);
+    }
+    const slug = c.req.param('slug');
+    const db = c.env.DB;
+    const user = c.get('user');
+    const cache = caches.default;
+    const cacheKey = c.req.url;
+
+    // map: 가상 문서는 그 자체가 트리 뷰이므로 그룹 nav 를 만들지 않는다.
+    if (isMapNamespace(slug)) {
+        return c.json(safeJSON({ groupRoot: null, truncated: false, root: null }), 200, { 'Cache-Control': 'private, no-store' });
+    }
+
+    const groupRoot = slug.split('/')[0];
+
+    // map: 분기와 동일하게, 비로그인 요청에서만 글로벌 캐시를 조회한다(권한자가 anonymous 캐시에 갇히지 않도록).
+    if (!user) {
+        const cached = await cache.match(cacheKey);
+        if (cached) return new Response(cached.body, cached);
+    }
+
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    const result = await buildGroupTree({ db, baseSlug: groupRoot, canSeePrivate });
+    const payload = safeJSON({ groupRoot, truncated: result.truncated, root: result.root });
+
+    const safeForSharedCache = !user && !result.hasPrivateChildren;
+    if (safeForSharedCache) {
+        // 자식 mutation 시 자동 무효화되지 않으므로 staleness 윈도우를 짧게 유지 (map: 와 동일).
+        const fresh = c.json(payload, 200, { 'Cache-Control': `public, max-age=${MAP_CACHE_MAX_AGE_SECONDS}` });
+        c.executionCtx.waitUntil(cache.put(cacheKey, fresh.clone()));
+        return fresh;
+    }
+    return c.json(payload, 200, { 'Cache-Control': 'private, no-store' });
+});
+
+/**
+ * GET /w/:slug/backlinks
+ * 이 문서를 참조하는 문서 목록 (page_links 테이블 기반)
+ * - 문서 링크: [[slug]] → link_type = 'wikilink'
+ * - 틀 트랜스클루전: {{slug}} → link_type = 'template'
+ */
+wiki.get('/w/:slug/backlinks', async (c) => {
+    const slug = c.req.param('slug');
+    const db = c.env.DB;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const isAdmin = user && rbac.can(user.role, 'admin:access');
+
+    // page_links 테이블에서 target_slug로 검색
+    const targetSlugs: string[] = [slug];
+
+    // 틀 접두사인 경우 접두사 없는 이름으로도 검색
+    const templatePrefixes = ['틀:', 'template:', '템플릿:'];
+    for (const prefix of templatePrefixes) {
+        if (slug.startsWith(prefix)) {
+            const templateName = slug.substring(prefix.length);
+            targetSlugs.push(templateName);
+            break;
+        }
+    }
+
+    const placeholders = targetSlugs.map(() => '?').join(', ');
+    // page_links.target_slug는 extractPageLinks()가 '#섹션'을 제거한 뒤 저장하므로
+    // 단순 IN 매칭만으로 섹션 앵커를 포함한 모든 위키링크가 포착됨
+    // 관리자: soft delete된 문서도 is_deleted 플래그와 함께 반환
+    // 일반 사용자: soft delete된 문서 제외 (접근 불가 + 메타데이터 노출 방지)
+    let query = `
+        SELECT DISTINCT p.slug, p.updated_at,
+            CASE WHEN p.deleted_at IS NOT NULL THEN 1 ELSE 0 END AS is_deleted
+        FROM page_links pl
+        JOIN pages p ON pl.source_page_id = p.id
+        WHERE p.slug != ?
+          AND pl.blog = 0
+          AND pl.source_type = 'page'
+          AND pl.link_type IN ('wikilink', 'template', 'extension')
+          AND pl.target_slug IN (${placeholders})
+    `;
+    if (!isAdmin) {
+        query += ' AND p.deleted_at IS NULL';
+    }
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+    if (!canSeePrivate) {
+        query += ' AND p.is_private = 0';
+    }
+    query += ' ORDER BY p.updated_at DESC LIMIT 100';
+
+    const backlinks = await db
+        .prepare(query)
+        .bind(slug, ...targetSlugs)
+        .all();
+
+    return c.json(safeJSON({ backlinks: backlinks.results }));
+});
+
+/**
+ * DELETE /w/:slug
+ * 문서 삭제 (관리자 전용)
+ * - super_admin: ?hard=true 시 영구 삭제 (문서, 리비전, 리다이렉트)
+ * - admin/super_admin: Soft Delete
+ * - "이미지:" 접두사 문서는 media 테이블로 관리되므로 이 라우트 대상이 아님.
+ *   이미지 삭제는 관리자 페이지(/admin-media)에서 수행한다.
+ */
+wiki.delete('/w/:slug', requireAuth, async (c) => {
+    const slug = c.req.param('slug');
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const db = c.env.DB;
+    const hard = c.req.query('hard') === 'true';
+
+    const isAdmin = rbac.can(user.role, 'admin:access');
+
+    // Fetch page first to check permissions.
+    // 영구 삭제(hard)는 이미 소프트삭제된 문서도 대상이므로 deleted_at 필터 없이 조회한다.
+    // (deleted_at IS NULL 로 조회하면 소프트삭제된 문서를 영구 삭제할 때 "문서를 찾을 수 없음"으로 오거부됨)
+    const page = await db.prepare('SELECT id, edit_acl, deleted_at FROM pages WHERE slug = ?')
+        .bind(slug).first<{ id: number; edit_acl: string | null; deleted_at: number | null }>();
+
+    if (!page) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    if (hard) {
+        if (!rbac.can(user.role, '*')) {
+            return c.json({ error: '영구 삭제는 최고 관리자만 가능합니다.' }, 403);
+        }
+
+        // 리비전 R2 파일 삭제
+        const revisionKeys = await collectRevisionR2Keys(db, [page.id]);
+        if (revisionKeys.length > 0) {
+            await Promise.all(revisionKeys.map(k => c.env.MEDIA.delete(k)));
+        }
+
+        // Hard Delete Transaction
+        // 자식(토론 댓글/뮤트·토론) → 부모(페이지) 순서로 모든 참조 행을 정리해 FK 제약을 회피한다.
+        // (discussions/discussion_comments 누락으로 인한 FK 실패·orphan 잔존 버그를 공유 헬퍼로 수정)
+        await db.batch(buildHardDeleteStatements(db, page.id));
+
+        // 캐시 무효화 (API + SSR) + 최근 변경 즉시 갱신
+        // 틀: 등 콜론 포함 문서인 경우 역링크 문서 캐시도 함께 무효화
+        c.executionCtx.waitUntil(Promise.allSettled([
+            invalidatePageCache(c, slug),
+            refreshRecentChangesCache(c),
+            invalidateBacklinkCaches(c, slug, db),
+        ]));
+
+        // 관리자 로그 기록
+        c.executionCtx.waitUntil(
+            db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
+                .bind('hard_delete', `문서 영구 삭제: ${slug}`, user.id)
+                .run().catch((e: any) => console.error('Failed to write admin log:', e))
+        );
+
+        // RAG 미러 정리: 영구 삭제는 D1 에서 완전히 사라지므로 인덱스 위생을 위해 R2 객체도 제거.
+        removePageMirror(c.env, c.executionCtx, slug);
+
+        return c.json({ message: '문서가 영구 삭제되었습니다.' });
+    } else {
+        // 이미 소프트삭제된 문서는 다시 소프트삭제할 수 없다(영구 삭제만 가능).
+        // 이전에는 deleted_at IS NULL 조회로 이 경우 404 를 반환했으므로 동일 시맨틱을 유지한다.
+        if (page.deleted_at) {
+            return c.json({ error: '이미 삭제된 문서입니다.' }, 404);
+        }
+
+        // Soft delete requires wiki:delete permission
+        if (!rbac.can(user.role, 'wiki:delete')) {
+            return c.json({ error: '문서 삭제 권한이 없습니다.' }, 403);
+        }
+
+        // 삭제는 본문을 통째로 무력화하는 편집의 일종이므로 일반 편집(PUT)·되돌리기(revert)와
+        // 동일한 edit_acl 게이트를 적용한다. wiki:delete 를 비관리자 역할에 부여한 커스텀 RBAC 에서
+        // ACL 잠금(admin_only/aged/page_editor 등)을 우회해 삭제하는 것을 막는다.
+        // (삭제는 편집 요청 보류 모드가 없으므로 ACL 미달은 하드 거부.)
+        const aclDelete = parseEditAcl(page.edit_acl);
+        if (aclDelete && aclDelete.flags.length > 0) {
+            const hasAdminOnly = aclDelete.flags.includes('admin_only');
+            if (!isAdmin || hasAdminOnly) {
+                const minAge = await getEditAclMinAgeDays(db);
+                const ev = await evaluateEditAcl(db, aclDelete, user, page.id, minAge, isAdmin);
+                if (!ev.allowed) {
+                    const isAdminOnlyFail = hasAdminOnly && !isAdmin;
+                    return c.json({
+                        error: isAdminOnlyFail
+                            ? '관리자 전용 문서는 관리자만 삭제할 수 있습니다.'
+                            : '이 문서를 삭제할 권한이 부족합니다.',
+                        edit_acl: aclDelete,
+                        min_age_days: minAge,
+                    }, 403);
+                }
+            }
+        }
+
+        // Soft Delete
+        await db.prepare('UPDATE pages SET deleted_at = unixepoch() WHERE id = ?')
+            .bind(page.id)
+            .run();
+
+        // 소프트삭제 후 권한 없는 유저의 stale 주시·토론 mute 정리.
+        // 'deleted' 모드는 admin:access 권한 보유자만 유지한다.
+        await cleanupUnauthorizedSubscriptions(db, c.env, rbac, page.id, 'deleted');
+
+        // 캐시 무효화 (API + SSR) + 최근 변경 즉시 갱신
+        // 틀: 등 콜론 포함 문서인 경우 역링크 문서 캐시도 함께 무효화
+        c.executionCtx.waitUntil(Promise.allSettled([
+            invalidatePageCache(c, slug),
+            refreshRecentChangesCache(c),
+            invalidateBacklinkCaches(c, slug, db),
+        ]));
+
+        // 관리자 로그 기록
+        c.executionCtx.waitUntil(
+            db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
+                .bind('soft_delete', `문서 삭제: ${slug}`, user.id)
+                .run().catch((e: any) => console.error('Failed to write admin log:', e))
+        );
+
+        return c.json({ message: '문서가 삭제되었습니다.' });
+    }
+});
+
+/**
+ * POST /w/:slug/restore
+ * 문서 복원 (관리자 전용)
+ * - Soft Delete된 문서를 복구
+ */
+wiki.post('/w/:slug/restore', requireAuth, async (c) => {
+    const slug = c.req.param('slug');
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const db = c.env.DB;
+
+    if (!rbac.can(user.role, 'wiki:delete')) {
+        return c.json({ error: '권한이 없습니다.' }, 403);
+    }
+
+    // "이미지:" / "map:" 예약 네임스페이스는 일반 페이지로 복원될 수 없다.
+    // 복원되면 가상 뷰 로직과 충돌해 접근 불가 페이지가 네임스페이스를 점유한다.
+    if (slug.startsWith('이미지:')) {
+        return c.json({ error: '"이미지:" 네임스페이스는 일반 문서로 복원할 수 없습니다.' }, 400);
+    }
+    if (slug.startsWith('map:')) {
+        return c.json({ error: '"map:" 네임스페이스는 가상 트리 뷰 전용이므로 복원할 수 없습니다.' }, 400);
+    }
+
+    const page = await db.prepare('SELECT id, deleted_at FROM pages WHERE slug = ?').bind(slug).first<{ id: number; deleted_at: number | null }>();
+
+    if (!page) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    if (!page.deleted_at) {
+        return c.json({ error: '문서가 삭제된 상태가 아닙니다.' }, 400);
+    }
+
+    // 복원 (deleted_at 해제)
+    await db.prepare('UPDATE pages SET deleted_at = NULL WHERE id = ?').bind(page.id).run();
+
+    // 관리자 로그 기록
+    c.executionCtx.waitUntil(
+        db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
+            .bind('restore', `문서 복원: ${slug}`, user.id)
+            .run().catch((e: any) => console.error('Failed to write admin log:', e))
+    );
+
+    // 캐시 무효화 (API + SSR) + 최근 변경 즉시 갱신
+    // 틀: 등 콜론 포함 문서인 경우 역링크 문서 캐시도 함께 무효화
+    c.executionCtx.waitUntil(Promise.allSettled([
+        invalidatePageCache(c, slug),
+        refreshRecentChangesCache(c),
+        invalidateBacklinkCaches(c, slug, db),
+    ]));
+
+    return c.json({ message: '문서가 복원되었습니다.' });
+});
+
+/**
+ * 단일 문서 이동(이름 변경)의 핵심 로직. 라우트(`POST /w/:slug/move`)와
+ * 관리자 대량 이동(`POST /api/admin/bulk-manage/move`)이 공유하는 단일 소스다.
+ * - 기존 문서 이름(slug)을 새로운 이름으로 변경하며 리디렉션은 생성하지 않는다.
+ * - Backlinks FROM this page 는 page_links 재구축으로 새 source slug 를 반영한다.
+ * - updateBacklinks=true 인 경우, 이 문서를 가리키던 역링크 문서들의 본문도 일괄 재작성한다.
+ *
+ * 검증/권한 실패는 throw 하지 않고 `{ ok: false, status, error }` 로 반환해
+ * 대량 호출 측이 항목별로 건너뛸 수 있게 한다(이동 성공분은 그대로 유지).
+ */
+export interface MovePageOutcome {
+    ok: boolean;
+    /** ok=false 일 때 HTTP 상태 힌트(400/403/404/409). */
+    status?: 400 | 403 | 404 | 409;
+    error?: string;
+    old_slug: string;
+    /** ok=true 일 때 정규화된 새 slug. */
+    new_slug?: string;
+    backlinks?: { updated: number; skipped: string[]; conflicts: string[]; total: number };
+    backlinks_error?: string;
+}
+
+export async function movePage(
+    c: any,
+    currentSlug: string,
+    newSlugRaw: string,
+    user: { id: number; role: string },
+    rbac: RBAC,
+    options?: { updateBacklinks?: boolean },
+): Promise<MovePageOutcome> {
+    const db: D1Database = c.env.DB;
+    const fail = (status: 400 | 403 | 404 | 409, error: string): MovePageOutcome =>
+        ({ ok: false, status, error, old_slug: currentSlug });
+
+    if (!newSlugRaw || newSlugRaw.trim().length === 0) {
+        return fail(400, '새 문서 이름을 입력해주세요.');
+    }
+
+    // 앞뒤 공백 + 앞뒤 슬래시 제거 (슬래시는 하위 문서 구분자로만 유의미)
+    const trimmedNewSlug = normalizeSlug(newSlugRaw);
+    if (!trimmedNewSlug) {
+        return fail(400, '새 문서 이름을 입력해주세요.');
+    }
+
+    // 동일 슬러그로의 no-op 이동 차단. findConflictingPage 는 page.id 를 제외하므로 자기 자신을
+    // 잡아내지 않아, 그대로 두면 admin_log 와 백링크 재작성이 무의미하게 실행된다.
+    if (trimmedNewSlug === currentSlug) {
+        return fail(400, '새 문서 이름이 기존 이름과 동일합니다.');
+    }
+
+    // 보안: 슬러그 금지 문자 점검
+    if (SLUG_FORBIDDEN_CHARS.test(trimmedNewSlug)) {
+        return fail(400, '제목에 사용할 수 없는 특수문자가 포함되어 있습니다.');
+    }
+
+    // "이미지:" 네임스페이스는 media 테이블 기반 이미지 문서 전용이므로 이동 대상/출처가 될 수 없다
+    if (currentSlug.startsWith('이미지:') || trimmedNewSlug.startsWith('이미지:')) {
+        return fail(400, '"이미지:" 네임스페이스는 이미지 문서 전용이며, 일반 문서 이동 대상이 될 수 없습니다.');
+    }
+
+    // "map:" 네임스페이스는 가상 트리 뷰 전용이므로 이동 대상/출처가 될 수 없다
+    if (currentSlug.startsWith('map:') || trimmedNewSlug.startsWith('map:')) {
+        return fail(400, '"map:" 네임스페이스는 가상 트리 뷰 전용이며, 일반 문서 이동 대상이 될 수 없습니다.');
+    }
+
+    // 네임스페이스 이동 제한: 콜론이 포함된 문서는 다른 네임스페이스로 이동 불가
+    const isNamespaceDocument = currentSlug.includes(':');
+    const currentNamespace = isNamespaceDocument ? currentSlug.split(':')[0] : '';
+    const newNamespace = trimmedNewSlug.includes(':') ? trimmedNewSlug.split(':')[0] : '';
+    if (isNamespaceDocument && currentNamespace !== newNamespace) {
+        return fail(400, '네임스페이스가 있는 문서는 다른 네임스페이스로 이동할 수 없습니다.');
+    }
+
+    // 페이지 먼저 조회 — 충돌 검사에서 자기 자신을 제외해야 한다 (rename to same slug 등 idempotent 호출 안전망).
+    const page = await db.prepare('SELECT id, category, is_private, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL').bind(currentSlug).first<{ id: number, category: string | null, is_private: number, edit_acl: string | null }>();
+    if (!page) {
+        return fail(404, '문서를 찾을 수 없습니다.');
+    }
+
+    // new_slug 가 다른 페이지의 slug 또는 title 과 충돌하는지 검사.
+    // 소프트 삭제 행도 포함 — pages.slug UNIQUE 와 idx_pages_title_unique 둘 다 deleted_at 무관하게 강제.
+    const moveConflict = await findConflictingPage(db, trimmedNewSlug, page.id);
+    if (moveConflict) {
+        const deletedSuffix = moveConflict.isDeleted ? ' (소프트 삭제 상태)' : '';
+        const msg = moveConflict.matchedColumn === 'slug'
+            ? `이미 존재하는 문서 이름입니다.${deletedSuffix}`
+            : `'${trimmedNewSlug}' 는 이미 다른 문서의 대체 제목과 같아 사용할 수 없습니다.${deletedSuffix}`;
+        return fail(409, msg);
+    }
+
+    if (page.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
+        return fail(404, '문서를 찾을 수 없습니다.');
+    }
+
+    // admin_only ACL 문서 이동은 관리자만 가능. (구 is_locked 분기 대체)
+    const moveIsAdmin = rbac.can(user.role, 'admin:access');
+    if (!moveIsAdmin) {
+        const aclMove = parseEditAcl(page.edit_acl);
+        if (aclMove && aclMove.flags.includes('admin_only')) {
+            return fail(403, '관리자 전용 문서는 관리자만 이동할 수 있습니다.');
+        }
+    }
+
+    // Update Page Slug — pages_slug_vs_title_update / slug UNIQUE 트리거가 race 를 잡으면 409.
+    // 본문 변경은 없지만 가상 리비전을 남기는 비-본문 변경이므로 updated_at 도 함께 bump 한다
+    // (MCP edit_slug 슬러그 전용 이동과 동일 정책 — '최근 변경'(updated_at 정렬)에 반영).
+    try {
+        await db.prepare('UPDATE pages SET slug = ?, updated_at = unixepoch() WHERE id = ?')
+            .bind(trimmedNewSlug, page.id)
+            .run();
+    } catch (e: any) {
+        const msg = String(e?.message || e);
+        if (/UNIQUE|constraint/i.test(msg)) {
+            console.error('Page slug UPDATE failed due to UNIQUE race:', e);
+            return fail(409, '새 제목이 다른 문서와 충돌합니다. 다시 시도해주세요.');
+        }
+        throw e;
+    }
+
+    // RAG 미러: slug 가 바뀌었으므로 이전 키→신규 키로 객체를 옮긴다(best-effort, 플러그인 OFF 시 no-op).
+    renamePageMirror(c.env, c.executionCtx, currentSlug, trimmedNewSlug);
+
+    // 본문 변경 없는 주소(slug) 이동을 편집 이력에 가상 리비전으로 남긴다.
+    // (단건 이동과 대량 이동(AdminJobDO)이 모두 movePage 를 거치므로 양쪽 자동 커버.)
+    try {
+        await insertVirtualRevision(
+            db,
+            page.id,
+            `[이동] 주소 변경: ${currentSlug} → ${trimmedNewSlug}`,
+            user.id
+        );
+    } catch (e) {
+        console.error('Failed to write virtual revision for page move:', e);
+    }
+
+    // 자동 카테고리 prefix 룰: 새 slug 가 룰에 매칭되면 카테고리 합집합 적용
+    try {
+        const ruleRows = await db
+            .prepare('SELECT prefix, categories FROM category_prefix_rules')
+            .all<{ prefix: string; categories: string }>();
+        const merged = mergeCategoriesFromRules(trimmedNewSlug, page.category, ruleRows.results || []);
+        const mergedValue = merged || null;
+        if (mergedValue !== (page.category ?? null)) {
+            const stmts: D1PreparedStatement[] = [
+                db.prepare('UPDATE pages SET category = ? WHERE id = ?').bind(mergedValue, page.id),
+                ...buildCategoryOnlyStatements(db, page.id, mergedValue),
+            ];
+            await db.batch(stmts);
+        }
+    } catch (e) {
+        console.error('category_prefix_rules apply failed (move):', e);
+    }
+
+    // 관리자 로그 기록
+    c.executionCtx.waitUntil(
+        db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
+            .bind('doc_move', `문서 이름변경: ${currentSlug} → ${trimmedNewSlug}`, user.id)
+            .run().catch((e: any) => console.error('Failed to write admin log:', e))
+    );
+
+    // 역링크 본문 일괄 재작성 (옵션)
+    let backlinksResult: { updated: string[]; skipped: string[]; conflicts: string[]; total: number } | undefined;
+    let backlinksError: string | undefined;
+    if (options?.updateBacklinks === true) {
+        try {
+            backlinksResult = await rewriteBacklinksForRename(c, currentSlug, trimmedNewSlug, user, rbac);
+        } catch (e) {
+            // 이동 자체는 이미 커밋되었으므로 성공으로 처리하되, 실패 사실을 응답 본문으로 명시해
+            // 관리자가 역링크가 갱신되지 않았음을 인지할 수 있게 한다.
+            console.error('rewriteBacklinksForRename failed:', e);
+            backlinksError = e instanceof Error ? e.message : String(e);
+            // 관리자 로그에도 실패 기록 남김
+            c.executionCtx.waitUntil(
+                db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
+                    .bind(
+                        'doc_move_backlinks_error',
+                        `역링크 일괄 갱신 실패: ${currentSlug} → ${trimmedNewSlug} (${backlinksError})`,
+                        user.id
+                    )
+                    .run().catch((logErr: any) => console.error('Failed to write admin_log for backlinks error:', logErr))
+            );
+        }
+    }
+
+    // 캐시 무효화 (API + SSR) + 최근 변경 즉시 갱신
+    // 틀: 등 콜론 포함 문서인 경우 이동 전 슬러그의 역링크 문서 캐시도 함께 무효화
+    c.executionCtx.waitUntil(Promise.allSettled([
+        invalidatePageCache(c, currentSlug),
+        invalidatePageCache(c, trimmedNewSlug),
+        refreshRecentChangesCache(c),
+        invalidateBacklinkCaches(c, currentSlug, db),
+    ]));
+
+    const outcome: MovePageOutcome = { ok: true, old_slug: currentSlug, new_slug: trimmedNewSlug };
+    if (backlinksResult) {
+        outcome.backlinks = {
+            updated: backlinksResult.updated.length,
+            skipped: backlinksResult.skipped,
+            conflicts: backlinksResult.conflicts,
+            total: backlinksResult.total,
+        };
+    }
+    if (backlinksError) {
+        outcome.backlinks_error = backlinksError;
+    }
+    return outcome;
+}
+
+/**
+ * POST /w/:slug/move
+ * 문서 이동 (이름 변경) — 관리자 전용. 핵심 로직은 공유 헬퍼 movePage 에 위임한다.
+ */
+wiki.post('/w/:slug/move', requireAdmin, async (c) => {
+    const currentSlug = c.req.param('slug');
+    const { new_slug, update_backlinks } = await c.req.json<{ new_slug: string; update_backlinks?: boolean }>();
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+
+    const outcome = await movePage(c, currentSlug, new_slug, user, rbac, {
+        updateBacklinks: update_backlinks === true,
+    });
+    if (!outcome.ok) {
+        return c.json({ error: outcome.error }, outcome.status ?? 400);
+    }
+
+    const response: {
+        message: string;
+        new_slug: string;
+        backlinks?: { updated: number; skipped: string[]; conflicts: string[]; total: number };
+        backlinks_error?: string;
+    } = { message: '문서가 이동되었습니다.', new_slug: outcome.new_slug! };
+
+    if (outcome.backlinks) response.backlinks = outcome.backlinks;
+    if (outcome.backlinks_error) response.backlinks_error = outcome.backlinks_error;
+
+    return c.json(response);
+});
+
+/**
+ * POST /w/:slug/revert
+ * 문서 되돌리기
+ */
+wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async (c) => {
+    const slug = c.req.param('slug');
+    const { revision_id } = await c.req.json<{ revision_id: number }>();
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const db = c.env.DB;
+
+    const page = await db.prepare('SELECT id, version, is_private, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL')
+        .bind(slug).first<{ id: number, version: number, is_private: number, edit_acl: string | null }>();
+
+    if (!page) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    const isAdmin = rbac.can(user.role, 'admin:access');
+
+    if (page.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    // 되돌리기는 새 리비전을 쌓는 본문 변경이므로 일반 편집(PUT)과 동일한 edit_acl 게이트를
+    // 적용한다. admin_only 플래그뿐 아니라 aged/page_editor/any_editor 등 모든 ACL 규칙을
+    // evaluateEditAcl 로 검사한다. (되돌리기는 편집 요청 보류 모드가 없으므로 ACL 미달은 하드 거부.)
+    const aclRevert = parseEditAcl(page.edit_acl);
+    if (aclRevert && aclRevert.flags.length > 0) {
+        const hasAdminOnly = aclRevert.flags.includes('admin_only');
+        if (!isAdmin || hasAdminOnly) {
+            const minAge = await getEditAclMinAgeDays(db);
+            const ev = await evaluateEditAcl(db, aclRevert, user, page.id, minAge, isAdmin);
+            if (!ev.allowed) {
+                const isAdminOnlyFail = hasAdminOnly && !isAdmin;
+                return c.json({
+                    error: isAdminOnlyFail
+                        ? '관리자 전용 문서는 관리자만 되돌릴 수 있습니다.'
+                        : '이 문서를 되돌릴 권한이 부족합니다.',
+                    edit_acl: aclRevert,
+                    min_age_days: minAge,
+                }, 403);
+            }
+        }
+    }
+
+    // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
+    await ensureRevisionsVirtualMigration(db);
+    const targetRevision = await db.prepare('SELECT content, r2_key, page_version, deleted_at, purged_at, is_virtual FROM revisions WHERE id = ? AND page_id = ?')
+        .bind(revision_id, page.id).first<{ content: string; r2_key: string | null; page_version: number | null; deleted_at: number | null; purged_at: number | null; is_virtual: number }>();
+
+    if (!targetRevision) {
+        return c.json({ error: '해당 리비전을 찾을 수 없습니다.' }, 404);
+    }
+
+    // 가상 리비전은 본문이 없으므로 되돌릴 수 없다.
+    if (targetRevision.is_virtual) {
+        return c.json({ error: '가상 리비전으로는 되돌릴 수 없습니다.' }, 409);
+    }
+
+    // 숨겨진/영구 삭제된 리비전으로의 되돌리기는 redaction 우회 통로가 된다.
+    //   - 비관리자: 존재 자체를 가려야 하므로 404.
+    //   - 관리자: 본문이 의도적으로 가려진(또는 R2 에서 영구 삭제된) 상태이므로 명시적으로 거부.
+    //             되살리려면 별도 unhide 흐름이 필요하며 이 PR 범위 밖.
+    if (targetRevision.purged_at) {
+        return isAdmin
+            ? c.json({ error: '본문이 영구 삭제된 리비전으로는 되돌릴 수 없습니다.' }, 409)
+            : c.json({ error: '해당 리비전을 찾을 수 없습니다.' }, 404);
+    }
+    if (targetRevision.deleted_at) {
+        return isAdmin
+            ? c.json({ error: '숨겨진 리비전으로는 되돌릴 수 없습니다. 먼저 숨김을 해제해야 합니다.' }, 409)
+            : c.json({ error: '해당 리비전을 찾을 수 없습니다.' }, 404);
+    }
+
+    // 되돌릴 리비전의 본문을 R2 또는 D1에서 조회
+    const origin = new URL(c.req.url).origin;
+    let revertContent: string;
+    try {
+        revertContent = await getRevisionContent(c.env.MEDIA, targetRevision, origin);
+    } catch (e) {
+        console.error('Failed to fetch revert target content:', e);
+        return c.json({ error: '리비전 본문을 불러오지 못했습니다.' }, 500);
+    }
+
+    // 레거시 리비전이 CRLF 를 포함할 수 있으므로 새 리비전으로 쌓기 전에 LF 로 정규화.
+    revertContent = revertContent.replace(/\r\n?/g, '\n');
+
+    // 새 리비전 생성 (리비전 이력은 선형으로 계속 쌓임)
+    const newVersion = page.version + 1;
+    const targetVersionLabel = targetRevision.page_version != null ? `v${targetRevision.page_version}` : `#${revision_id}`;
+    const summary = `${targetVersionLabel}으로 되돌리기`;
+
+    // 1. R2에 새 리비전 본문 업로드
+    let newR2Key: string;
+    try {
+        newR2Key = await uploadRevisionToR2(c.env.MEDIA, page.id, newVersion, revertContent);
+    } catch (e) {
+        console.error('R2 revert upload failed:', e);
+        return c.json({ error: '리비전 저장에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500);
+    }
+
+    // 2. D1에 새 리비전 레코드 삽입
+    let newRevId: number;
+    try {
+        const revResult = await db.prepare('INSERT INTO revisions (page_id, page_version, content, r2_key, summary, author_id) VALUES (?, ?, ?, ?, ?, ?)')
+            .bind(page.id, newVersion, '', newR2Key, summary, user.id)
+            .run();
+        newRevId = revResult.meta.last_row_id;
+    } catch (e) {
+        await c.env.MEDIA.delete(newR2Key).catch(() => {});
+        console.error('D1 revert revision insert failed:', e);
+        return c.json({ error: '리비전 저장에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500);
+    }
+
+    const enabledExtensionsRevert = getEnabledExtensions(c.env);
+    const isR2OnlyRevert = isR2OnlyNamespace(slug, enabledExtensionsRevert);
+    const contentToStore = isR2OnlyRevert ? '' : revertContent;
+    const revertMetrics = computePageMetricsTracked(revertContent, isR2OnlyRevert);
+    // 되돌리기도 pages_au 트리거로 pages_fts 를 갱신하므로 인덱스 손상 시 malformed 로 실패할 수 있다.
+    // 손상을 감지하면 인덱스를 재구축하고 1회 재시도(단일 UPDATE+트리거는 원자적이라 안전).
+    await withFtsRecovery(db, () => db.prepare('UPDATE pages SET content = ?, last_revision_id = ?, version = ?, rows = ?, characters = ?, updated_at = unixepoch() WHERE id = ?')
+        .bind(contentToStore, newRevId, newVersion, revertMetrics.rows, revertMetrics.characters, page.id)
+        .run());
+
+    // page_links 재구성: 되돌린 본문 기준으로 역링크 추적을 동기화한다.
+    // (카테고리는 별도 테이블이며 리비전 본문에 포함되지 않으므로 건드리지 않는다.)
+    const revertLinkStmts = buildLinksOnlyStatements(db, page.id, revertContent);
+
+    // 캐시 무효화 (API + SSR) + 최근 변경 즉시 갱신
+    c.executionCtx.waitUntil(Promise.allSettled([
+        db.batch(revertLinkStmts).catch(e => console.error('Failed to update links on revert:', e)),
+        invalidatePageCache(c, slug),
+        refreshRecentChangesCache(c),
+    ]));
+
+    return c.json({ message: '문서가 되돌려졌습니다.', version: newVersion });
+});
+
+/**
+ * 리비전 단위 삭제 — 공용 페이지/리비전 검증 및 권한 체크.
+ * 페이지 단위 삭제(wiki:delete / *) 와 동일 정책을 사용하며, 추가로 최신 리비전은
+ * 절대 삭제하지 못하도록 막아 pages.last_revision_id / content / version 일관성을 유지한다.
+ */
+async function loadRevisionForDeletion(
+    c: any,
+    slug: string,
+    revId: number
+): Promise<
+    | { ok: true; page: { id: number; last_revision_id: number | null; is_private: number }; revision: { id: number; page_id: number; page_version: number | null; content: string; r2_key: string | null; deleted_at: number | null; purged_at: number | null } }
+    | { ok: false; response: Response }
+> {
+    const db = c.env.DB as D1Database;
+    const user = c.get('user');
+    const rbac = c.get('rbac') as RBAC;
+    const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
+
+    // 페이지가 이미 soft-delete 되어 있으면 리비전 단위 변경을 차단한다 (페이지 단위 삭제 정책과 동일).
+    // 정리가 필요하면 먼저 페이지를 복원해야 한다.
+    const page = await db
+        .prepare('SELECT id, last_revision_id, is_private, deleted_at FROM pages WHERE slug = ?')
+        .bind(slug)
+        .first<{ id: number; last_revision_id: number | null; is_private: number; deleted_at: number | null }>();
+
+    if (!page) {
+        return { ok: false, response: c.json({ error: '문서를 찾을 수 없습니다.' }, 404) };
+    }
+    if (page.deleted_at) {
+        return { ok: false, response: c.json({ error: '삭제된 문서의 리비전은 정리할 수 없습니다. 먼저 문서를 복원하세요.' }, 409) };
+    }
+    if (page.is_private === 1 && !canSeePrivate) {
+        return { ok: false, response: c.json({ error: '문서를 찾을 수 없습니다.' }, 404) };
+    }
+
+    // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
+    await ensureRevisionsVirtualMigration(db);
+    const revision = await db
+        .prepare('SELECT id, page_id, page_version, content, r2_key, deleted_at, purged_at, is_virtual FROM revisions WHERE id = ? AND page_id = ?')
+        .bind(revId, page.id)
+        .first<{ id: number; page_id: number; page_version: number | null; content: string; r2_key: string | null; deleted_at: number | null; purged_at: number | null; is_virtual: number }>();
+
+    if (!revision) {
+        return { ok: false, response: c.json({ error: '리비전을 찾을 수 없습니다.' }, 404) };
+    }
+    // 가상 리비전(비-본문 변경 기록)은 삭제(소프트/하드)할 수 없다.
+    if (revision.is_virtual) {
+        return { ok: false, response: c.json({ error: '가상 리비전은 삭제할 수 없습니다.' }, 409) };
+    }
+    if (page.last_revision_id === revision.id) {
+        return { ok: false, response: c.json({ error: '최신 리비전은 삭제할 수 없습니다. 먼저 되돌리기를 한 뒤 시도하세요.' }, 409) };
+    }
+    return { ok: true, page, revision };
+}
+
+/**
+ * POST /w/:slug/revisions/:id/delete
+ * 리비전 단위 소프트 삭제 — 권한 없는 사용자에게 해당 리비전이 처음부터 없었던 것처럼 가린다.
+ * 편집 요약은 DB 에 보존되어 관리자에게만 노출된다.
+ */
+wiki.post('/w/:slug/revisions/:id/delete', requireAuth, requirePermission('wiki:delete'), async (c) => {
+    const slug = c.req.param('slug');
+    const revId = parseInt(c.req.param('id'), 10);
+    const user = c.get('user')!;
+    const db = c.env.DB;
+
+    if (!Number.isFinite(revId) || revId <= 0) {
+        return c.json({ error: '리비전 id 가 올바르지 않습니다.' }, 400);
+    }
+
+    const loaded = await loadRevisionForDeletion(c, slug, revId);
+    if (!loaded.ok) return loaded.response;
+    const { revision } = loaded;
+
+    if (revision.deleted_at) {
+        return c.json({ error: '이미 삭제된 리비전입니다.' }, 409);
+    }
+
+    await db.prepare('UPDATE revisions SET deleted_at = unixepoch() WHERE id = ?').bind(revId).run();
+
+    const versionLabel = revision.page_version != null ? `v${revision.page_version}` : `#${revId}`;
+    c.executionCtx.waitUntil(Promise.allSettled([
+        refreshRecentChangesCache(c),
+        db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
+            .bind('revision_soft_delete', `리비전 소프트 삭제: ${slug} ${versionLabel} (rev #${revId})`, user.id)
+            .run().catch((e: any) => console.error('Failed to write admin log:', e)),
+    ]));
+
+    return c.json({ message: '리비전이 삭제되었습니다.' });
+});
+
+/**
+ * DELETE /w/:slug/revisions/:id
+ * 리비전 단위 하드 삭제 — R2 본문을 제거하고 r2_key/content 컬럼을 비운다.
+ * row 자체와 summary/author_id/page_version/created_at 은 보존하므로 관리자 응답에서는
+ * "(본문 영구 삭제됨)" 마커와 함께 표시된다. 일반 사용자에게는 자연스럽게 가려진다.
+ * 최고 관리자(`*`) 전용 — 페이지 hard delete 와 동일 권한 정책.
+ */
+wiki.delete('/w/:slug/revisions/:id', requireAuth, async (c) => {
+    const slug = c.req.param('slug');
+    const revId = parseInt(c.req.param('id'), 10);
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const db = c.env.DB;
+
+    if (!rbac.can(user.role, '*')) {
+        return c.json({ error: '리비전 영구 삭제는 최고 관리자만 가능합니다.' }, 403);
+    }
+    if (!Number.isFinite(revId) || revId <= 0) {
+        return c.json({ error: '리비전 id 가 올바르지 않습니다.' }, 400);
+    }
+
+    const loaded = await loadRevisionForDeletion(c, slug, revId);
+    if (!loaded.ok) return loaded.response;
+    const { revision } = loaded;
+
+    // 이미 완전히 정리된 경우만 409. r2_key 가 남아 있거나 content 에 본문 텍스트가
+    // 남아 있으면(=legacy D1-backed 리비전의 메타 정리 단계가 미완료) 멱등 재시도
+    // 경로로 진입한다.
+    if (revision.purged_at && !revision.r2_key && revision.content === '') {
+        return c.json({ error: '이미 영구 삭제된 리비전입니다.' }, 409);
+    }
+
+    // 분산 트랜잭션 (D1 + R2) 순서 — 각 단계 실패 시 read 경로가 절대 stale R2 객체를
+    // 건드리지 않도록 보장하면서 멱등 재시도가 가능하도록 설계:
+    //
+    //   1) Pre-mark intent: purged_at 만 먼저 설정. 이 시점에 read/diff/admin-mcp
+    //      경로는 모두 `purged_at` 체크로 R2 호출을 건너뛰고 빈 본문을 반환하므로,
+    //      이후 R2 단계가 어떻게 끝나든 사용자에게 stale 콘텐츠가 노출되지 않는다.
+    //   2) R2 본문 삭제: 실패 시 502 로 중단. purged_at 가 살아있으므로 read 는 안전.
+    //      사용자가 다시 DELETE 를 호출하면 위 가드(`purged_at && !r2_key`)가 통과시켜
+    //      이 경로로 재진입한다.
+    //   3) Workers Cache API 무효화 (PoP-local 베스트에포트). 다른 PoP 의 cached 엔트리는
+    //      남아있을 수 있으나, 아래 r2_key = NULL 이후 getRevisionContent 가 더 이상
+    //      그 캐시 키를 구성하지 않으므로 도달 불가능한 고아 엔트리가 된다.
+    //   4) 메타 정리: r2_key/content 비움. 실패해도 read 경로는 1) 의 purged_at 로
+    //      이미 안전하며, 재시도 시 R2 delete 는 멱등(이미 없으면 no-op).
+    try {
+        await db.prepare(
+            `UPDATE revisions
+             SET deleted_at = COALESCE(deleted_at, unixepoch()),
+                 purged_at  = COALESCE(purged_at, unixepoch())
+             WHERE id = ?`
+        ).bind(revId).run();
+    } catch (e) {
+        console.error('Hard delete pre-mark failed:', revId, e);
+        return c.json({ error: '삭제 마킹에 실패했습니다. 잠시 후 다시 시도하세요.' }, 500);
+    }
+
+    if (revision.r2_key) {
+        try {
+            await c.env.MEDIA.delete(revision.r2_key);
+        } catch (e) {
+            console.error('R2 hard delete failed:', revision.r2_key, e);
+            return c.json({ error: 'R2 본문 삭제에 실패했습니다. 잠시 후 다시 시도하세요.' }, 502);
+        }
+        await invalidateRevisionContentCache(c, revision.r2_key).catch(() => {});
+    }
+
+    try {
+        await db.prepare(
+            `UPDATE revisions SET r2_key = NULL, content = '' WHERE id = ?`
+        ).bind(revId).run();
+    } catch (e) {
+        // 메타 정리 실패 — R2 객체는 이미 사라졌고 purged_at 가 read 경로를 차단하므로
+        // 데이터 일관성 위험은 없다. 다음 재시도 호출에서 같은 UPDATE 가 멱등 실행된다.
+        console.error('Hard delete metadata cleanup failed (will retry on next call):', revId, e);
+        return c.json({ error: '메타데이터 정리에 실패했습니다. 잠시 후 다시 시도하세요.' }, 500);
+    }
+
+    const versionLabel = revision.page_version != null ? `v${revision.page_version}` : `#${revId}`;
+    c.executionCtx.waitUntil(Promise.allSettled([
+        refreshRecentChangesCache(c),
+        db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
+            .bind('revision_hard_delete', `리비전 영구 삭제: ${slug} ${versionLabel} (rev #${revId})`, user.id)
+            .run().catch((e: any) => console.error('Failed to write admin log:', e)),
+    ]));
+
+    return c.json({ message: '리비전이 영구 삭제되었습니다.' });
+});
+
+/**
+ * GET /w/:slug/watch
+ * 현재 유저의 주시 상태 조회
+ *
+ * 응답: { watching: boolean, scope: 'this' | 'subtree' | null }
+ *  - watching=false 일 때 scope 는 null.
+ */
+wiki.get('/w/:slug/watch', requireAuth, async (c) => {
+    const slug = c.req.param('slug');
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const db = c.env.DB;
+    const canSeePrivate = rbac.can(user.role, 'wiki:private');
+    const privateFilter = canSeePrivate ? '' : ' AND is_private = 0';
+
+    const page = await db.prepare(`SELECT id FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`)
+        .bind(slug).first<{ id: number }>();
+    if (!page) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    const watch = await db.prepare('SELECT scope FROM page_watches WHERE user_id = ? AND page_id = ?')
+        .bind(user.id, page.id).first<{ scope: string }>();
+
+    return c.json({ watching: !!watch, scope: watch?.scope ?? null });
+});
+
+/**
+ * POST /w/:slug/watch
+ * 문서 주시 토글 (로그인 필수)
+ *
+ * 요청 본문(JSON, 선택): { scope: 'this' | 'subtree', action?: 'set' | 'toggle' }
+ *  - scope: 'this'    — 해당 문서만 구독 (기본값)
+ *  - scope: 'subtree' — 해당 문서 + 하위 문서까지 구독
+ *  - action='set': 항상 해당 scope 로 설정 (기존이 있으면 갱신, 없으면 생성)
+ *  - action='toggle' (기본): 같은 scope 면 해제, 다른 scope 면 갱신, 없으면 생성
+ *
+ * 응답: { watching: boolean, scope: 'this' | 'subtree' | null }
+ */
+wiki.post('/w/:slug/watch', requireAuth, async (c) => {
+    const slug = c.req.param('slug');
+    const user = c.get('user')!;
+    const rbac = c.get('rbac') as RBAC;
+    const db = c.env.DB;
+    const canSeePrivate = rbac.can(user.role, 'wiki:private');
+    const privateFilter = canSeePrivate ? '' : ' AND is_private = 0';
+
+    let body: { scope?: string; action?: string } = {};
+    try { body = await c.req.json(); } catch { /* 빈 본문 허용 */ }
+    const requestedScope = body.scope === 'subtree' ? 'subtree' : 'this';
+    const action = body.action === 'set' ? 'set' : 'toggle';
+
+    const page = await db.prepare(`SELECT id FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`)
+        .bind(slug).first<{ id: number }>();
+    if (!page) {
+        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    }
+
+    const existing = await db.prepare('SELECT scope FROM page_watches WHERE user_id = ? AND page_id = ?')
+        .bind(user.id, page.id).first<{ scope: string }>();
+
+    if (action === 'set') {
+        if (existing) {
+            if (existing.scope !== requestedScope) {
+                await db.prepare('UPDATE page_watches SET scope = ? WHERE user_id = ? AND page_id = ?')
+                    .bind(requestedScope, user.id, page.id).run();
+            }
+        } else {
+            await db.prepare('INSERT INTO page_watches (user_id, page_id, scope) VALUES (?, ?, ?)')
+                .bind(user.id, page.id, requestedScope).run();
+        }
+        return c.json({ watching: true, scope: requestedScope });
+    }
+
+    // toggle
+    if (existing) {
+        if (existing.scope === requestedScope) {
+            await db.prepare('DELETE FROM page_watches WHERE user_id = ? AND page_id = ?')
+                .bind(user.id, page.id).run();
+            return c.json({ watching: false, scope: null });
+        }
+        await db.prepare('UPDATE page_watches SET scope = ? WHERE user_id = ? AND page_id = ?')
+            .bind(requestedScope, user.id, page.id).run();
+        return c.json({ watching: true, scope: requestedScope });
+    }
+
+    await db.prepare('INSERT INTO page_watches (user_id, page_id, scope) VALUES (?, ?, ?)')
+        .bind(user.id, page.id, requestedScope).run();
+    return c.json({ watching: true, scope: requestedScope });
+});
+
+/**
+ * GET /w/category/:category/watch
+ * 카테고리 주시 상태 조회 (로그인 필수)
+ */
+wiki.get('/w/category/:category/watch', requireAuth, async (c) => {
+    const category = c.req.param('category');
+    const user = c.get('user')!;
+    const db = c.env.DB;
+    const row = await db.prepare('SELECT 1 FROM category_watches WHERE user_id = ? AND category = ?')
+        .bind(user.id, category).first();
+    return c.json({ watching: !!row });
+});
+
+/**
+ * POST /w/category/:category/watch
+ * 카테고리 주시 토글 (로그인 필수)
+ */
+wiki.post('/w/category/:category/watch', requireAuth, async (c) => {
+    const category = c.req.param('category');
+    const user = c.get('user')!;
+    const db = c.env.DB;
+    if (!category || category.length > 200) {
+        return c.json({ error: '카테고리가 올바르지 않습니다.' }, 400);
+    }
+    const existing = await db.prepare('SELECT 1 FROM category_watches WHERE user_id = ? AND category = ?')
+        .bind(user.id, category).first();
+    if (existing) {
+        await db.prepare('DELETE FROM category_watches WHERE user_id = ? AND category = ?')
+            .bind(user.id, category).run();
+        return c.json({ watching: false });
+    }
+    await db.prepare('INSERT INTO category_watches (user_id, category) VALUES (?, ?)')
+        .bind(user.id, category).run();
+    return c.json({ watching: true });
+});
+
+/**
+ * POST /w/:slug/editing
+ * 편집 하트비트 전송 (로그인 필수)
+ * - KV에 편집 중 상태를 기록 (TTL 80초)
+ */
+wiki.post('/w/:slug/editing', requireAuth, async (c) => {
+    if (c.env.ENABLE_CONCURRENT_EDIT_DETECTION === 'false') {
+        return c.json({ ok: true, disabled: true });
+    }
+    const slug = c.req.param('slug');
+    const user = c.get('user')!;
+    const kv = c.env.KV;
+
+    const key = `editing:${slug}:${user.id}`;
+    const value = JSON.stringify({ name: user.name, picture: user.picture || '' });
+
+    // 하트비트 주기가 50초이므로, TTL은 80초 정도로 설정하여 여유를 둠
+    await kv.put(key, value, { expirationTtl: 80 });
+
+    return c.json({ ok: true });
+});
+
+/**
+ * GET /w/:slug/editors
+ * 현재 편집 중인 사용자 목록 (로그인 필수)
+ * - 자기 자신은 제외
+ */
+wiki.get('/w/:slug/editors', requireAuth, async (c) => {
+    const slug = c.req.param('slug');
+    const user = c.get('user')!;
+    const kv = c.env.KV;
+
+    const prefix = `editing:${slug}:`;
+    const list = await kv.list({ prefix });
+
+    const editors: { name: string; picture: string }[] = [];
+
+    for (const key of list.keys) {
+        // 자기 자신 제외
+        const userId = key.name.replace(prefix, '');
+        if (userId === String(user.id)) continue;
+
+        const value = await kv.get(key.name);
+        if (value) {
+            try {
+                editors.push(JSON.parse(value));
+            } catch { }
+        }
+    }
+
+    return c.json({ editors });
+});
+
+
+export default wiki;

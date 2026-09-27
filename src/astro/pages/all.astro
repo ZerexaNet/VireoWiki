@@ -1,0 +1,158 @@
+---
+// 모든 문서 보기 상세 페이지 셸 (/all).
+// /explore "모든 문서 목록" 탭의 "전체보기" 링크가 진입점. 문서(네임스페이스 하위탭 포함)·
+// 카테고리·이미지를 초성 그룹 그리드로 펼쳐 보여준다. 본문 그리드/그룹 스타일은 신규
+// public/css/all.css(기존 토큰 재사용)로, 탭/배지/페이지네이션은 style.css·Bootstrap 으로 처리한다.
+// 트렌딩·최근 변경 사이드바는 explore.astro 와 동일한 검증된 마크업을 그대로 재사용한다.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Sidebar from '../components/Sidebar.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout pagePath="/all.html" title="全部页面 - CloudWiki">
+    <Fragment slot="head">
+        <!-- 테마 FOUC 방지: CSS 로드 후 즉시 테마 적용 -->
+        <script is:inline>try{var t=localStorage.getItem('themeMode');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+        <link rel="stylesheet" href="/css/all.css" />
+    </Fragment>
+
+    <!-- ── 네비게이션 바 ── -->
+    <Header />
+
+    <!-- ── 메인 레이아웃 ── -->
+    <div class="wiki-layout">
+        <div class="wiki-container">
+            <div class="wiki-article all-page" style="width: 100%; max-width: 100%; overflow-x: hidden;">
+
+                <h1 class="h3 mb-1"><i class="bi bi-grid-3x3-gap text-primary"></i> 全部页面</h1>
+                <p class="text-muted small mb-4">集中浏览页面、分类与图片；点击标题旁的箭头可展开子页面。</p>
+
+                <!-- 상위 탭: 문서 / 카테고리 / 이미지 -->
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-docs" data-bs-toggle="tab" data-bs-target="#pane-docs"
+                            type="button" role="tab" aria-selected="true">
+                            <i class="bi bi-journals"></i> 页面
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-cats" data-bs-toggle="tab" data-bs-target="#pane-cats"
+                            type="button" role="tab" aria-selected="false">
+                            <i class="bi bi-folder2"></i> 分类
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-imgs" data-bs-toggle="tab" data-bs-target="#pane-imgs"
+                            type="button" role="tab" aria-selected="false">
+                            <i class="bi bi-image"></i> 图片
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- 문서 탭 -->
+                    <div class="tab-pane fade show active" id="pane-docs" role="tabpanel">
+                        <!-- 정렬 + 상세 ACL 토글 -->
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" id="aclDetailToggle">
+                                <label class="form-check-label small" for="aclDetailToggle">显示详细权限</label>
+                            </div>
+                            <select id="docSortSelect" class="form-select form-select-sm" style="width: auto;">
+                                <option value="name_asc">名称升序</option>
+                                <option value="name_desc">名称降序</option>
+                                <option value="updated_desc">最近修改优先</option>
+                                <option value="updated_asc">最早修改优先</option>
+                                <option value="created_desc">最近创建优先</option>
+                                <option value="created_asc">最早创建优先</option>
+                                <option value="chars_desc">长页面优先</option>
+                                <option value="chars_asc">短页面优先</option>
+                                <option value="subpages_desc">子页面数量降序</option>
+                                <option value="subpages_asc">子页面数量升序</option>
+                            </select>
+                        </div>
+
+                        <!-- 네임스페이스 하위 탭 (JS 동적 생성) -->
+                        <ul class="nav nav-tabs all-ns-tabs mb-3" id="nsSubTabs" role="tablist"></ul>
+
+                        <div id="docContent"></div>
+                    </div>
+
+                    <!-- 카테고리 탭 -->
+                    <div class="tab-pane fade" id="pane-cats" role="tabpanel">
+                        <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-3">
+                            <select id="catSortSelect" class="form-select form-select-sm" style="width: auto;">
+                                <option value="name_asc">名称升序</option>
+                                <option value="name_desc">名称降序</option>
+                                <option value="count_desc">页面数量降序</option>
+                                <option value="count_asc">页面数量升序</option>
+                            </select>
+                        </div>
+                        <div id="catContent"></div>
+                    </div>
+
+                    <!-- 이미지 탭 -->
+                    <div class="tab-pane fade" id="pane-imgs" role="tabpanel">
+                        <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-3">
+                            <select id="imgSortSelect" class="form-select form-select-sm" style="width: auto;">
+                                <option value="name_asc">名称升序</option>
+                                <option value="name_desc">名称降序</option>
+                                <option value="created_desc">最近上传优先</option>
+                                <option value="created_asc">最早上传优先</option>
+                                <option value="size_desc">大文件优先</option>
+                                <option value="size_asc">小文件优先</option>
+                            </select>
+                        </div>
+                        <div id="imgContent"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 오른쪽 사이드바 (트렌딩 + 최근 변경) -->
+        <aside class="wiki-sidebar" id="wikiSidebar">
+            <Sidebar />
+
+            <!-- 실시간 트렌딩 (PC/모바일 공통) -->
+            <div class="mb-4">
+                <div class="sidebar-section">
+                    <h6 class="sidebar-title d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="bi bi-graph-up-arrow text-danger"></i> 实时热门</span>
+                        <a href="#" class="small text-muted text-decoration-none trending-expand-btn" style="font-size: 0.8rem;">展开
+                            <i class="bi bi-chevron-down"></i></a>
+                    </h6>
+                    <div class="position-relative overflow-hidden trending-ticker-wrapper" style="height: 38px;">
+                        <div id="trendingListPc" class="trending-container trending-ticker-list">
+                            <div class="placeholder-glow px-2 py-2">
+                                <span class="placeholder w-100 d-block" style="height: 1.5rem; border-radius: 4px;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 최근 변경 -->
+            <div>
+                <div class="sidebar-section sidebar-section-pc-only">
+                    <h6 class="sidebar-title"><i class="bi bi-clock-history"></i> 最近更改</h6>
+                    <div id="recentChangesListPc" class="recent-changes-list recent-changes-container">
+                        <div class="placeholder-glow">
+                            <span class="placeholder w-100 d-block mb-2" style="height: 2.5rem; border-radius: 6px;"></span>
+                            <span class="placeholder w-100 d-block mb-2" style="height: 2.5rem; border-radius: 6px;"></span>
+                            <span class="placeholder w-100 d-block" style="height: 2.5rem; border-radius: 6px;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ── 푸터 ── -->
+    <Footer />
+
+    <Fragment slot="scripts">
+        <script type="module" src="/dist/common.js" is:inline></script>
+        <script type="module" src="/dist/all.js" is:inline></script>
+    </Fragment>
+</BaseLayout>

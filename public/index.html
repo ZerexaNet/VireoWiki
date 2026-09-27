@@ -1,0 +1,344 @@
+<!DOCTYPE html><html lang="zh-CN"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&family=Montserrat:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24/dist/sweetalert2.min.css"><title class="app-wiki-name">VireoWiki</title><link rel="icon" id="wiki-favicon" href="/favicon.ico"><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/skins-e3e52158b85e58b2.css"><script>window.__WIKI_SKINS__={"list":["default","astro","vector","bootstrap","via"],"default":"default","labels":{"default":"Cloudwiki(기본)","astro":"Astro","vector":"벡터","bootstrap":"Bootstrap","via":"VIA"},"darkOnly":["astro"]};try{var s=localStorage.getItem('themeSkin');var L=window.__WIKI_SKINS__.list;if(s&&L.indexOf(s)>=0){if(s==='default')document.documentElement.removeAttribute('data-wiki-theme');else document.documentElement.setAttribute('data-wiki-theme',s);}}catch(e){}</script> <meta name="description" content="CloudWiki"> <meta property="og:title" content="CloudWiki"> <meta property="og:description" content="CloudWiki"> <meta property="og:site_name" content="CloudWiki"> <meta property="og:type" content="website"> <link rel="stylesheet" href="/render.css"> <link rel="stylesheet" href="/css/wiki-nav.css"> <link rel="stylesheet" href="/css/bulk-modal.css">  <link rel="stylesheet" href="/css/diff.css">  <script>try{var t=localStorage.getItem('themeMode');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script> <script>(function(){try{var L=window.__WIKI_SKINS__;if(!L||!L.darkOnly||!L.darkOnly.length)return;var d=document.documentElement;var c=d.getAttribute('data-wiki-theme')||'default';if(L.darkOnly.indexOf(c)>=0){d.setAttribute('data-theme','dark');d.setAttribute('data-bs-theme','dark');}else{var t;try{t=localStorage.getItem('themeMode');}catch(e){}var bs;if(t==='light'){d.setAttribute('data-theme','light');bs='light';}else if(t==='dark'){d.setAttribute('data-theme','dark');bs='dark';}else{d.removeAttribute('data-theme');bs=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}d.setAttribute('data-bs-theme',bs);}}catch(e){}})();</script></head> <body data-layout-mode="default" style="-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;"> <!-- 레이아웃 모드 사용자 오버라이드 FOUC 방지: 파싱 중 즉시 적용(common.ts applyLayoutOverride 와 동일 키). --> <script>try{var m=localStorage.getItem('layoutModeOverride');if(m&&['default','left-toc','right-toc','docs','wide'].indexOf(m)>=0)document.body.setAttribute('data-layout-mode',m);}catch(e){}</script>    <div id="spaProgressBar" class="spa-progress-bar d-none"> <div class="spa-progress-bar-inner"></div> </div>  <!-- ── 사이트 전역 공지 배너 (다중) ── -->
+<!-- src/client/common.ts 가 appConfig.announcements 배열을 읽어 자식 노드를 동적 생성한다. -->
+<div id="announcement-banners" class="announcement-banners d-none"></div>
+
+<!-- ── 네비게이션 바 ── -->
+<nav class="navbar navbar-expand-lg navbar-light">
+    <div class="container-fluid flex-wrap align-items-center">
+        <!-- 상단 줄: 브랜딩 + 기능 버튼들 -->
+        <a class="navbar-brand me-auto" href="/">
+            <span class="wiki-logo-container"><img src="/favicon.jpg" alt="Logo" class="brand-logo" style="height: 32px; vertical-align: middle; margin-right: 8px;"></span>
+            <span class="app-wiki-name">VireoWiki</span>
+        </a>
+
+        <!-- 유저 버튼 & 알림 패널 통합 -->
+        <div class="dropdown ms-2 d-none position-relative" id="navUser">
+            <a href="#" class="d-flex align-items-center text-decoration-none position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+               <img id="userAvatar" class="user-avatar m-0" src="" alt="">
+               <span class="notification-badge d-none" id="notificationBadge"></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm position-absolute">
+                <li><h6 class="dropdown-header text-truncate" id="userName"></h6></li>
+                <li><a class="dropdown-item d-flex align-items-center" href="#" onclick="document.querySelector('#navUser > a').click(); toggleNotificationPanel(); event.stopPropagation(); return false;"><i class="mdi mdi-inbox me-2"></i><span class="me-auto">通知</span><span class="notification-menu-badge d-none" id="notificationMenuBadge"></span></a></li>
+                <li><a class="dropdown-item" href="#" onclick="openSettingsModal(); event.preventDefault(); return false;"><i class="mdi mdi-cog-outline me-2"></i> 个人设置</a></li>
+                <li><a class="dropdown-item" href="/mypage"><i class="mdi mdi-account-circle me-2"></i> 个人中心</a></li>
+                <li id="navAdminConsole" class="d-none"><a class="dropdown-item" href="/admin"><i class="mdi mdi-shield-account me-2"></i> 管理后台</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/auth/logout"><i class="mdi mdi-logout me-2 text-danger"></i> 退出登录</a></li>
+            </ul>
+
+            <!-- 알림 드롭다운 패널 -->
+            <div class="notification-panel d-none" id="notificationPanel">
+                <div class="notification-panel-header">
+                    <strong><i class="mdi mdi-inbox"></i> 通知</strong>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0 ms-auto" id="notifMarkAllReadBtn" onclick="markAllNotificationsRead()" title="全部标为已读" style="font-size:0.8rem;">
+                        <i class="mdi mdi-email-open-outline"></i> 全部标为已读
+                    </button>
+                    <button class="btn btn-sm btn-link text-danger p-0 ms-3" id="notifDeleteAllBtn" onclick="deleteAllNotifications()" title="全部删除" style="font-size:0.8rem;">
+                        <i class="mdi mdi-delete-sweep-outline"></i> 全部删除
+                    </button>
+                </div>
+                <div class="notification-panel-body" id="notificationPanelBody">
+                    <div class="text-center text-muted py-4">正在加载...</div>
+                </div>
+                <a class="notification-panel-archive-link" href="/mypage#notifications">
+                    <i class="mdi mdi-archive-outline"></i> 查看全部通知
+                </a>
+                <div class="notification-panel-footer d-none" id="notificationPanelFooter">
+                    <div class="push-toggle-status d-flex align-items-center justify-content-between mb-2" id="pushToggleStatus">
+                        <span class="push-toggle-status-label">
+                            <i class="mdi mdi-bell-outline me-1"></i>浏览器推送通知
+                        </span>
+                        <span class="push-status-pill push-status-off" id="pushStatusPill">
+                            <i class="mdi mdi-circle-medium" id="pushStatusDot"></i>
+                            <span id="pushStatusText">已关闭</span>
+                        </span>
+                    </div>
+                    <button id="pushToggleBtn" class="btn btn-sm btn-outline-secondary w-100" type="button" title="浏览器推送通知">
+                        <i class="mdi mdi-bell-off-outline"></i> <span id="pushToggleLabel">接收推送通知</span>
+                    </button>
+                </div>
+            </div>
+            <!-- js 호환성을 위한 안보이는 래퍼 유지 -->
+            <div id="notificationBtnWrapper" class="d-none"></div>
+        </div>
+        <!-- 개인 설정 버튼 (로그아웃 상태에서만 노출 — 로그인 시 checkAuth 가 숨기고 드롭다운 항목으로 대체) -->
+        <button class="btn border-0 px-1 ms-2" type="button" id="navSettings" onclick="openSettingsModal()" title="个人设置" aria-label="个人设置">
+            <i class="mdi mdi-cog-outline text-body"></i>
+        </button>
+        <a class="btn border-0 px-1 ms-2" id="navLogin" href="/login" title="登录"><i class="mdi mdi-login text-body"></i></a>
+
+        <!-- 햄버거 버튼 (사이드바 토글) -->
+        <button class="navbar-toggler border-0 px-1 ms-2" type="button" data-bs-toggle="offcanvas"
+            data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+            <i class="mdi mdi-menu fs-2 text-body"></i>
+        </button>
+
+        <!-- 하단 줄: 검색창 (항상 full-width로 다음 줄에 표시) -->
+        <form class="nav-search-form d-flex" onsubmit="doSearch(event)">
+            <button class="btn border-0 px-1 me-1" type="button" title="随机页面" onclick="goRandomPage()"><i class="bi bi-shuffle text-body"></i></button>
+            <div class="input-group">
+                <input type="text" id="searchInput" class="form-control" placeholder="搜索页面..." autocomplete="off">
+                <button class="btn search-mode-btn" type="submit" aria-label="搜索">
+                    <i class="mdi mdi-magnify"></i>
+                </button>
+            </div>
+            <!-- 연관검색어 드롭다운 -->
+            <ul class="search-suggestions" id="searchSuggestions"></ul>
+        </form>
+
+        <script>
+        (function() {
+            let debounceTimer = null;
+            const input = document.getElementById('searchInput');
+            const sugBox = document.getElementById('searchSuggestions');
+            let activeIdx = -1;
+
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const rawQ = this.value.trim();
+                // map: 프리픽스가 붙으면 일반 문서 LIKE 검색을 그대로 돌리되, 결과를 map: 가상 문서로 매핑한다.
+                const isMapMode = rawQ.toLowerCase().startsWith('map:');
+                const q = isMapMode ? rawQ.slice(4).trim() : rawQ;
+                if (q.length < 2) {
+                    sugBox.classList.remove('show');
+                    sugBox.innerHTML = '';
+                    return;
+                }
+                debounceTimer = setTimeout(() => fetchSuggestions(q, isMapMode), 250);
+            });
+
+            async function fetchSuggestions(q, isMapMode) {
+                try {
+                    // map: 모드는 카테고리를 클라이언트에서 거르지 않고 서버에서 아예 제외시켜
+                    // 7개 한도가 카테고리에 잠식돼 페이지 결과가 비는 상황을 막는다.
+                    const url = '/api/search/suggest?q=' + encodeURIComponent(q)
+                        + (isMapMode ? '&exclude_categories=1' : '');
+                    const res = await fetch(url);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const items = data.suggestions || [];
+                    renderSuggestions(items, isMapMode);
+                } catch(e) { /* ignore */ }
+            }
+
+            // 호출 식별자(slug) 네임스페이스별 아이콘. map: 가상 트리, 카테고리:, 이미지:
+            // 는 각각 다른 mdi 아이콘으로, 그 외 일반 문서는 기본 문서 아이콘으로 표시한다.
+            function suggestionIcon(slugTarget) {
+                if (slugTarget.toLowerCase().startsWith('map:')) return 'mdi-file-tree-outline';
+                if (slugTarget.startsWith('카테고리:')) return 'mdi-tag-outline';
+                if (slugTarget.startsWith('이미지:')) return 'mdi-image-outline';
+                return 'mdi-file-document-outline';
+            }
+
+            function renderSuggestions(items, isMapMode) {
+                activeIdx = -1;
+                if (!items.length) {
+                    sugBox.classList.remove('show');
+                    sugBox.innerHTML = '';
+                    return;
+                }
+                // item.title 이 있으면 표시 이름은 그것을, 호출 식별자(data-slug, /w/) 는 항상 slug.
+                // map: 모드에서는 호출 식별자도 map:<slug> 로 감싸 가상 문서 라우트로 이동시킨다.
+                sugBox.innerHTML = items.map((item, i) => {
+                    const baseSlug = item.slug;
+                    const baseDisplayName = item.title || baseSlug;
+                    const slugTarget = isMapMode ? 'map:' + baseSlug : baseSlug;
+                    const displayName = isMapMode ? 'map:' + baseDisplayName : baseDisplayName;
+                    const slugSubLabel = item.title
+                        ? ' <small class="text-muted">' + escapeHtml(slugTarget) + '</small>'
+                        : '';
+                    return '<li class="search-suggestion-item" data-slug="' + escapeHtml(slugTarget) + '">'
+                        + '<i class="mdi ' + suggestionIcon(slugTarget) + '"></i> '
+                        + escapeHtml(displayName) + slugSubLabel + '</li>';
+                }).join('');
+                sugBox.classList.add('show');
+
+                sugBox.querySelectorAll('.search-suggestion-item').forEach(el => {
+                    el.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        const slug = this.dataset.slug;
+                        if (typeof navigateTo === 'function') {
+                            navigateTo('/w/' + encodeURIComponent(slug));
+                        } else {
+                            window.location.href = '/w/' + encodeURIComponent(slug);
+                        }
+                        sugBox.classList.remove('show');
+                        sugBox.innerHTML = '';
+                        input.value = '';
+                        input.blur();
+                    });
+                });
+            }
+
+            // 키보드 탐색
+            input.addEventListener('keydown', function(e) {
+                const items = sugBox.querySelectorAll('.search-suggestion-item');
+                if (!items.length || !sugBox.classList.contains('show')) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIdx = Math.min(activeIdx + 1, items.length - 1);
+                    updateActive(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIdx = Math.max(activeIdx - 1, -1);
+                    updateActive(items);
+                } else if (e.key === 'Enter' && activeIdx >= 0) {
+                    e.preventDefault();
+                    items[activeIdx].dispatchEvent(new Event('mousedown'));
+                } else if (e.key === 'Escape') {
+                    sugBox.classList.remove('show');
+                }
+            });
+
+            function updateActive(items) {
+                items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+            }
+
+            input.addEventListener('blur', function() {
+                setTimeout(() => { sugBox.classList.remove('show'); }, 150);
+            });
+
+            input.addEventListener('focus', function() {
+                if (sugBox.innerHTML && this.value.trim().length >= 2) {
+                    sugBox.classList.add('show');
+                }
+            });
+        })();
+        </script>
+    </div>
+</nav>
+
+<!-- ── 개인 설정 모달 (클라이언트 전용 설정: 테마 · 레이아웃 모드 오버라이드) ── -->
+<!-- src/client/common.ts 가 openSettingsModal() 로 열고, select 변경을 처리한다. -->
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="settingsModalLabel"><i class="mdi mdi-cog-outline me-1"></i> 个人设置</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3" id="settingThemeWrap">
+                    <span class="form-label d-block">主题</span>
+                    <div class="setting-seg" id="settingTheme" role="group" aria-label="主题">
+                        <button type="button" class="seg-btn" data-value="auto" aria-pressed="false" title="自动 (시스템 설정)">
+                            <i class="mdi mdi-circle-half-full" aria-hidden="true"></i><span>自动</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="dark" aria-pressed="false" title="深色">
+                            <i class="mdi mdi-moon-waxing-crescent" aria-hidden="true"></i><span>深色</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="light" aria-pressed="false" title="浅色">
+                            <i class="mdi mdi-white-balance-sunny" aria-hidden="true"></i><span>浅色</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- 다크 전용 색 테마(스킨)가 활성일 때 common.ts 가 위 밝기 토글을 숨기고 이 안내를 보인다. -->
+                <p class="text-muted small mb-3" id="settingThemeForcedNote" style="display:none;"><i class="mdi mdi-moon-waxing-crescent me-1"></i>当前主题仅支持深色模式。</p>
+                <div class="mb-3" id="settingThemeSkinWrap" style="display:none;">
+                    <span class="form-label d-block" id="settingThemeSkinLabelText">配色主题</span>
+                    <!-- 네이티브 <select> 대신 앱 디자인에 맞춘 커스텀 드롭다운. 옵션은 멀티 스킨 -->
+                    <!-- 모드(window.__WIKI_SKINS__)일 때 common.ts 가 동적 주입한다. -->
+                    <div class="skin-select" id="settingThemeSkin">
+                        <button type="button" class="skin-select-toggle" id="settingThemeSkinToggle"
+                            aria-haspopup="listbox" aria-expanded="false" aria-labelledby="settingThemeSkinLabelText settingThemeSkinValue">
+                            <span class="skin-select-value" id="settingThemeSkinValue"></span>
+                            <i class="mdi mdi-chevron-down skin-select-caret" aria-hidden="true"></i>
+                        </button>
+                        <ul class="skin-select-menu" id="settingThemeSkinMenu" role="listbox" aria-label="配色主题"></ul>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="form-label d-block">布局模式</span>
+                    <div class="setting-seg" id="settingLayoutMode" role="group" aria-label="布局模式">
+                        <button type="button" class="seg-btn" data-value="site" aria-pressed="false" title="站点默认值">
+                            <i class="mdi mdi-web" aria-hidden="true"></i><span>站点默认</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="default" aria-pressed="false" title="默认 (无侧栏)">
+                            <i class="mdi mdi-page-layout-body" aria-hidden="true"></i><span>默认</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="left-toc" aria-pressed="false" title="左侧目录">
+                            <i class="mdi mdi-page-layout-sidebar-left" aria-hidden="true"></i><span>左侧目录</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="right-toc" aria-pressed="false" title="右侧目录">
+                            <i class="mdi mdi-page-layout-sidebar-right" aria-hidden="true"></i><span>右侧目录</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="docs" aria-pressed="false" title="页面 (左侧目录树和右侧目录)">
+                            <i class="mdi mdi-file-tree-outline" aria-hidden="true"></i><span>页面</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="wide" aria-pressed="false" title="宽屏 (隐藏侧栏)">
+                            <i class="mdi mdi-arrow-expand-horizontal" aria-hidden="true"></i><span>宽屏</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="form-label d-block">键盘快捷键</span>
+                    <div class="setting-seg" id="settingKeyboardShortcuts" role="group" aria-label="键盘快捷键">
+                        <button type="button" class="seg-btn" data-value="on" aria-pressed="false" title="启用单键快捷键">
+                            <i class="mdi mdi-keyboard" aria-hidden="true"></i><span>开启</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="off" aria-pressed="false" title="关闭单键快捷键">
+                            <i class="mdi mdi-keyboard-off" aria-hidden="true"></i><span>关闭</span>
+                        </button>
+                    </div>
+                    <p class="text-muted small mb-0 mt-1"><i class="mdi mdi-information-outline me-1"></i>关闭后 <kbd>/</kbd> <kbd>g</kbd> <kbd>e</kbd> <kbd>?</kbd> 等单键快捷键将失效 (<kbd>Ctrl/⌘+K</kbd> 始终可用).</p>
+                </div>
+<p class="text-muted small mb-0"><i class="mdi mdi-information-outline me-1"></i>设置仅保存在当前浏览器；更改布局后页面会刷新。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+  <div class="wiki-layout wiki-layout-doc"> <!-- 좌측 그룹 문서 트리 (LAYOUT_MODE="docs" 에서만 노출, 문서 조회 페이지 한정) --> <aside class="wiki-nav-sidebar d-none" id="wikiNavSidebar" aria-label="页面分组导航"> <div class="wiki-toc-sidebar-inner"> <nav class="wiki-toc-sidebar-nav wiki-nav-sidebar-tree" id="wikiNavSidebarTree"></nav> </div> </aside> <!-- 좌측 목차 사이드바 (LAYOUT_MODE="left-toc" 에서만 노출, 문서 조회 페이지 한정) --> <aside class="wiki-toc-sidebar d-none" id="wikiTocSidebar" aria-label="页面目录"> <div class="wiki-toc-sidebar-inner"> <div class="wiki-toc-sidebar-title"><i class="bi bi-list-columns-reverse"></i> 目录</div> <nav class="wiki-toc-sidebar-nav" id="wikiTocSidebarNav"></nav> </div> </aside> <!-- 메인 콘텐츠 --> <div class="wiki-container"> <!-- 초기 로딩 (페이지 새로고침/최초 방문) --> <div id="loading" class="wiki-loading"> <div class="spinner-border text-primary" role="status"></div> <span>正在加载...</span> </div> <!-- 홈(환영 페이지) --> <div id="homePage" class="d-none"> <div class="wiki-welcome"> <h1><span class="app-wiki-name">CloudWiki</span></h1> <button class="btn btn-wiki" onclick="goNewPage()"> <i class="bi bi-pencil-square"></i> 创建第一个页面
+</button> </div> <div class="recent-pages-section" id="recentPages"></div> </div> <!-- 문서 보기 페이지 --> <div id="articlePage" class="d-none"> <!-- 토론 진행 중 배너 --> <div id="discussionBanner" class="d-none alert alert-warning py-2 px-3 mb-3 d-flex align-items-center justify-content-between"> <span><i class="bi bi-chat-dots-fill me-2"></i>当前页面有正在进行的讨论。</span> <a id="discussionBannerLink" href="#" class="btn btn-sm btn-warning ms-3"> <i class="bi bi-arrow-right-circle"></i> 查看讨论
+</a> </div> <!-- 정책 문서(이용약관/개인정보처리방침) 안내 배너 --> <div id="policyDocBanner" class="d-none alert alert-info py-2 px-3 mb-3 d-flex align-items-center"> <span><i class="bi bi-info-circle-fill me-2"></i><span id="policyDocBannerText"></span></span> </div> <div class="wiki-article"> <h1 class="wiki-article-title" id="articleTitle"></h1> <!-- 대체 title 이 설정된 경우만 노출 — 좌측 정렬, muted 작은 글씨로 실제 슬러그 + 복사 버튼 표시 --> <div id="articleSlugLabel" class="wiki-article-slug-label" hidden></div> <div id="redirectMessage"></div> <div class="wiki-article-meta" id="articleMeta"></div> <!-- MCP 편집 승인 대기 배너 (로그인 유저 본인 제출안에 한해 노출) --> <div id="mcpSubmissionBanner" style="display:none;"></div> <!-- 사람 편집 보류(검토 대기) 배너 (검토 권한이 있는 사용자에 한해 노출) --> <div id="pendingEditBanner" style="display:none;"></div> <!-- 오래된(캐시된) 버전 열람 안내 배너 (문서 로드 시 1회 버전 확인 후 노출) --> <div id="staleVersionBanner" style="display:none;"></div> <!-- 미작성(존재하지 않는) 문서 안내 배너 --> <div id="missingDocBanner" class="d-none"></div> <!-- 미작성 문서 편집 요청 검토(검토 권한자 한정, 서버 count>0 시 client 가 노출) --> <div id="missingDocEditRequest" class="mt-2 d-none"></div> <!-- 문서 도구 --> <div class="d-flex justify-content-end mb-2 gap-2"> <div class="btn-group" id="articleMainActions"> <!-- 자바스크립트로 채워짐: 편집, 이력, 토론 --> </div> <div class="dropdown"> <button class="btn btn-secondary dropdown-toggle no-caret" type="button" id="shareDropdown" data-bs-toggle="dropdown" data-bs-display="static" data-bs-flip="false" aria-expanded="false" title="分享"> <i class="bi bi-share"></i> </button> <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="shareDropdown"> <li><button class="dropdown-item" onclick="shareNative()"> <i class="bi bi-share"></i> 分享
+</button></li> <li> <hr class="dropdown-divider"> </li> <li><button class="dropdown-item" onclick="shareCopyLink()"> <i class="bi bi-link"></i> 复制链接
+</button></li> <li id="shareItemCopyText"><button class="dropdown-item" onclick="shareCopyText()"> <i class="bi bi-copy"></i> 复制页面文字
+</button></li> <li id="shareItemCopyMarkdown"><button class="dropdown-item" onclick="shareCopyMarkdown()"> <i class="bi bi-markdown"></i> 复制页面（Markdown）
+</button></li> <li id="shareItemCopyHtml"><button class="dropdown-item" onclick="shareCopyHtml()"> <i class="bi bi-filetype-html"></i> 复制 HTML
+</button></li> <li id="shareItemPrint"><button class="dropdown-item" onclick="sharePrint()"> <i class="bi bi-printer"></i> 打印
+</button></li> <li id="shareAiDivider"> <hr class="dropdown-divider"> </li> <li id="shareItemAskClaude"><button class="dropdown-item" onclick="shareAskClaude()"> <i class="bi bi-claude"></i> 询问 Claude
+</button></li> <li id="shareItemAskChatGPT"><button class="dropdown-item" onclick="shareAskChatGPT()"> <i class="bi bi-openai"></i> 询问 ChatGPT
+</button></li> </ul> </div> <div class="dropdown"> <button class="btn btn-secondary dropdown-toggle no-caret" type="button" id="docToolsDropdown" data-bs-toggle="dropdown" data-bs-display="static" data-bs-flip="false" aria-expanded="false" title="页面工具"> <i class="bi bi-three-dots-vertical"></i> </button> <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="docToolsDropdown" id="articleMoreActions"> <!-- 자바스크립트로 채워짐 --> </ul> </div> </div> <!-- 상위 문서 (하위 문서인 경우) --> <div id="parentDocsNavWrapper" class="parent-docs-nav-wrapper"> <div id="parentDocsNav" class="d-none parent-docs-nav mb-0"></div> <div id="parentDocsSiblings" class="d-none parent-docs-siblings"></div> </div> <hr id="parentDocsNavDivider" class="d-none mt-2 mb-3"> <!-- 목차 아코디언 --> <div class="accordion mb-4" id="wikiAccordion"> <!-- 목차: 본문 상단 인라인 카드(.wiki-toc-card)로 대체되어 영구 숨김.
+                 #tocNav 는 플로팅 패널 / 스크롤 스파이 / FAB / 인라인 카드 클론의
+                 데이터 소스로 계속 사용되므로 DOM 에는 유지한다. --> <div class="accordion-item d-none"> <h2 class="accordion-header" id="headingTOC"> <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTOC" aria-expanded="false" aria-controls="collapseTOC"> <i class="bi bi-list-columns-reverse me-2"></i> 目录
+</button> </h2> <div id="collapseTOC" class="accordion-collapse collapse" aria-labelledby="headingTOC" data-bs-parent="#wikiAccordion"> <div class="accordion-body"> <div id="tocContainer" class="d-none"> <nav id="tocNav"></nav> </div> </div> </div> </div> <div id="docStatsCounter" class="doc-stats-counter d-none" aria-live="off"> <span data-counter="lines">0줄</span> <span data-counter="chars">0자</span> <span data-counter="charsWithSpaces">0자(含空格)</span> <span data-counter="words">0词</span> </div> </div> <!-- 본문 --> <div class="wiki-content" id="articleContent"></div> <!-- 본문 (Raw 보기) --> <pre class="wiki-content-raw" id="articleRawContent"></pre> <!-- 백링크 --> <div class="backlinks-section d-none" id="backlinksSection"> <h5><i class="bi bi-link-45deg"></i> 链入页面</h5> <div class="list-group" id="backlinksList"></div> </div> <!-- 이전/다음 문서 (LAYOUT_MODE="docs" 에서만 노출, 그룹 트리 순서 기준) --> <nav class="docs-page-nav d-none" id="docsPageNav" aria-label="上一页／下一页"></nav> </div> </div> <!-- 삭제된 문서 --> <div id="deletedPage" class="d-none"> <div class="wiki-not-found"> <h2><span class="mdi mdi-delete-empty text-danger"></span> 此页面已删除</h2> <p id="deletedSlug"></p> <!-- 삭제/소프트삭제 충돌 편집 요청 검토(검토 권한자 한정, 서버 count>0 시 client 가 노출) --> <div id="deletedPageEditRequest" class="mt-3 d-none"></div> </div> </div> <!-- 비공개 문서 --> <div id="privatePage" class="d-none"> <div class="wiki-not-found"> <h2><span class="bi bi-eye-slash-fill text-danger"></span> 此页面为私有页面</h2> <p id="privateSlug"></p> <p class="text-muted small">此页面设为私有，仅有权限的用户可以阅读。</p> </div> </div> <!-- 카테고리 문서 목록 --> <div id="categoryPage" class="d-none"> <div class="wiki-article"> <h2><i class="bi bi-folder2-open"></i> 分类: <span id="catPageTitle"></span></h2> <div class="list-group mt-4" id="categoryDocsList"></div> </div> </div> </div> <!-- wiki-container end --> <!-- 우측 문서내 목차 사이드바 (LAYOUT_MODE="docs" 또는 "right-toc" 에서 노출, 문서 조회 페이지 한정) --> <aside class="wiki-toc-sidebar wiki-toc-sidebar-right d-none" id="wikiTocSidebarRight" aria-label="页面目录"> <div class="wiki-toc-sidebar-inner"> <div class="wiki-toc-sidebar-title" id="wikiTocSidebarRightTitle"><i class="bi bi-list-columns-reverse"></i> 本页目录</div> <!-- 진행 레일 + 목차. 레일은 항목 좌측을 따라 그려지는 SVG path 하나이며(article/toc-sidebar-rail.ts),
+             목차와 같은 목차를 시각적으로만 중복 제공하므로 aria-hidden 이다. --> <div class="wiki-toc-railed"> <svg class="wiki-toc-rail-svg" id="wikiTocSidebarRightRail" aria-hidden="true" focusable="false" hidden> <path class="wiki-toc-rail-track" fill="none" stroke-width="2" stroke-linecap="round"></path> <path class="wiki-toc-rail-active" fill="none" stroke-width="2" stroke-linecap="round"></path> </svg> <nav class="wiki-toc-sidebar-nav" id="wikiTocSidebarRightNav" aria-labelledby="wikiTocSidebarRightTitle"></nav> </div> </div> </aside> <!-- 오른쪽 사이드바 (PC 전용 오프캔버스 컨테이너 및 최근 변경) --> <aside class="wiki-sidebar" id="wikiSidebar"> <!-- 사이드바 네비게이션 (모바일 오프캔버스 렌더링 영역 공유) --> <style>
+    .trending-ticker-wrapper .trending-item-link {
+        height: 38px;
+        line-height: 1.2;
+    }
+</style>
+
+<!-- ── 사이드바 (Offcanvas) ── -->
+<div class="offcanvas-lg offcanvas-end border-0" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+    <div class="offcanvas-header border-bottom d-lg-none">
+        <h5 class="offcanvas-title fw-bold" id="mobileSidebarLabel">
+            <span class="wiki-logo-container"><img src="/favicon.jpg" alt="Logo" class="brand-logo" style="height: 32px; vertical-align: middle; margin-right: 8px;"></span> <span class="app-wiki-name">VireoWiki</span>
+        </h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"
+            data-bs-target="#mobileSidebar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column p-0 p-lg-3 sidebar-section-pc-only">
+        <ul class="navbar-nav mb-auto w-100" id="sidebar-nav-list">
+            <!-- ── 커스텀 사이드바 항목 표시 영역 ── -->
+            
+        </ul>
+
+        <div class="mt-auto pt-3 border-top text-center text-muted small d-lg-none">
+            &copy; <span class="app-wiki-name">VireoWiki</span>
+        </div>
+    </div>
+</div>
+ <!-- 실시간 트렌딩 --> <div class="mb-4"> <div class="sidebar-section"> <h6 class="sidebar-title d-flex justify-content-between align-items-center mb-2"> <span><i class="bi bi-graph-up-arrow text-danger"></i> 实时热门</span> <a href="#" class="small text-muted text-decoration-none trending-expand-btn" style="font-size: 0.8rem;">展开
+<i class="bi bi-chevron-down"></i></a> </h6> <div class="position-relative overflow-hidden trending-ticker-wrapper" style="height: 38px;"> <div id="trendingListPc" class="trending-container trending-ticker-list"> <div class="placeholder-glow px-2 py-2"> <span class="placeholder w-100 d-block" style="height: 1.5rem; border-radius: 4px;"></span> </div> </div> </div> </div> </div> <!-- 최근 변경 --> <div class="mb-4"> <div class="sidebar-section"> <h6 class="sidebar-title"><i class="bi bi-clock-history"></i> 最近更改</h6> <div id="recentChangesListPc" class="recent-changes-list recent-changes-container"> <div class="placeholder-glow"> <span class="placeholder w-100 d-block mb-2" style="height: 2.5rem; border-radius: 6px;"></span> <span class="placeholder w-100 d-block mb-2" style="height: 2.5rem; border-radius: 6px;"></span> <span class="placeholder w-100 d-block" style="height: 2.5rem; border-radius: 6px;"></span> </div> </div> </div> </div> </aside> </div>   <!-- ── 푸터 ── -->
+<footer class="wiki-footer">
+    <div class="wiki-footer-inner">
+        <span class="footer-copyright">&copy; <span class="app-wiki-name">VireoWiki</span></span>
+        
+    </div>
+</footer>
+  <!-- 우측 스크롤바 옆 목차 레일(PC 전용, 점 → 호버 시 모든 제목이 옆으로 펼쳐짐). 내용은 TocController 가 채운다.
+     목차 패널·사이드바와 동일 목차를 포인터 전용으로 중복 제공하므로 aria-hidden 이다. --><div class="toc-rail" id="tocScrollRail" aria-hidden="true"></div> <!-- 플로팅 목차 패널 --> <div class="toc-floating-panel" id="tocFloatingPanel"> <div class="toc-floating-header"> <span><i class="mdi mdi-format-list-bulleted-square me-1"></i> 목차</span> <button class="toc-floating-close" onclick="toggleFloatingToc()" title="닫기"> <i class="bi bi-x-lg"></i> </button> </div> <nav class="toc-floating-body" id="tocFloatingNav"></nav> </div> <!-- 스크롤 FAB (뷰포트 고정, body 직전) --> <div class="scroll-fab-group" id="scrollFabGroup"> <button class="scroll-fab reading-mode-exit-fab d-none" id="readingModeExitFab" onclick="toggleReadingMode()" title="읽기 모드 나가기" aria-label="읽기 모드 나가기"> <i class="bi bi-x-lg"></i> </button> <button class="scroll-fab raw-mode-exit-fab d-none" id="rawModeExitFab" onclick="toggleRawMode()" title="Raw 보기 나가기" aria-label="Raw 보기 나가기"> <i class="bi bi-x-lg"></i> </button> <button class="scroll-fab" id="tocFabBtn" onclick="toggleFloatingToc()" title="목차"> <i class="mdi mdi-format-list-bulleted-square"></i> </button> <button class="scroll-fab" id="scrollToTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="맨 위로"> <i class="bi bi-chevron-up"></i> </button> <button class="scroll-fab" id="scrollToBottomBtn" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" title="맨 아래로"> <i class="bi bi-chevron-down"></i> </button> </div>    <script type="module" src="/dist/common.js"></script> <script type="module" src="/dist/render.js"></script> <script type="module" src="/dist/permissions-modal.js"></script> <script type="module" src="/dist/category-acl-modal.js"></script>  <script type="module" src="/dist/diff.js"></script> <script type="module" src="/dist/index.js"></script>  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24"></script><script src="https://cdn.jsdelivr.net/npm/marked@18.0.3/lib/marked.umd.js"></script><script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.2/dist/purify.min.js"></script>  </body></html>

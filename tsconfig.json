@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "target": "ES2024",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "lib": [
+            "ES2024"
+        ],
+        "types": [
+            "@cloudflare/workers-types"
+        ],
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+        "jsxImportSource": "hono/jsx"
+    },
+    "include": [
+        "src/**/*.ts",
+        "do-worker/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "src/client/**/*"
+    ]
+}

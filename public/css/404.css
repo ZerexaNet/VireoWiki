@@ -1,0 +1,278 @@
+body,
+html {
+    padding: 0;
+    margin: 0;
+    /* 글꼴 토큰(BaseLayout 이 style.css 를 로드해 토큰 정의·스킨 베이킹이 닿음) — 에러 셸도
+       테마 서체에 참여한다. 기본값은 'Inter' 스택이라 default 무변화. */
+    font-family: var(--wiki-font-body);
+    font-weight: 400;
+    overflow: hidden;
+}
+
+.writing {
+    width: 320px;
+    height: 200px;
+    background-color: var(--wiki-card-bg);
+    border: 1px solid var(--wiki-border);
+    border-radius: var(--wiki-radius-base) var(--wiki-radius-base) var(--wiki-radius-sm) var(--wiki-radius-sm);
+    position: relative;
+}
+
+.writing .topbar {
+    position: absolute;
+    width: 100%;
+    height: 12px;
+    background-color: var(--wiki-bg-alt);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.writing .topbar div {
+    height: 6px;
+    width: 6px;
+    border-radius: 50%;
+    margin: 3px;
+    float: left;
+}
+
+.writing .topbar div.green {
+    background-color: var(--wiki-success);
+}
+
+.writing .topbar div.red {
+    background-color: var(--wiki-danger);
+}
+
+.writing .topbar div.yellow {
+    background-color: var(--wiki-warning);
+}
+
+.writing .code {
+    padding: 15px;
+}
+
+.writing .code ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.writing .code ul li {
+    background-color: var(--wiki-text-muted);
+    width: 0;
+    height: 7px;
+    border-radius: var(--wiki-radius-base);
+    margin: 10px 0;
+}
+
+.container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    width: 100%;
+    transition: transform .5s;
+}
+
+.stack-container {
+    position: relative;
+    width: 420px;
+    height: 210px;
+    transition: width 1s, height 1s;
+}
+
+.pokeup {
+    transition: all var(--wiki-dur-slow) ease;
+}
+
+.pokeup:hover {
+    transform: translateY(-10px);
+    transition: var(--wiki-dur-slow) ease;
+}
+
+
+.error {
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+    text-align: center;
+    box-sizing: border-box;
+    color: var(--wiki-text);
+}
+
+.error h1 {
+    font-family: var(--wiki-font-heading);
+    font-size: clamp(40px, 12vw, 125px);
+    padding: 0;
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+}
+
+.error h2 {
+    margin: -30px 0 0 0;
+    padding: 0px;
+    font-size: 47px;
+    letter-spacing: 12px;
+}
+
+.perspec {
+    perspective: 1000px;
+}
+
+.writeLine {
+    -webkit-animation: writeLine var(--wiki-dur-enter) linear forwards;
+    animation: writeLine var(--wiki-dur-enter) linear forwards;
+}
+
+.explode {
+    -webkit-animation: explode .5s ease-in-out forwards;
+    animation: explode .5s ease-in-out forwards;
+}
+
+.card {
+    -webkit-animation: tiltcard .5s ease-in-out 1s forwards;
+    animation: tiltcard .5s ease-in-out 1s forwards;
+    position: absolute;
+}
+
+@-webkit-keyframes tiltcard {
+    0% {
+        transform: rotateY(0deg);
+    }
+
+    100% {
+        transform: rotateY(-30deg);
+    }
+}
+
+@keyframes tiltcard {
+    0% {
+        transform: rotateY(0deg);
+    }
+
+    100% {
+        transform: rotateY(-30deg);
+    }
+}
+
+@-webkit-keyframes explode {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+        transform: translate(var(--spreaddist), var(--vertdist)) scale(var(--scaledist));
+    }
+}
+
+@keyframes explode {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+        transform: translate(var(--spreaddist), var(--vertdist)) scale(var(--scaledist));
+    }
+}
+
+@-webkit-keyframes writeLine {
+    0% {
+        width: 0;
+    }
+
+    100% {
+        width: var(--linelength);
+    }
+}
+
+@keyframes writeLine {
+    0% {
+        width: 0;
+    }
+
+    100% {
+        width: var(--linelength);
+    }
+}
+
+@media screen and (max-width: 1000px) {
+    .container {
+        transform: scale(.85);
+    }
+}
+
+@media screen and (max-width: 850px) {
+    .container {
+        transform: scale(.75);
+    }
+}
+
+@media screen and (max-width: 775px) {
+    .container {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: center;
+        text-align: center;
+    }
+    .error {
+        display: contents;
+    }
+    .error h1 {
+        order: 1;
+        margin-bottom: 10px;
+    }
+    .stack-container {
+        order: 2;
+        margin: 20px 0;
+    }
+    .error p {
+        order: 3;
+        padding: 0 20px;
+        margin-bottom: 20px;
+    }
+    .error a {
+        order: 4;
+    }
+}
+
+@media screen and (max-width: 370px) {
+    .container {
+        transform: scale(.6);
+    }
+}
+
+/* 사이트 공통 버튼 톤(.btn-new-page 와 동일 계열) */
+.button {
+    background: linear-gradient(135deg, var(--wiki-primary), var(--wiki-accent));
+    border: none;
+    color: var(--wiki-btn-text);
+    padding: 0.6rem 1.4rem;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: var(--wiki-fs-md);
+    font-weight: 700;
+    border-radius: var(--wiki-radius-sm);
+    margin: 10px 2px;
+    box-shadow: var(--wiki-shadow-sm);
+    transition: all var(--wiki-dur-fast) var(--wiki-ease);
+    cursor: pointer;
+}
+
+.button:hover {
+    box-shadow: var(--wiki-shadow-md);
+    transform: translateY(-2px);
+    color: var(--wiki-btn-text);
+    filter: brightness(1.1);
+}
+
+.button:active {
+    transform: translateY(0);
+}
+
+/* .button5 는 과거 까만 배경 변형이었음. 현재는 .button 과 동일하게 처리(클래스 호환용). */
+.button5 {
+    /* no-op — 사이트 톤 그라데이션을 그대로 사용 */
+}

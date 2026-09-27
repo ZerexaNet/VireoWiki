@@ -1,0 +1,206 @@
+---
+// 탐색 포털 셸. 통계/고아 문서/작성 요청(빨간 링크)/최근 토론/무작위 문서 카드를 본문에 두고,
+// 트렌딩·최근 변경은 recent-changes.astro 와 동일한 검증된 사이드바 마크업을 재사용한다
+// (common.ts 의 loadTrending/loadRecentChanges 가 .trending-container/.recent-changes-container 를 채움).
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Sidebar from '../components/Sidebar.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout pagePath="/explore.html" title="探索 - CloudWiki">
+    <Fragment slot="head">
+        <!-- 테마 FOUC 방지: CSS 로드 후 즉시 테마 적용 -->
+        <script is:inline>try{var t=localStorage.getItem('themeMode');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+    </Fragment>
+
+    <!-- ── 네비게이션 바 ── -->
+    <Header />
+
+    <!-- ── 메인 레이아웃 ── -->
+    <div class="wiki-layout">
+        <div class="wiki-container">
+            <div class="wiki-article" style="width: 100%; max-width: 100%; overflow-x: hidden;">
+
+                <h1 class="h3 mb-1"><i class="bi bi-compass text-primary"></i> 探索</h1>
+
+                <!-- 통계 -->
+                <div id="exploreStats" class="d-flex gap-2 mb-4 flex-wrap">
+                    <span class="placeholder-glow"><span class="placeholder col-12 d-inline-block" style="width: 320px; height: 2.4rem; border-radius: 6px;"></span></span>
+                </div>
+
+                <!-- 위젯 카드 그리드 -->
+                <div class="row g-3">
+                    <!-- 고아 문서 -->
+                    <div class="col-lg-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-transparent fw-bold">
+                                <i class="bi bi-link-45deg text-secondary"></i> 孤立页面
+                                <span class="text-muted small fw-normal">— 没有其他页面链接到的页面</span>
+                            </div>
+                            <div class="card-body p-2" id="orphansList"></div>
+                        </div>
+                    </div>
+
+                    <!-- 미작성 문서 (빨간 링크) -->
+                    <div class="col-lg-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-transparent fw-bold">
+                                <i class="bi bi-pencil-fill text-danger"></i> 待创建页面
+                                <span class="text-muted small fw-normal">— 有页面引用但尚未创建的页面</span>
+                            </div>
+                            <div class="card-body p-2" id="wantedList"></div>
+                        </div>
+                    </div>
+
+                    <!-- 최근 토론 활동 -->
+                    <div class="col-lg-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-transparent fw-bold">
+                                <i class="bi bi-chat-left-dots text-info"></i> 最近讨论
+                            </div>
+                            <div class="card-body p-2" id="recentDiscussionsList"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 검토 대기 편집 요청 (검토 가능한 사용자에게만, 항목>0 시 노출) -->
+                <div id="pendingEditsSection" class="card shadow-sm mt-3 d-none">
+                    <div class="card-header bg-transparent fw-bold">
+                        <i class="bi bi-pencil-square text-primary"></i> 待审核编辑
+                        <span id="pendingEditsCount" class="badge bg-primary ms-1">0</span>
+                        <span class="text-muted small fw-normal">— 可在相应页面中审核</span>
+                    </div>
+                    <div class="card-body p-2" id="pendingEditsList"></div>
+                </div>
+
+                <!-- 랜덤 탐색 (슬림 배너 — 그리드 stretch 로 인한 PC 여백 제거) -->
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 py-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="bi bi-shuffle text-success fs-3"></i>
+                            <div>
+                                <div class="fw-bold">随机浏览</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-wiki" onclick="goRandomPage()">
+                            <i class="bi bi-shuffle"></i> 随机浏览页面
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── 문서 활동 (최근 수정 내역 / 모든 문서 목록) — 기존 /recent-changes 통합 ── -->
+                <div id="docActivity" class="mt-5">
+                    <h2 class="h5 mb-3"><i class="bi bi-clock-history text-primary"></i> 页面动态</h2>
+
+                    <!-- 탭 네비게이션 -->
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab-recent" data-bs-toggle="tab" data-bs-target="#pane-recent"
+                                type="button" role="tab" aria-selected="true">
+                                <i class="bi bi-clock-history"></i> 最近编辑
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-allpages" data-bs-toggle="tab" data-bs-target="#pane-allpages"
+                                type="button" role="tab" aria-selected="false">
+                                <i class="bi bi-journals"></i> 全部页面
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- 탭 콘텐츠 -->
+                    <div class="tab-content">
+                        <!-- 최근 수정 내역 탭 -->
+                        <div class="tab-pane fade show active" id="pane-recent" role="tabpanel">
+                            <label class="d-none small mb-2" id="patrolFilterLabel">
+                                <input type="checkbox" id="unpatrolledOnly"> 只看待巡查编辑
+                            </label>
+                            <div class="table-responsive"
+                                style="width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                                <div class="revision-list" id="revisionsList" style="width: max-content; min-width: 100%;"></div>
+                            </div>
+                            <nav id="recentRevisionsPagination" class="mt-3 d-none" aria-label="最近编辑分页">
+                                <ul class="pagination justify-content-center flex-wrap" id="recentRevisionsPaginationList"></ul>
+                            </nav>
+                        </div>
+
+                        <!-- 모든 문서 목록 탭 -->
+                        <div class="tab-pane fade" id="pane-allpages" role="tabpanel">
+                            <!-- 전체보기 진입점 + 정렬 드롭다운 -->
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                <a href="/all" class="btn btn-sm btn-wiki"><i class="bi bi-grid-3x3-gap"></i> 查看全部</a>
+                                <select id="allPagesSortSelect" class="form-select form-select-sm" style="width: auto;"
+                                    onchange="changeSort()">
+                                    <option value="slug_asc">页面名称升序</option>
+                                    <option value="slug_desc">页面名称降序</option>
+                                    <option value="created_desc">创建时间降序</option>
+                                    <option value="created_asc">创建时间升序</option>
+                                    <option value="updated_desc">最后编辑时间降序</option>
+                                    <option value="updated_asc">最后编辑时间升序</option>
+                                    <option value="category_asc">分类名称升序</option>
+                                    <option value="category_desc">分类名称降序</option>
+                                    <option value="chars_desc">长页面优先</option>
+                                    <option value="chars_asc">短页面优先</option>
+                                </select>
+                            </div>
+                            <!-- 문서 목록 (가로 스크롤 래퍼) -->
+                            <div class="table-responsive"
+                                style="width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                                <div id="allPagesList" style="min-width: 560px;"></div>
+                            </div>
+                            <nav id="allPagesPagination" class="mt-3 d-none" aria-label="页面列表分页">
+                                <ul class="pagination justify-content-center flex-wrap" id="allPagesPaginationList"></ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 오른쪽 사이드바 (트렌딩 + 최근 변경) -->
+        <aside class="wiki-sidebar" id="wikiSidebar">
+            <Sidebar />
+
+            <!-- 실시간 트렌딩 (PC/모바일 공통) -->
+            <div class="mb-4">
+                <div class="sidebar-section">
+                    <h6 class="sidebar-title d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="bi bi-graph-up-arrow text-danger"></i> 实时热门</span>
+                        <a href="#" class="small text-muted text-decoration-none trending-expand-btn" style="font-size: 0.8rem;">展开
+                            <i class="bi bi-chevron-down"></i></a>
+                    </h6>
+                    <div class="position-relative overflow-hidden trending-ticker-wrapper" style="height: 38px;">
+                        <div id="trendingListPc" class="trending-container trending-ticker-list">
+                            <div class="placeholder-glow px-2 py-2">
+                                <span class="placeholder w-100 d-block" style="height: 1.5rem; border-radius: 4px;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 최근 변경 -->
+            <div>
+                <div class="sidebar-section sidebar-section-pc-only">
+                    <h6 class="sidebar-title"><i class="bi bi-clock-history"></i> 最近更改</h6>
+                    <div id="recentChangesListPc" class="recent-changes-list recent-changes-container">
+                        <div class="placeholder-glow">
+                            <span class="placeholder w-100 d-block mb-2" style="height: 2.5rem; border-radius: 6px;"></span>
+                            <span class="placeholder w-100 d-block mb-2" style="height: 2.5rem; border-radius: 6px;"></span>
+                            <span class="placeholder w-100 d-block" style="height: 2.5rem; border-radius: 6px;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ── 푸터 ── -->
+    <Footer />
+
+    <Fragment slot="scripts">
+        <script type="module" src="/dist/common.js" is:inline></script>
+        <script type="module" src="/dist/explore.js" is:inline></script>
+    </Fragment>
+</BaseLayout>

@@ -1,0 +1,797 @@
+<!DOCTYPE html><html lang="zh-CN"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&family=Montserrat:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24/dist/sweetalert2.min.css"><title class="app-wiki-name">내 个人资料 - VireoWiki</title><link rel="icon" id="wiki-favicon" href="/favicon.ico"><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/skins-e3e52158b85e58b2.css"><script>window.__WIKI_SKINS__={"list":["default","astro","vector","bootstrap","via"],"default":"default","labels":{"default":"Cloudwiki(기본)","astro":"Astro","vector":"벡터","bootstrap":"Bootstrap","via":"VIA"},"darkOnly":["astro"]};try{var s=localStorage.getItem('themeSkin');var L=window.__WIKI_SKINS__.list;if(s&&L.indexOf(s)>=0){if(s==='default')document.documentElement.removeAttribute('data-wiki-theme');else document.documentElement.setAttribute('data-wiki-theme',s);}}catch(e){}</script>  <link rel="stylesheet" href="/render.css"> <link rel="stylesheet" href="/css/diff.css">  <script>try{var t=localStorage.getItem('themeMode');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script> <style>
+            /* 모바일에서 햄버거 메뉴 숨김 */
+            .navbar-toggler[data-bs-target="#mobileSidebar"] {
+                display: none !important;
+            }
+
+            .profile-container {
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 0 20px;
+            }
+
+            .profile-header {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+                padding: 2rem;
+                background: var(--wiki-card-bg);
+                border-radius: 16px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+                border: 1px solid var(--wiki-border);
+                margin-bottom: 1.5rem;
+            }
+
+            .profile-avatar {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                border: 3px solid var(--wiki-primary);
+                object-fit: cover;
+            }
+
+            .profile-avatar-placeholder {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, var(--wiki-primary), var(--wiki-accent));
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #fff;
+                font-size: 2rem;
+                font-weight: 700;
+            }
+
+            .profile-avatar-wrap {
+                position: relative;
+                display: inline-block;
+                flex-shrink: 0;
+            }
+
+            .profile-avatar-refresh {
+                position: absolute;
+                right: -4px;
+                bottom: -4px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: var(--wiki-primary);
+                color: #fff;
+                border: 2px solid var(--wiki-card-bg);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+                transition: transform 0.15s, background 0.15s;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            }
+
+            .profile-avatar-refresh:hover {
+                transform: scale(1.08);
+            }
+
+            .profile-avatar-refresh:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+            .profile-avatar-refresh i {
+                font-size: 1rem;
+            }
+
+            .profile-info h2 {
+                font-weight: 800;
+                margin-bottom: 0.25rem;
+            }
+
+            .profile-info .role-badge {
+                font-size: 0.8rem;
+            }
+
+            .profile-section {
+                background: var(--wiki-card-bg);
+                border-radius: 16px;
+                padding: 1.5rem 2rem;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+                border: 1px solid var(--wiki-border);
+                margin-bottom: 1.5rem;
+            }
+
+            .profile-section h4 {
+                font-weight: 700;
+                margin-bottom: 1rem;
+                padding-bottom: 0.5rem;
+                border-bottom: 2px solid var(--wiki-border);
+            }
+
+            .profile-section h4 i {
+                color: var(--wiki-primary);
+            }
+
+            .contribution-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.6rem 0;
+                border-bottom: 1px solid var(--wiki-border);
+                transition: background 0.15s;
+            }
+
+            .contribution-item:last-child {
+                border-bottom: none;
+            }
+
+            .contribution-item:hover {
+                background: rgba(37, 99, 235, 0.03);
+                margin: 0 -0.5rem;
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+                border-radius: 8px;
+            }
+
+            .contribution-item a {
+                color: var(--wiki-primary);
+                text-decoration: none;
+                font-weight: 600;
+            }
+
+            .contribution-item a:hover {
+                text-decoration: underline;
+            }
+
+            .contribution-item .meta {
+                font-size: 0.8rem;
+                color: var(--wiki-text-muted);
+            }
+
+            .mcp-submission-item {
+                display: flex;
+                flex-direction: column;
+                gap: 0.4rem;
+                padding: 0.85rem 0.9rem;
+                border: 1px solid var(--wiki-border);
+                border-radius: 10px;
+                margin-bottom: 0.6rem;
+                background: var(--wiki-card-bg);
+            }
+            .mcp-submission-item .mcp-sub-head {
+                display: flex;
+                align-items: center;
+                gap: 0.4rem;
+                flex-wrap: wrap;
+            }
+            .mcp-submission-item .mcp-sub-slug {
+                font-weight: 700;
+                color: var(--wiki-primary);
+                text-decoration: none;
+                word-break: break-all;
+            }
+            .mcp-submission-item .mcp-sub-slug:hover { text-decoration: underline; }
+            .mcp-submission-item .mcp-sub-meta {
+                font-size: 0.8rem;
+                color: var(--wiki-text-muted);
+            }
+            .mcp-submission-item .mcp-sub-summary {
+                font-size: 0.92rem;
+                margin: 0.1rem 0;
+                color: var(--wiki-text);
+            }
+            .mcp-submission-item .mcp-sub-actions {
+                display: flex;
+                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
+            .mcp-submission-item.has-conflict {
+                border-left: 4px solid var(--wiki-danger);
+            }
+            .mcp-submission-banner {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+                padding: 0.7rem 1rem;
+                margin: 0.5rem 0 1rem;
+                border: 1px solid #ffc107;
+                background: rgba(255, 193, 7, 0.08);
+                border-radius: 10px;
+                font-size: 0.95rem;
+            }
+            .mcp-submission-banner a { font-weight: 700; }
+            .mcp-diff-pane {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+            }
+            .mcp-diff-pane > div {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+            .mcp-diff-pane pre {
+                background: var(--wiki-toc-bg, #f7f7f7);
+                border: 1px solid var(--wiki-border);
+                border-radius: 8px;
+                padding: 0.6rem 0.8rem;
+                max-height: 360px;
+                overflow: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
+                font-size: 0.85rem;
+                margin: 0;
+            }
+            @media (max-width: 640px) {
+                .mcp-diff-pane { grid-template-columns: 1fr; }
+            }
+
+            .edit-name-form {
+                display: flex;
+                gap: 0.5rem;
+                align-items: center;
+            }
+
+            .edit-name-form input {
+                border: 2px solid var(--wiki-border);
+                border-radius: 10px;
+                padding: 0.4rem 0.75rem;
+                font-size: 0.95rem;
+                transition: border-color 0.2s;
+                max-width: 300px;
+            }
+
+            .edit-name-form input:focus {
+                outline: none;
+                border-color: var(--wiki-primary);
+                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            }
+
+            .stat-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .stat-card {
+                background: var(--wiki-toc-bg);
+                border-radius: 12px;
+                padding: 1rem;
+                text-align: center;
+                border: 1px solid var(--wiki-border);
+            }
+
+            .stat-card .stat-value {
+                font-size: 1.5rem;
+                font-weight: 800;
+                color: var(--wiki-primary);
+            }
+
+            .stat-card .stat-label {
+                font-size: 0.8rem;
+                color: var(--wiki-text-muted);
+                font-weight: 500;
+            }
+
+            .session-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 0.75rem;
+                padding: 0.85rem 0.9rem;
+                border: 1px solid var(--wiki-border);
+                border-radius: 10px;
+                margin-bottom: 0.6rem;
+                background: var(--wiki-toc-bg);
+            }
+
+            .session-item.current {
+                border-color: var(--wiki-primary);
+                background: rgba(37, 99, 235, 0.06);
+            }
+
+            .session-item .session-meta {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+
+            .session-item .session-ua {
+                font-weight: 600;
+                font-size: 0.95rem;
+                word-break: break-word;
+            }
+
+            .session-item .session-ua-raw {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.75rem;
+                color: var(--wiki-text-muted);
+                word-break: break-all;
+                margin-top: 0.25rem;
+            }
+
+            .session-item .session-times {
+                font-size: 0.78rem;
+                color: var(--wiki-text-muted);
+                margin-top: 0.35rem;
+            }
+
+            .session-item .session-times span {
+                margin-right: 0.6rem;
+            }
+
+            .session-current-badge {
+                font-size: 0.7rem;
+                margin-left: 0.4rem;
+            }
+
+            .mcp-tool-group {
+                font-size: 0.8rem;
+                font-weight: 700;
+                color: var(--wiki-text-muted);
+                letter-spacing: 0.5px;
+                margin: 0.9rem 0 0.4rem;
+            }
+
+            .mcp-tool-group:first-child {
+                margin-top: 0;
+            }
+
+            .mcp-tool-item {
+                display: flex;
+                align-items: flex-start;
+                gap: 0.75rem;
+                padding: 0.6rem 0.75rem;
+                border: 1px solid var(--wiki-border);
+                border-radius: 10px;
+                margin-bottom: 0.45rem;
+                background: var(--wiki-card-bg);
+            }
+
+            .mcp-tool-item.is-off {
+                opacity: 0.65;
+            }
+
+            .mcp-tool-item .tool-meta {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+
+            .mcp-tool-item .tool-name {
+                font-family: var(--wiki-code-font);
+                font-weight: 700;
+                font-size: 0.9rem;
+                color: var(--wiki-primary);
+                word-break: break-all;
+            }
+
+            .mcp-tool-item .tool-desc {
+                font-size: 0.8rem;
+                color: var(--wiki-text-muted);
+                margin-top: 0.15rem;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            @media (max-width: 991px) {
+                .profile-container {
+                    padding: 0 12px;
+                    margin: 16px auto;
+                }
+
+                .profile-header {
+                    flex-direction: column;
+                    align-items: center;
+                    text-align: center;
+                    padding: 1.25rem 1rem;
+                    gap: 0.75rem;
+                }
+
+                .profile-section {
+                    padding: 1.25rem 1rem;
+                }
+
+                .edit-name-form {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+
+                .edit-name-form input {
+                    max-width: none;
+                    width: 100%;
+                }
+
+                .contribution-item {
+                    flex-wrap: wrap;
+                    gap: 0.25rem;
+                }
+
+                .contribution-item .meta {
+                    font-size: 0.75rem;
+                }
+
+                .stat-cards {
+                    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+                }
+            }
+        </style> <script>(function(){try{var L=window.__WIKI_SKINS__;if(!L||!L.darkOnly||!L.darkOnly.length)return;var d=document.documentElement;var c=d.getAttribute('data-wiki-theme')||'default';if(L.darkOnly.indexOf(c)>=0){d.setAttribute('data-theme','dark');d.setAttribute('data-bs-theme','dark');}else{var t;try{t=localStorage.getItem('themeMode');}catch(e){}var bs;if(t==='light'){d.setAttribute('data-theme','light');bs='light';}else if(t==='dark'){d.setAttribute('data-theme','dark');bs='dark';}else{d.removeAttribute('data-theme');bs=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}d.setAttribute('data-bs-theme',bs);}}catch(e){}})();</script></head> <body data-layout-mode="default" style="-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;"> <!-- 레이아웃 모드 사용자 오버라이드 FOUC 방지: 파싱 중 즉시 적용(common.ts applyLayoutOverride 와 동일 키). --> <script>try{var m=localStorage.getItem('layoutModeOverride');if(m&&['default','left-toc','right-toc','docs','wide'].indexOf(m)>=0)document.body.setAttribute('data-layout-mode',m);}catch(e){}</script>    <!-- ── 사이트 전역 공지 배너 (다중) ── -->
+<!-- src/client/common.ts 가 appConfig.announcements 배열을 읽어 자식 노드를 동적 생성한다. -->
+<div id="announcement-banners" class="announcement-banners d-none"></div>
+
+<!-- ── 네비게이션 바 ── -->
+<nav class="navbar navbar-expand-lg navbar-light">
+    <div class="container-fluid flex-wrap align-items-center">
+        <!-- 상단 줄: 브랜딩 + 기능 버튼들 -->
+        <a class="navbar-brand me-auto" href="/">
+            <span class="wiki-logo-container"><img src="/favicon.jpg" alt="Logo" class="brand-logo" style="height: 32px; vertical-align: middle; margin-right: 8px;"></span>
+            <span class="app-wiki-name">VireoWiki</span>
+        </a>
+
+        <!-- 유저 버튼 & 알림 패널 통합 -->
+        <div class="dropdown ms-2 d-none position-relative" id="navUser">
+            <a href="#" class="d-flex align-items-center text-decoration-none position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+               <img id="userAvatar" class="user-avatar m-0" src="" alt="">
+               <span class="notification-badge d-none" id="notificationBadge"></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm position-absolute">
+                <li><h6 class="dropdown-header text-truncate" id="userName"></h6></li>
+                <li><a class="dropdown-item d-flex align-items-center" href="#" onclick="document.querySelector('#navUser > a').click(); toggleNotificationPanel(); event.stopPropagation(); return false;"><i class="mdi mdi-inbox me-2"></i><span class="me-auto">通知</span><span class="notification-menu-badge d-none" id="notificationMenuBadge"></span></a></li>
+                <li><a class="dropdown-item" href="#" onclick="openSettingsModal(); event.preventDefault(); return false;"><i class="mdi mdi-cog-outline me-2"></i> 个人设置</a></li>
+                <li><a class="dropdown-item" href="/mypage"><i class="mdi mdi-account-circle me-2"></i> 个人中心</a></li>
+                <li id="navAdminConsole" class="d-none"><a class="dropdown-item" href="/admin"><i class="mdi mdi-shield-account me-2"></i> 管理后台</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/auth/logout"><i class="mdi mdi-logout me-2 text-danger"></i> 退出登录</a></li>
+            </ul>
+
+            <!-- 알림 드롭다운 패널 -->
+            <div class="notification-panel d-none" id="notificationPanel">
+                <div class="notification-panel-header">
+                    <strong><i class="mdi mdi-inbox"></i> 通知</strong>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0 ms-auto" id="notifMarkAllReadBtn" onclick="markAllNotificationsRead()" title="全部标为已读" style="font-size:0.8rem;">
+                        <i class="mdi mdi-email-open-outline"></i> 全部标为已读
+                    </button>
+                    <button class="btn btn-sm btn-link text-danger p-0 ms-3" id="notifDeleteAllBtn" onclick="deleteAllNotifications()" title="全部删除" style="font-size:0.8rem;">
+                        <i class="mdi mdi-delete-sweep-outline"></i> 全部删除
+                    </button>
+                </div>
+                <div class="notification-panel-body" id="notificationPanelBody">
+                    <div class="text-center text-muted py-4">正在加载...</div>
+                </div>
+                <a class="notification-panel-archive-link" href="/mypage#notifications">
+                    <i class="mdi mdi-archive-outline"></i> 查看全部通知
+                </a>
+                <div class="notification-panel-footer d-none" id="notificationPanelFooter">
+                    <div class="push-toggle-status d-flex align-items-center justify-content-between mb-2" id="pushToggleStatus">
+                        <span class="push-toggle-status-label">
+                            <i class="mdi mdi-bell-outline me-1"></i>浏览器推送通知
+                        </span>
+                        <span class="push-status-pill push-status-off" id="pushStatusPill">
+                            <i class="mdi mdi-circle-medium" id="pushStatusDot"></i>
+                            <span id="pushStatusText">已关闭</span>
+                        </span>
+                    </div>
+                    <button id="pushToggleBtn" class="btn btn-sm btn-outline-secondary w-100" type="button" title="浏览器推送通知">
+                        <i class="mdi mdi-bell-off-outline"></i> <span id="pushToggleLabel">接收推送通知</span>
+                    </button>
+                </div>
+            </div>
+            <!-- js 호환성을 위한 안보이는 래퍼 유지 -->
+            <div id="notificationBtnWrapper" class="d-none"></div>
+        </div>
+        <!-- 개인 설정 버튼 (로그아웃 상태에서만 노출 — 로그인 시 checkAuth 가 숨기고 드롭다운 항목으로 대체) -->
+        <button class="btn border-0 px-1 ms-2" type="button" id="navSettings" onclick="openSettingsModal()" title="个人设置" aria-label="个人设置">
+            <i class="mdi mdi-cog-outline text-body"></i>
+        </button>
+        <a class="btn border-0 px-1 ms-2" id="navLogin" href="/login" title="登录"><i class="mdi mdi-login text-body"></i></a>
+
+        <!-- 햄버거 버튼 (사이드바 토글) -->
+        <button class="navbar-toggler border-0 px-1 ms-2" type="button" data-bs-toggle="offcanvas"
+            data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+            <i class="mdi mdi-menu fs-2 text-body"></i>
+        </button>
+
+        <!-- 하단 줄: 검색창 (항상 full-width로 다음 줄에 표시) -->
+        <form class="nav-search-form d-flex" onsubmit="doSearch(event)">
+            <button class="btn border-0 px-1 me-1" type="button" title="随机页面" onclick="goRandomPage()"><i class="bi bi-shuffle text-body"></i></button>
+            <div class="input-group">
+                <input type="text" id="searchInput" class="form-control" placeholder="搜索页面..." autocomplete="off">
+                <button class="btn search-mode-btn" type="submit" aria-label="搜索">
+                    <i class="mdi mdi-magnify"></i>
+                </button>
+            </div>
+            <!-- 연관검색어 드롭다운 -->
+            <ul class="search-suggestions" id="searchSuggestions"></ul>
+        </form>
+
+        <script>
+        (function() {
+            let debounceTimer = null;
+            const input = document.getElementById('searchInput');
+            const sugBox = document.getElementById('searchSuggestions');
+            let activeIdx = -1;
+
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const rawQ = this.value.trim();
+                // map: 프리픽스가 붙으면 일반 문서 LIKE 검색을 그대로 돌리되, 결과를 map: 가상 문서로 매핑한다.
+                const isMapMode = rawQ.toLowerCase().startsWith('map:');
+                const q = isMapMode ? rawQ.slice(4).trim() : rawQ;
+                if (q.length < 2) {
+                    sugBox.classList.remove('show');
+                    sugBox.innerHTML = '';
+                    return;
+                }
+                debounceTimer = setTimeout(() => fetchSuggestions(q, isMapMode), 250);
+            });
+
+            async function fetchSuggestions(q, isMapMode) {
+                try {
+                    // map: 모드는 카테고리를 클라이언트에서 거르지 않고 서버에서 아예 제외시켜
+                    // 7개 한도가 카테고리에 잠식돼 페이지 결과가 비는 상황을 막는다.
+                    const url = '/api/search/suggest?q=' + encodeURIComponent(q)
+                        + (isMapMode ? '&exclude_categories=1' : '');
+                    const res = await fetch(url);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const items = data.suggestions || [];
+                    renderSuggestions(items, isMapMode);
+                } catch(e) { /* ignore */ }
+            }
+
+            // 호출 식별자(slug) 네임스페이스별 아이콘. map: 가상 트리, 카테고리:, 이미지:
+            // 는 각각 다른 mdi 아이콘으로, 그 외 일반 문서는 기본 문서 아이콘으로 표시한다.
+            function suggestionIcon(slugTarget) {
+                if (slugTarget.toLowerCase().startsWith('map:')) return 'mdi-file-tree-outline';
+                if (slugTarget.startsWith('카테고리:')) return 'mdi-tag-outline';
+                if (slugTarget.startsWith('이미지:')) return 'mdi-image-outline';
+                return 'mdi-file-document-outline';
+            }
+
+            function renderSuggestions(items, isMapMode) {
+                activeIdx = -1;
+                if (!items.length) {
+                    sugBox.classList.remove('show');
+                    sugBox.innerHTML = '';
+                    return;
+                }
+                // item.title 이 있으면 표시 이름은 그것을, 호출 식별자(data-slug, /w/) 는 항상 slug.
+                // map: 모드에서는 호출 식별자도 map:<slug> 로 감싸 가상 문서 라우트로 이동시킨다.
+                sugBox.innerHTML = items.map((item, i) => {
+                    const baseSlug = item.slug;
+                    const baseDisplayName = item.title || baseSlug;
+                    const slugTarget = isMapMode ? 'map:' + baseSlug : baseSlug;
+                    const displayName = isMapMode ? 'map:' + baseDisplayName : baseDisplayName;
+                    const slugSubLabel = item.title
+                        ? ' <small class="text-muted">' + escapeHtml(slugTarget) + '</small>'
+                        : '';
+                    return '<li class="search-suggestion-item" data-slug="' + escapeHtml(slugTarget) + '">'
+                        + '<i class="mdi ' + suggestionIcon(slugTarget) + '"></i> '
+                        + escapeHtml(displayName) + slugSubLabel + '</li>';
+                }).join('');
+                sugBox.classList.add('show');
+
+                sugBox.querySelectorAll('.search-suggestion-item').forEach(el => {
+                    el.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        const slug = this.dataset.slug;
+                        if (typeof navigateTo === 'function') {
+                            navigateTo('/w/' + encodeURIComponent(slug));
+                        } else {
+                            window.location.href = '/w/' + encodeURIComponent(slug);
+                        }
+                        sugBox.classList.remove('show');
+                        sugBox.innerHTML = '';
+                        input.value = '';
+                        input.blur();
+                    });
+                });
+            }
+
+            // 키보드 탐색
+            input.addEventListener('keydown', function(e) {
+                const items = sugBox.querySelectorAll('.search-suggestion-item');
+                if (!items.length || !sugBox.classList.contains('show')) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIdx = Math.min(activeIdx + 1, items.length - 1);
+                    updateActive(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIdx = Math.max(activeIdx - 1, -1);
+                    updateActive(items);
+                } else if (e.key === 'Enter' && activeIdx >= 0) {
+                    e.preventDefault();
+                    items[activeIdx].dispatchEvent(new Event('mousedown'));
+                } else if (e.key === 'Escape') {
+                    sugBox.classList.remove('show');
+                }
+            });
+
+            function updateActive(items) {
+                items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+            }
+
+            input.addEventListener('blur', function() {
+                setTimeout(() => { sugBox.classList.remove('show'); }, 150);
+            });
+
+            input.addEventListener('focus', function() {
+                if (sugBox.innerHTML && this.value.trim().length >= 2) {
+                    sugBox.classList.add('show');
+                }
+            });
+        })();
+        </script>
+    </div>
+</nav>
+
+<!-- ── 개인 설정 모달 (클라이언트 전용 설정: 테마 · 레이아웃 모드 오버라이드) ── -->
+<!-- src/client/common.ts 가 openSettingsModal() 로 열고, select 변경을 처리한다. -->
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="settingsModalLabel"><i class="mdi mdi-cog-outline me-1"></i> 个人设置</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3" id="settingThemeWrap">
+                    <span class="form-label d-block">主题</span>
+                    <div class="setting-seg" id="settingTheme" role="group" aria-label="主题">
+                        <button type="button" class="seg-btn" data-value="auto" aria-pressed="false" title="自动 (시스템 설정)">
+                            <i class="mdi mdi-circle-half-full" aria-hidden="true"></i><span>自动</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="dark" aria-pressed="false" title="深色">
+                            <i class="mdi mdi-moon-waxing-crescent" aria-hidden="true"></i><span>深色</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="light" aria-pressed="false" title="浅色">
+                            <i class="mdi mdi-white-balance-sunny" aria-hidden="true"></i><span>浅色</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- 다크 전용 색 테마(스킨)가 활성일 때 common.ts 가 위 밝기 토글을 숨기고 이 안내를 보인다. -->
+                <p class="text-muted small mb-3" id="settingThemeForcedNote" style="display:none;"><i class="mdi mdi-moon-waxing-crescent me-1"></i>当前主题仅支持深色模式。</p>
+                <div class="mb-3" id="settingThemeSkinWrap" style="display:none;">
+                    <span class="form-label d-block" id="settingThemeSkinLabelText">配色主题</span>
+                    <!-- 네이티브 <select> 대신 앱 디자인에 맞춘 커스텀 드롭다운. 옵션은 멀티 스킨 -->
+                    <!-- 모드(window.__WIKI_SKINS__)일 때 common.ts 가 동적 주입한다. -->
+                    <div class="skin-select" id="settingThemeSkin">
+                        <button type="button" class="skin-select-toggle" id="settingThemeSkinToggle"
+                            aria-haspopup="listbox" aria-expanded="false" aria-labelledby="settingThemeSkinLabelText settingThemeSkinValue">
+                            <span class="skin-select-value" id="settingThemeSkinValue"></span>
+                            <i class="mdi mdi-chevron-down skin-select-caret" aria-hidden="true"></i>
+                        </button>
+                        <ul class="skin-select-menu" id="settingThemeSkinMenu" role="listbox" aria-label="配色主题"></ul>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="form-label d-block">布局模式</span>
+                    <div class="setting-seg" id="settingLayoutMode" role="group" aria-label="布局模式">
+                        <button type="button" class="seg-btn" data-value="site" aria-pressed="false" title="站点默认值">
+                            <i class="mdi mdi-web" aria-hidden="true"></i><span>站点默认</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="default" aria-pressed="false" title="默认 (无侧栏)">
+                            <i class="mdi mdi-page-layout-body" aria-hidden="true"></i><span>默认</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="left-toc" aria-pressed="false" title="左侧目录">
+                            <i class="mdi mdi-page-layout-sidebar-left" aria-hidden="true"></i><span>左侧目录</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="right-toc" aria-pressed="false" title="右侧目录">
+                            <i class="mdi mdi-page-layout-sidebar-right" aria-hidden="true"></i><span>右侧目录</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="docs" aria-pressed="false" title="页面 (左侧目录树和右侧目录)">
+                            <i class="mdi mdi-file-tree-outline" aria-hidden="true"></i><span>页面</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="wide" aria-pressed="false" title="宽屏 (隐藏侧栏)">
+                            <i class="mdi mdi-arrow-expand-horizontal" aria-hidden="true"></i><span>宽屏</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="form-label d-block">键盘快捷键</span>
+                    <div class="setting-seg" id="settingKeyboardShortcuts" role="group" aria-label="键盘快捷键">
+                        <button type="button" class="seg-btn" data-value="on" aria-pressed="false" title="启用单键快捷键">
+                            <i class="mdi mdi-keyboard" aria-hidden="true"></i><span>开启</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="off" aria-pressed="false" title="关闭单键快捷键">
+                            <i class="mdi mdi-keyboard-off" aria-hidden="true"></i><span>关闭</span>
+                        </button>
+                    </div>
+                    <p class="text-muted small mb-0 mt-1"><i class="mdi mdi-information-outline me-1"></i>关闭后 <kbd>/</kbd> <kbd>g</kbd> <kbd>e</kbd> <kbd>?</kbd> 等单键快捷键将失效 (<kbd>Ctrl/⌘+K</kbd> 始终可用).</p>
+                </div>
+<p class="text-muted small mb-0"><i class="mdi mdi-information-outline me-1"></i>设置仅保存在当前浏览器；更改布局后页面会刷新。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+ <div class="wiki-layout justify-content-center"> <div class="wiki-container"> <div class="profile-container"> <!-- 프로필 헤더 --> <div class="profile-header" id="profileHeader"> <div class="wiki-loading"> <div class="spinner-border text-primary" role="status"></div> <span>正在加载个人资料...</span> </div> </div> <!-- 개인 설정 --> <div class="profile-section" id="settingsSection" style="display:none;"> <h4><i class="mdi mdi-cog"></i> 个人设置</h4> <div class="mb-3"> <label class="form-label fw-bold">修改显示名称</label> <div class="edit-name-form"> <input type="text" id="nameInput" placeholder="新的显示名称" maxlength="20"> <button class="btn btn-wiki btn-sm" id="nameChangeBtn" onclick="updateName()"> <i class="mdi mdi-check"></i> 保存
+</button> </div> <small class="text-muted mt-1 d-block" id="nameChangeHint">其他用户将看到此名称。</small> <div id="nameChangeStatus" class="mt-2" style="display:none;"></div> </div> <div class="mb-3"> <label class="form-label fw-bold">头像</label> <div class="form-check form-switch"> <input class="form-check-input" type="checkbox" role="switch" id="picturePrivateToggle" onchange="togglePicturePrivacy(this)"> <label class="form-check-label" for="picturePrivateToggle">隐藏头像</label> </div> <small class="text-muted d-block">启用后统一显示默认头像；关闭后下次登录或刷新头像时恢复账号头像。</small> </div> <div class="mb-3" id="mcpInstantApplySetting" style="display:none;"> <label class="form-label fw-bold">MCP 编辑立即生效</label> <div class="form-check form-switch"> <input class="form-check-input" type="checkbox" role="switch" id="mcpInstantApplyToggle" onchange="toggleMcpInstantApply(this)"> <label class="form-check-label" for="mcpInstantApplyToggle">允许 MCP 编辑立即生效</label> </div> <small class="text-muted d-block">켜면 연결한 MCP 도구에 즉시 应用용 <code>apply_edit</code> 도구가 추가로 노출됩니다. AI가 <code>apply_edit</code>를 호출하면 승인 대기 없이 곧바로 새 리비전이 创建됩니다(<code>commit_edit</code>은 그대로 승인 대기로 제출). 编辑 권한·页面 잠금·충돌 검증은 동일하게 应用됩니다.</small> </div> <div class="mb-0"> <label class="form-label fw-bold">通知设置</label> <small class="text-muted d-block">可在参与的每个讨论中分别开关通知。</small> </div> </div> <!-- 활동 통계 --> <div class="profile-section" id="statsSection" style="display:none;"> <h4><i class="mdi mdi-chart-bar"></i> 活跃统计</h4> <div class="stat-cards" id="statCards"></div> </div> <!-- MCP 편집 승인 대기 --> <div class="profile-section" id="mcpSubmissionsSection" style="display:none;"> <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2"> <h4 class="mb-0"> <i class="bi bi-plug-fill"></i> 待审核的 MCP 编辑
+<span class="badge bg-warning text-dark ms-1" id="mcpSubmissionsCount">0</span> </h4> </div> <small class="text-muted d-block mb-3">
+这里显示已连接 MCP 代理提交的编辑。
+</small> <div id="mcpSubmissionsList"> <div class="text-center text-muted py-3">正在加载...</div> </div> </div> <!-- (편집 요청 검토 UI 는 문서 열람 페이지로 이전됨) --> <!-- 알림 보관함 (최근 90일) --> <div class="profile-section" id="notificationsArchiveSection" style="display:none;"> <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2"> <h4 class="mb-0"> <i class="mdi mdi-archive-outline"></i> 通知归档
+<span class="badge bg-primary ms-1 d-none" id="notifArchiveUnreadBadge">0</span> </h4> <div class="d-flex gap-2"> <button class="btn btn-sm btn-outline-secondary" id="notifArchiveReadAllBtn" onclick="markAllNotificationsReadArchive()"> <i class="mdi mdi-email-open-outline"></i> 全部标为已读
+</button> <button class="btn btn-sm btn-outline-danger" id="notifArchiveDeleteAllBtn" onclick="deleteAllNotificationsArchive()"> <i class="mdi mdi-delete-sweep-outline"></i> 全部删除
+</button> </div> </div> <small class="text-muted d-block mb-3">通知保存 90 天，之后自动清理。</small> <div id="notificationsArchiveList"> <div class="text-center text-muted py-3">正在加载...</div> </div> <button class="btn btn-sm btn-outline-secondary w-100 mt-2 d-none" id="loadMoreNotifArchiveBtn" onclick="loadMoreNotificationsArchive()">
+更多 <i class="mdi mdi-chevron-down"></i> </button> </div> <!-- 받은 쪽지함 --> <div class="profile-section" id="messagesSection" style="display:none;"> <h4><i class="mdi mdi-email-receive"></i> 收件箱</h4> <div id="messagesList"> <div class="text-center text-muted py-3">正在加载...</div> </div> <button class="btn btn-sm btn-outline-secondary w-100 mt-2 d-none" id="loadMoreMessagesBtn" onclick="loadMoreMessages()">
+更多 <i class="mdi mdi-chevron-down"></i> </button> </div> <!-- 보낸 쪽지함 --> <div class="profile-section" id="sentMessagesSection" style="display:none;"> <h4><i class="mdi mdi-email-send"></i> 发件箱</h4> <div id="sentMessagesList"> <div class="text-center text-muted py-3">正在加载...</div> </div> <button class="btn btn-sm btn-outline-secondary w-100 mt-2 d-none" id="loadMoreSentMessagesBtn" onclick="loadMoreSentMessages()">
+更多 <i class="mdi mdi-chevron-down"></i> </button> </div> <!-- 주시 중인 문서 --> <div class="profile-section" id="watchedPagesSection" style="display:none;"> <h4> <i class="mdi mdi-eye-outline"></i> 关注的页面
+<span class="badge bg-secondary ms-1" id="watchedPagesCount">0</span> </h4> <small class="text-muted d-block mb-3">
+关注的页面有编辑时会发送通知，可调整范围或取消关注。
+</small> <div id="watchedPagesList"> <div class="text-center text-muted py-3">正在加载...</div> </div> </div> <!-- 주시 중인 카테고리 --> <div class="profile-section" id="watchedCategoriesSection" style="display:none;"> <h4> <i class="mdi mdi-folder-eye-outline"></i> 关注的分类
+<span class="badge bg-secondary ms-1" id="watchedCategoriesCount">0</span> </h4> <small class="text-muted d-block mb-3">
+关注分类中的页面有编辑时会发送通知。
+</small> <div id="watchedCategoriesList"> <div class="text-center text-muted py-3">正在加载...</div> </div> </div> <!-- 내가 편집한 문서 --> <div class="profile-section" id="contributionsSection" style="display:none;"> <h4><i class="mdi mdi-pencil-box-multiple"></i> 我编辑的页面</h4> <div id="contributionsList"> <div class="text-center text-muted py-3">正在加载...</div> </div> </div> <!-- 내가 쓴 토론 목록 --> <div class="profile-section" id="myDiscussionsSection" style="display:none;"> <h4><i class="mdi mdi-forum-outline"></i> 我参与的讨论</h4> <div id="myDiscussionsList"> <div class="text-center text-muted py-3">正在加载...</div> </div> <button class="btn btn-sm btn-outline-secondary w-100 mt-2 d-none" id="loadMoreDiscussionsBtn" onclick="loadMoreMyDiscussions()">
+更多 <i class="mdi mdi-chevron-down"></i> </button> </div> <!-- 내 티켓 목록 --> <div class="profile-section" id="myTicketsSection" style="display:none;"> <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2"> <h4 class="mb-0"><i class="mdi mdi-help-circle-outline"></i> 我的工单</h4> <a href="/tickets" class="btn btn-sm btn-outline-secondary">查看全部 <i class="mdi mdi-open-in-new"></i></a> </div> <div id="myTicketsList"> <div class="text-center text-muted py-3">正在加载...</div> </div> </div> <!-- 세션 관리 --> <div class="profile-section" id="sessionsSection" style="display:none;"> <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2"> <h4 class="mb-0"><i class="mdi mdi-shield-account"></i> 登录会话管理</h4> <button class="btn btn-sm btn-outline-danger" id="revokeAllSessionsBtn" onclick="revokeAllSessions()"> <i class="mdi mdi-logout-variant"></i> 退出其他所有会话
+</button> </div> <small class="text-muted d-block mb-3">
+当前活跃的登录会话；如有陌生设备，请立即退出。
+</small> <div id="sessionsList"> <div class="text-center text-muted py-3">正在加载...</div> </div> </div> <!-- 위키 MCP --> <div class="profile-section" id="wikiMcpSection" style="display:none;"> <h4><i class="mdi mdi-api"></i> Wiki MCP</h4> <small class="text-muted d-block mb-3">
+Claude Desktop, Claude Code 등 MCP 클라이언트를 이 위키에 연결합니다.
+</small> <!-- 엔드포인트 --> <div class="p-3 rounded mb-4" style="background: var(--wiki-toc-bg); border: 1px solid var(--wiki-border);"> <div class="d-flex align-items-center gap-2 flex-wrap mb-1"> <code class="flex-grow-1" id="wikiMcpEndpointUrl" style="word-break: break-all; color: var(--wiki-primary); background: transparent; padding: 0;"></code> <button class="btn btn-sm btn-wiki-outline flex-shrink-0" onclick="copyWikiMcpEndpoint()"> <i class="mdi mdi-content-copy"></i> 复制
+</button> </div> <small class="text-muted">
+OAuth 自动 搜索을 지원하는 MCP 클라이언트(Claude Desktop 등)에서 이 URL을 서버 주소로 입력하세요.
+</small> </div> <!-- 등록된 OAuth 클라이언트 --> <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2"> <h5 class="mb-0 fs-6 fw-semibold"><i class="mdi mdi-application-brackets-outline"></i> 已连接的客户端</h5> <button class="btn btn-sm btn-outline-danger" id="revokeAllMcpClientsBtn" onclick="revokeAllMcpClients()"> <i class="mdi mdi-logout-variant"></i> 断开所有连接
+</button> </div> <small class="text-muted d-block mb-2">
+查看通过 OAuth 连接的客户端。如有陌生客户端请立即断开；记录保留 7 天。
+</small> <div id="mcpClientsList" class="mb-4"> <div class="text-center text-muted py-3">正在加载...</div> </div> <!-- API 키 --> <h5 class="mb-1 fs-6 fw-semibold"><i class="mdi mdi-key-outline"></i> API 密钥</h5> <small class="text-muted d-block mb-2">
+OAuth 대신 직접 API 密钥를 헤더에 실어 인증하는 대안 방식입니다.
+</small> <div class="alert alert-warning py-2 mb-3"> <i class="mdi mdi-alert-decagram-outline"></i> <strong>安全提醒：</strong>
+API 密钥 방식은 OAuth에 비해 권장되지 않습니다. 유출 시 에이전트 권한이 탈취될 수 있으므로, 반드시 로컬 신뢰 환경에서만 사용하고 유출 시 즉시 删除하거나 재발급하십시오.
+</div> <div id="mcpApiKeyContainer" class="mcp-api-key-container mb-2"> <div class="text-center text-muted py-2">正在加载...</div> </div> <div class="d-flex gap-2"> <button class="btn btn-sm btn-wiki" id="generateMcpApiKeyBtn" onclick="generateMcpApiKey()"> <i class="mdi mdi-key-plus"></i> 签发或更新 API 密钥
+</button> <button class="btn btn-sm btn-outline-danger d-none" id="deleteMcpApiKeyBtn" onclick="deleteMcpApiKey()"> <i class="mdi mdi-key-remove"></i> 删除 API 密钥
+</button> </div> <!-- API 키 MCP JSON 설정 스니펫 --> <div class="mt-3 p-3 rounded" style="background: var(--wiki-toc-bg); border: 1px solid var(--wiki-border);"> <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2"> <span class="fw-bold small"><i class="mdi mdi-code-json"></i> MCP 客户端 JSON 请求头示例</span> <button class="btn btn-sm btn-wiki-outline" onclick="copyMcpApiKeyJsonSnippet()"> <i class="mdi mdi-content-copy"></i> JSON 复制
+</button> </div> <small class="text-muted d-block mb-2">
+MCP 클라이언트 설정 파일(<code>mcpServers</code>)의 Authorization 헤더에 API 密钥를 <code>Bearer &lt;YOUR_API_KEY&gt;</code> 형식으로 지정하세요.
+</small> <pre class="mb-0 p-2 rounded" style="background: var(--wiki-card-bg); border: 1px solid var(--wiki-border); font-family: var(--wiki-code-font); font-size: 0.82rem; overflow-x: auto; color: var(--wiki-text);"><code id="mcpApiKeyJsonSnippet">{
+  &quot;mcpServers&quot;: {
+    &quot;cloudwiki&quot;: {
+      &quot;url&quot;: &quot;https://cloudwiki.domain/api/mcp&quot;,
+      &quot;headers&quot;: {
+        &quot;Authorization&quot;: &quot;Bearer YOUR_API_KEY&quot;
+      }
+    }
+  }
+}</code></pre> </div> <!-- MCP 도구 On/Off --> <div class="d-flex justify-content-between align-items-center mt-4 mb-1 flex-wrap gap-2"> <h5 class="mb-0 fs-6 fw-semibold"><i class="mdi mdi-toggle-switch-outline"></i> MCP 工具设置</h5> <div class="d-flex gap-2"> <button class="btn btn-sm btn-wiki-outline" id="mcpToolsAllOnBtn" onclick="setAllMcpTools(true)">全部启用</button> <button class="btn btn-sm btn-wiki-outline" id="mcpToolsAllOffBtn" onclick="setAllMcpTools(false)">全部关闭</button> </div> </div> <small class="text-muted d-block mb-2">
+내 권한에 제공된 MCP 도구 列表입니다. 끈 도구는 MCP 핸드셰이크에서 아예 없는 것처럼 제외되며 호출 시 거부됩니다. 默认값은 모두 켜짐입니다. 변경 후 연결된 MCP 클라이언트를 새로고침(재연결)하세요.
+</small> <div id="mcpToolsList" class="mb-2"> <div class="text-center text-muted py-2">正在加载...</div> </div> </div> <!-- 문의하기 / 회원탈퇴 --> <div class="text-center mb-4 d-flex justify-content-center gap-2"> <a href="/tickets" class="btn btn-wiki-outline"> <i class="mdi mdi-help-circle-outline"></i> 联系管理者
+</a> <button class="btn btn-outline-danger" onclick="deleteAccount()"> <i class="mdi mdi-account-remove"></i> 注销账号
+</button> </div> </div> </div> <aside class="wiki-sidebar d-none" id="wikiSidebar"> <style>
+    .trending-ticker-wrapper .trending-item-link {
+        height: 38px;
+        line-height: 1.2;
+    }
+</style>
+
+<!-- ── 사이드바 (Offcanvas) ── -->
+<div class="offcanvas-lg offcanvas-end border-0" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+    <div class="offcanvas-header border-bottom d-lg-none">
+        <h5 class="offcanvas-title fw-bold" id="mobileSidebarLabel">
+            <span class="wiki-logo-container"><img src="/favicon.jpg" alt="Logo" class="brand-logo" style="height: 32px; vertical-align: middle; margin-right: 8px;"></span> <span class="app-wiki-name">VireoWiki</span>
+        </h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"
+            data-bs-target="#mobileSidebar"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column p-0 p-lg-3 sidebar-section-pc-only">
+        <ul class="navbar-nav mb-auto w-100" id="sidebar-nav-list">
+            <!-- ── 커스텀 사이드바 항목 표시 영역 ── -->
+            
+        </ul>
+
+        <div class="mt-auto pt-3 border-top text-center text-muted small d-lg-none">
+            &copy; <span class="app-wiki-name">VireoWiki</span>
+        </div>
+    </div>
+</div>
+ </aside> </div>  <!-- ── 푸터 ── -->
+<footer class="wiki-footer">
+    <div class="wiki-footer-inner">
+        <span class="footer-copyright">&copy; <span class="app-wiki-name">VireoWiki</span></span>
+        
+    </div>
+</footer>
+    <script type="module" src="/dist/common.js"></script> <script type="module" src="/dist/render.js"></script> <script type="module" src="/dist/diff.js"></script> <script type="module" src="/dist/mypage.js"></script>  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24"></script><script src="https://cdn.jsdelivr.net/npm/marked@18.0.3/lib/marked.umd.js"></script><script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.2/dist/purify.min.js"></script>  </body></html>

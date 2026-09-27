@@ -1,0 +1,336 @@
+<!DOCTYPE html><html lang="zh-CN"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&family=Montserrat:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24/dist/sweetalert2.min.css"><title class="app-wiki-name">编辑页面 - VireoWiki</title><link rel="icon" id="wiki-favicon" href="/favicon.ico"><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/skins-e3e52158b85e58b2.css"><script>window.__WIKI_SKINS__={"list":["default","astro","vector","bootstrap","via"],"default":"default","labels":{"default":"Cloudwiki(기본)","astro":"Astro","vector":"벡터","bootstrap":"Bootstrap","via":"VIA"},"darkOnly":["astro"]};try{var s=localStorage.getItem('themeSkin');var L=window.__WIKI_SKINS__.list;if(s&&L.indexOf(s)>=0){if(s==='default')document.documentElement.removeAttribute('data-wiki-theme');else document.documentElement.setAttribute('data-wiki-theme',s);}}catch(e){}</script> <link rel="stylesheet" href="/render.css"> <link rel="stylesheet" href="/css/diff.css"> <link rel="stylesheet" href="/css/edit.css"> <link rel="stylesheet" href="/css/bulk-modal.css">  <script>try { var t = localStorage.getItem('themeMode'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) { }</script>  <script id="ssr-data" type="application/json">{"_wikiSyntax":"위키/위키 문법 가이드"}</script>  <script>
+          window.__turnstileEarlyFire = false;
+          window.onTurnstileLoad = function () {
+            if (typeof window.__turnstileLoadHandler === 'function') {
+              window.__turnstileLoadHandler();
+            } else {
+              window.__turnstileEarlyFire = true;
+            }
+          };
+        </script> <script>(function(){try{var L=window.__WIKI_SKINS__;if(!L||!L.darkOnly||!L.darkOnly.length)return;var d=document.documentElement;var c=d.getAttribute('data-wiki-theme')||'default';if(L.darkOnly.indexOf(c)>=0){d.setAttribute('data-theme','dark');d.setAttribute('data-bs-theme','dark');}else{var t;try{t=localStorage.getItem('themeMode');}catch(e){}var bs;if(t==='light'){d.setAttribute('data-theme','light');bs='light';}else if(t==='dark'){d.setAttribute('data-theme','dark');bs='dark';}else{d.removeAttribute('data-theme');bs=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}d.setAttribute('data-bs-theme',bs);}}catch(e){}})();</script><script type="importmap">{"imports":{"@codemirror/state":"https://esm.sh/@codemirror/state@6.6.0?external=@codemirror/view,@codemirror/commands,@codemirror/language,@codemirror/lang-markdown,@codemirror/language-data,@codemirror/theme-one-dark,@codemirror/search,@lezer/highlight,@lezer/common","@codemirror/view":"https://esm.sh/@codemirror/view@6.41.1?external=@codemirror/state,@codemirror/commands,@codemirror/language,@codemirror/lang-markdown,@codemirror/language-data,@codemirror/theme-one-dark,@codemirror/search,@lezer/highlight,@lezer/common","@codemirror/commands":"https://esm.sh/@codemirror/commands@6.10.3?external=@codemirror/state,@codemirror/view,@codemirror/language,@codemirror/lang-markdown,@codemirror/language-data,@codemirror/theme-one-dark,@codemirror/search,@lezer/highlight,@lezer/common","@codemirror/language":"https://esm.sh/@codemirror/language@6.12.3?external=@codemirror/state,@codemirror/view,@codemirror/commands,@codemirror/lang-markdown,@codemirror/language-data,@codemirror/theme-one-dark,@codemirror/search,@lezer/highlight,@lezer/common","@codemirror/lang-markdown":"https://esm.sh/@codemirror/lang-markdown@6.5.0?external=@codemirror/state,@codemirror/view,@codemirror/commands,@codemirror/language,@codemirror/language-data,@codemirror/theme-one-dark,@codemirror/search,@lezer/highlight,@lezer/common","@codemirror/language-data":"https://esm.sh/@codemirror/language-data@6.5.2?external=@codemirror/state,@codemirror/view,@codemirror/commands,@codemirror/language,@codemirror/lang-markdown,@codemirror/theme-one-dark,@codemirror/search,@lezer/highlight,@lezer/common","@codemirror/theme-one-dark":"https://esm.sh/@codemirror/theme-one-dark@6.1.3?external=@codemirror/state,@codemirror/view,@codemirror/commands,@codemirror/language,@codemirror/lang-markdown,@codemirror/language-data,@codemirror/search,@lezer/highlight,@lezer/common","@codemirror/search":"https://esm.sh/@codemirror/search@6.7.0?external=@codemirror/state,@codemirror/view,@codemirror/commands,@codemirror/language,@codemirror/lang-markdown,@codemirror/language-data,@codemirror/theme-one-dark,@lezer/highlight,@lezer/common","@lezer/highlight":"https://esm.sh/@lezer/highlight@1.2.3?external=@codemirror/state,@codemirror/view,@codemirror/commands,@codemirror/language,@codemirror/lang-markdown,@codemirror/language-data,@codemirror/theme-one-dark,@codemirror/search,@lezer/common","@lezer/common":"https://esm.sh/@lezer/common@1.5.2"}}</script><script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad" async defer></script></head> <body data-layout-mode="default" style="-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;"> <!-- 레이아웃 모드 사용자 오버라이드 FOUC 방지: 파싱 중 즉시 적용(common.ts applyLayoutOverride 와 동일 키). --> <script>try{var m=localStorage.getItem('layoutModeOverride');if(m&&['default','left-toc','right-toc','docs','wide'].indexOf(m)>=0)document.body.setAttribute('data-layout-mode',m);}catch(e){}</script>    <div id="initLoadingOverlay"> <div class="spinner-border" role="status"></div> <span>正在加载...</span> </div>  <div id="category-autocomplete" class="list-group"></div>  <div id="wiki-autocomplete" class="list-group"></div>  <div id="icon-autocomplete"> <div class="icon-ac-header"> <i id="iconAc.typeIcon"></i> <span id="iconAc.typeLabel">图标</span> </div> <div id="iconAcGrid" class="icon-ac-grid"></div> <div id="iconAcEmpty" class="icon-ac-empty" style="display:none;">没有结果</div> <div id="iconAcLoading" class="icon-ac-loading" style="display:none;"> <span class="spinner-border spinner-border-sm text-primary" role="status"></span> 加载中...
+</div> </div>  <div id="imgsize-autocomplete" class="list-group" style="display:none; position:absolute; z-index:9999; background:var(--wiki-bg); border:1px solid var(--wiki-border); border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:200px; padding:0;"> <div class="list-group-item text-muted" style="font-size:0.85rem; background:var(--wiki-bg-alt); padding:6px 10px; border-bottom:1px solid var(--wiki-border);"> <i class="mdi mdi-image-size-select-large"></i> 选择图片尺寸
+</div> <div id="imgsizeAcGrid"></div> </div>  <div id="code-autocomplete" class="list-group" style="display:none; position:absolute; z-index:9999; background:var(--wiki-bg); border:1px solid var(--wiki-border); border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:240px; padding:0;"> <div class="list-group-item text-muted" style="font-size:0.85rem; background:var(--wiki-bg-alt); padding:6px 10px; border-bottom:1px solid var(--wiki-border);"> <i class="mdi mdi-code-braces"></i> 插入代码
+</div> <div id="codeAcGrid" style="max-height: 300px; overflow-y: auto;"></div> </div>  <div id="block-autocomplete" class="list-group" style="display:none; position:absolute; z-index:9999; background:var(--wiki-bg); border:1px solid var(--wiki-border); border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:280px; padding:0;"> <div class="list-group-item text-muted" style="font-size:0.85rem; background:var(--wiki-bg-alt); padding:6px 10px; border-bottom:1px solid var(--wiki-border);"> <i class="mdi mdi-view-grid-plus-outline"></i> 插入区块组件
+</div> <div id="blockAcGrid" style="max-height: 320px; overflow-y: auto;"></div> </div>  <div id="color-autocomplete"> <div class="color-ac-header"> <i class="mdi mdi-palette"></i> <span id="colorAcTypeLabel">选择颜色</span> </div> <div id="colorAcSwatches" class="color-ac-swatches"></div> <div class="color-palette-area"> <canvas id="colorPaletteCanvas" class="color-palette-canvas" width="264" height="120"></canvas> <canvas id="colorHueSlider" class="color-hue-slider" width="264" height="16"></canvas> <div class="color-preview-row"> <div id="colorPreviewBox" class="color-preview-box"></div> <input type="text" id="colorHexInput" class="color-hex-input" maxlength="7" placeholder="#000000"> <button type="button" id="colorApplyBtn" class="color-apply-btn">应用</button> </div> </div> </div>  <div id="palette-autocomplete"> <div class="palette-ac-header"> <i class="mdi mdi-palette-swatch"></i> <span>选择调色板</span> </div> <div id="paletteAcList" class="palette-ac-list"></div> <div id="paletteAcEmpty" class="palette-ac-empty" style="display:none;">没有结果</div> </div>  <div id="timestamp-autocomplete"> <div class="ts-ac-header"> <i id="tsAcIcon" class="mdi mdi-clock-outline"></i> <span id="tsAcTypeLabel">日期／时间</span> </div> <!-- 달력 (age/dday 전용) --> <div id="tsCalSection" style="display:none;"> <div class="ts-cal-nav"> <button type="button" id="tsCalPrev" class="ts-cal-nav-btn">&#8249;</button> <button type="button" id="tsCalYearMonth" class="ts-cal-ym-btn"></button> <button type="button" id="tsCalNext" class="ts-cal-nav-btn">&#8250;</button> </div> <div class="ts-cal-weekdays"> <span>周日</span><span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span> </div> <div id="tsCalGrid" class="ts-cal-grid"></div> </div> <!-- 연/월 선택 패널 (달력 헤더 클릭 시 표시) --> <div id="tsCalYearPanel" style="display:none;"> <div class="ts-cal-ym-panel-header"> <button type="button" id="tsCalYearPrev" class="ts-cal-nav-btn">&#8249;</button> <span id="tsCalYearRange"></span> <button type="button" id="tsCalYearNext" class="ts-cal-nav-btn">&#8250;</button> </div> <div id="tsCalYearGrid" class="ts-cal-year-grid"></div> </div> <!-- 프리셋 (time/timer 전용) --> <div id="tsAcPresets" class="ts-ac-presets" style="display:none;"></div> <div class="ts-ac-input-row"> <input type="text" id="tsAcInput" class="ts-ac-input" placeholder=""> <button type="button" id="tsAcApplyBtn" class="ts-ac-apply-btn">应用</button> </div> </div>  <div class="modal fade" id="iconPickerModal" tabindex="-1" aria-hidden="true"> <div class="modal-dialog modal-xl modal-dialog-scrollable"> <div class="modal-content"> <div class="modal-header"> <h5 class="modal-title"> <i id="iconPickerTypeIcon" class="mdi mdi-bootstrap me-2"></i> <span id="iconPickerTitle">选择图标</span> </h5> <button type="button" class="btn-close" data-bs-dismiss="modal"></button> </div> <div class="modal-body"> <input type="text" id="iconSearchInput" class="form-control mb-3" placeholder="搜索图标名称... (例如 home、user、card)"> <div id="iconLoadingSpinner" class="text-center py-4" style="display:none;"> <span class="spinner-border text-primary" role="status"></span> <p class="mt-2 text-muted small">正在加载图标...</p> </div> <div id="iconPickerGrid" class="icon-grid-modal"></div> <div id="iconPickerEmpty" class="text-center text-muted py-3" style="display:none;"> <i class="mdi mdi-magnify-close" style="font-size:2rem;"></i> <p class="mt-1">没有搜索结果.</p> </div> </div> </div> </div> </div>  <!-- ── 사이트 전역 공지 배너 (다중) ── -->
+<!-- src/client/common.ts 가 appConfig.announcements 배열을 읽어 자식 노드를 동적 생성한다. -->
+<div id="announcement-banners" class="announcement-banners d-none"></div>
+
+<!-- ── 네비게이션 바 ── -->
+<nav class="navbar navbar-expand-lg navbar-light">
+    <div class="container-fluid flex-wrap align-items-center">
+        <!-- 상단 줄: 브랜딩 + 기능 버튼들 -->
+        <a class="navbar-brand me-auto" href="/">
+            <span class="wiki-logo-container"><img src="/favicon.jpg" alt="Logo" class="brand-logo" style="height: 32px; vertical-align: middle; margin-right: 8px;"></span>
+            <span class="app-wiki-name">VireoWiki</span>
+        </a>
+
+        <!-- 유저 버튼 & 알림 패널 통합 -->
+        <div class="dropdown ms-2 d-none position-relative" id="navUser">
+            <a href="#" class="d-flex align-items-center text-decoration-none position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+               <img id="userAvatar" class="user-avatar m-0" src="" alt="">
+               <span class="notification-badge d-none" id="notificationBadge"></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm position-absolute">
+                <li><h6 class="dropdown-header text-truncate" id="userName"></h6></li>
+                <li><a class="dropdown-item d-flex align-items-center" href="#" onclick="document.querySelector('#navUser > a').click(); toggleNotificationPanel(); event.stopPropagation(); return false;"><i class="mdi mdi-inbox me-2"></i><span class="me-auto">通知</span><span class="notification-menu-badge d-none" id="notificationMenuBadge"></span></a></li>
+                <li><a class="dropdown-item" href="#" onclick="openSettingsModal(); event.preventDefault(); return false;"><i class="mdi mdi-cog-outline me-2"></i> 个人设置</a></li>
+                <li><a class="dropdown-item" href="/mypage"><i class="mdi mdi-account-circle me-2"></i> 个人中心</a></li>
+                <li id="navAdminConsole" class="d-none"><a class="dropdown-item" href="/admin"><i class="mdi mdi-shield-account me-2"></i> 管理后台</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/auth/logout"><i class="mdi mdi-logout me-2 text-danger"></i> 退出登录</a></li>
+            </ul>
+
+            <!-- 알림 드롭다운 패널 -->
+            <div class="notification-panel d-none" id="notificationPanel">
+                <div class="notification-panel-header">
+                    <strong><i class="mdi mdi-inbox"></i> 通知</strong>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0 ms-auto" id="notifMarkAllReadBtn" onclick="markAllNotificationsRead()" title="全部标为已读" style="font-size:0.8rem;">
+                        <i class="mdi mdi-email-open-outline"></i> 全部标为已读
+                    </button>
+                    <button class="btn btn-sm btn-link text-danger p-0 ms-3" id="notifDeleteAllBtn" onclick="deleteAllNotifications()" title="全部删除" style="font-size:0.8rem;">
+                        <i class="mdi mdi-delete-sweep-outline"></i> 全部删除
+                    </button>
+                </div>
+                <div class="notification-panel-body" id="notificationPanelBody">
+                    <div class="text-center text-muted py-4">正在加载...</div>
+                </div>
+                <a class="notification-panel-archive-link" href="/mypage#notifications">
+                    <i class="mdi mdi-archive-outline"></i> 查看全部通知
+                </a>
+                <div class="notification-panel-footer d-none" id="notificationPanelFooter">
+                    <div class="push-toggle-status d-flex align-items-center justify-content-between mb-2" id="pushToggleStatus">
+                        <span class="push-toggle-status-label">
+                            <i class="mdi mdi-bell-outline me-1"></i>浏览器推送通知
+                        </span>
+                        <span class="push-status-pill push-status-off" id="pushStatusPill">
+                            <i class="mdi mdi-circle-medium" id="pushStatusDot"></i>
+                            <span id="pushStatusText">已关闭</span>
+                        </span>
+                    </div>
+                    <button id="pushToggleBtn" class="btn btn-sm btn-outline-secondary w-100" type="button" title="浏览器推送通知">
+                        <i class="mdi mdi-bell-off-outline"></i> <span id="pushToggleLabel">接收推送通知</span>
+                    </button>
+                </div>
+            </div>
+            <!-- js 호환성을 위한 안보이는 래퍼 유지 -->
+            <div id="notificationBtnWrapper" class="d-none"></div>
+        </div>
+        <!-- 개인 설정 버튼 (로그아웃 상태에서만 노출 — 로그인 시 checkAuth 가 숨기고 드롭다운 항목으로 대체) -->
+        <button class="btn border-0 px-1 ms-2" type="button" id="navSettings" onclick="openSettingsModal()" title="个人设置" aria-label="个人设置">
+            <i class="mdi mdi-cog-outline text-body"></i>
+        </button>
+        <a class="btn border-0 px-1 ms-2" id="navLogin" href="/login" title="登录"><i class="mdi mdi-login text-body"></i></a>
+
+        <!-- 햄버거 버튼 (사이드바 토글) -->
+        <button class="navbar-toggler border-0 px-1 ms-2" type="button" data-bs-toggle="offcanvas"
+            data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+            <i class="mdi mdi-menu fs-2 text-body"></i>
+        </button>
+
+        <!-- 하단 줄: 검색창 (항상 full-width로 다음 줄에 표시) -->
+        <form class="nav-search-form d-flex" onsubmit="doSearch(event)">
+            <button class="btn border-0 px-1 me-1" type="button" title="随机页面" onclick="goRandomPage()"><i class="bi bi-shuffle text-body"></i></button>
+            <div class="input-group">
+                <input type="text" id="searchInput" class="form-control" placeholder="搜索页面..." autocomplete="off">
+                <button class="btn search-mode-btn" type="submit" aria-label="搜索">
+                    <i class="mdi mdi-magnify"></i>
+                </button>
+            </div>
+            <!-- 연관검색어 드롭다운 -->
+            <ul class="search-suggestions" id="searchSuggestions"></ul>
+        </form>
+
+        <script>
+        (function() {
+            let debounceTimer = null;
+            const input = document.getElementById('searchInput');
+            const sugBox = document.getElementById('searchSuggestions');
+            let activeIdx = -1;
+
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const rawQ = this.value.trim();
+                // map: 프리픽스가 붙으면 일반 문서 LIKE 검색을 그대로 돌리되, 결과를 map: 가상 문서로 매핑한다.
+                const isMapMode = rawQ.toLowerCase().startsWith('map:');
+                const q = isMapMode ? rawQ.slice(4).trim() : rawQ;
+                if (q.length < 2) {
+                    sugBox.classList.remove('show');
+                    sugBox.innerHTML = '';
+                    return;
+                }
+                debounceTimer = setTimeout(() => fetchSuggestions(q, isMapMode), 250);
+            });
+
+            async function fetchSuggestions(q, isMapMode) {
+                try {
+                    // map: 모드는 카테고리를 클라이언트에서 거르지 않고 서버에서 아예 제외시켜
+                    // 7개 한도가 카테고리에 잠식돼 페이지 결과가 비는 상황을 막는다.
+                    const url = '/api/search/suggest?q=' + encodeURIComponent(q)
+                        + (isMapMode ? '&exclude_categories=1' : '');
+                    const res = await fetch(url);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const items = data.suggestions || [];
+                    renderSuggestions(items, isMapMode);
+                } catch(e) { /* ignore */ }
+            }
+
+            // 호출 식별자(slug) 네임스페이스별 아이콘. map: 가상 트리, 카테고리:, 이미지:
+            // 는 각각 다른 mdi 아이콘으로, 그 외 일반 문서는 기본 문서 아이콘으로 표시한다.
+            function suggestionIcon(slugTarget) {
+                if (slugTarget.toLowerCase().startsWith('map:')) return 'mdi-file-tree-outline';
+                if (slugTarget.startsWith('카테고리:')) return 'mdi-tag-outline';
+                if (slugTarget.startsWith('이미지:')) return 'mdi-image-outline';
+                return 'mdi-file-document-outline';
+            }
+
+            function renderSuggestions(items, isMapMode) {
+                activeIdx = -1;
+                if (!items.length) {
+                    sugBox.classList.remove('show');
+                    sugBox.innerHTML = '';
+                    return;
+                }
+                // item.title 이 있으면 표시 이름은 그것을, 호출 식별자(data-slug, /w/) 는 항상 slug.
+                // map: 모드에서는 호출 식별자도 map:<slug> 로 감싸 가상 문서 라우트로 이동시킨다.
+                sugBox.innerHTML = items.map((item, i) => {
+                    const baseSlug = item.slug;
+                    const baseDisplayName = item.title || baseSlug;
+                    const slugTarget = isMapMode ? 'map:' + baseSlug : baseSlug;
+                    const displayName = isMapMode ? 'map:' + baseDisplayName : baseDisplayName;
+                    const slugSubLabel = item.title
+                        ? ' <small class="text-muted">' + escapeHtml(slugTarget) + '</small>'
+                        : '';
+                    return '<li class="search-suggestion-item" data-slug="' + escapeHtml(slugTarget) + '">'
+                        + '<i class="mdi ' + suggestionIcon(slugTarget) + '"></i> '
+                        + escapeHtml(displayName) + slugSubLabel + '</li>';
+                }).join('');
+                sugBox.classList.add('show');
+
+                sugBox.querySelectorAll('.search-suggestion-item').forEach(el => {
+                    el.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        const slug = this.dataset.slug;
+                        if (typeof navigateTo === 'function') {
+                            navigateTo('/w/' + encodeURIComponent(slug));
+                        } else {
+                            window.location.href = '/w/' + encodeURIComponent(slug);
+                        }
+                        sugBox.classList.remove('show');
+                        sugBox.innerHTML = '';
+                        input.value = '';
+                        input.blur();
+                    });
+                });
+            }
+
+            // 키보드 탐색
+            input.addEventListener('keydown', function(e) {
+                const items = sugBox.querySelectorAll('.search-suggestion-item');
+                if (!items.length || !sugBox.classList.contains('show')) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIdx = Math.min(activeIdx + 1, items.length - 1);
+                    updateActive(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIdx = Math.max(activeIdx - 1, -1);
+                    updateActive(items);
+                } else if (e.key === 'Enter' && activeIdx >= 0) {
+                    e.preventDefault();
+                    items[activeIdx].dispatchEvent(new Event('mousedown'));
+                } else if (e.key === 'Escape') {
+                    sugBox.classList.remove('show');
+                }
+            });
+
+            function updateActive(items) {
+                items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+            }
+
+            input.addEventListener('blur', function() {
+                setTimeout(() => { sugBox.classList.remove('show'); }, 150);
+            });
+
+            input.addEventListener('focus', function() {
+                if (sugBox.innerHTML && this.value.trim().length >= 2) {
+                    sugBox.classList.add('show');
+                }
+            });
+        })();
+        </script>
+    </div>
+</nav>
+
+<!-- ── 개인 설정 모달 (클라이언트 전용 설정: 테마 · 레이아웃 모드 오버라이드) ── -->
+<!-- src/client/common.ts 가 openSettingsModal() 로 열고, select 변경을 처리한다. -->
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="settingsModalLabel"><i class="mdi mdi-cog-outline me-1"></i> 个人设置</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3" id="settingThemeWrap">
+                    <span class="form-label d-block">主题</span>
+                    <div class="setting-seg" id="settingTheme" role="group" aria-label="主题">
+                        <button type="button" class="seg-btn" data-value="auto" aria-pressed="false" title="自动 (시스템 설정)">
+                            <i class="mdi mdi-circle-half-full" aria-hidden="true"></i><span>自动</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="dark" aria-pressed="false" title="深色">
+                            <i class="mdi mdi-moon-waxing-crescent" aria-hidden="true"></i><span>深色</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="light" aria-pressed="false" title="浅色">
+                            <i class="mdi mdi-white-balance-sunny" aria-hidden="true"></i><span>浅色</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- 다크 전용 색 테마(스킨)가 활성일 때 common.ts 가 위 밝기 토글을 숨기고 이 안내를 보인다. -->
+                <p class="text-muted small mb-3" id="settingThemeForcedNote" style="display:none;"><i class="mdi mdi-moon-waxing-crescent me-1"></i>当前主题仅支持深色模式。</p>
+                <div class="mb-3" id="settingThemeSkinWrap" style="display:none;">
+                    <span class="form-label d-block" id="settingThemeSkinLabelText">配色主题</span>
+                    <!-- 네이티브 <select> 대신 앱 디자인에 맞춘 커스텀 드롭다운. 옵션은 멀티 스킨 -->
+                    <!-- 모드(window.__WIKI_SKINS__)일 때 common.ts 가 동적 주입한다. -->
+                    <div class="skin-select" id="settingThemeSkin">
+                        <button type="button" class="skin-select-toggle" id="settingThemeSkinToggle"
+                            aria-haspopup="listbox" aria-expanded="false" aria-labelledby="settingThemeSkinLabelText settingThemeSkinValue">
+                            <span class="skin-select-value" id="settingThemeSkinValue"></span>
+                            <i class="mdi mdi-chevron-down skin-select-caret" aria-hidden="true"></i>
+                        </button>
+                        <ul class="skin-select-menu" id="settingThemeSkinMenu" role="listbox" aria-label="配色主题"></ul>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="form-label d-block">布局模式</span>
+                    <div class="setting-seg" id="settingLayoutMode" role="group" aria-label="布局模式">
+                        <button type="button" class="seg-btn" data-value="site" aria-pressed="false" title="站点默认值">
+                            <i class="mdi mdi-web" aria-hidden="true"></i><span>站点默认</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="default" aria-pressed="false" title="默认 (无侧栏)">
+                            <i class="mdi mdi-page-layout-body" aria-hidden="true"></i><span>默认</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="left-toc" aria-pressed="false" title="左侧目录">
+                            <i class="mdi mdi-page-layout-sidebar-left" aria-hidden="true"></i><span>左侧目录</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="right-toc" aria-pressed="false" title="右侧目录">
+                            <i class="mdi mdi-page-layout-sidebar-right" aria-hidden="true"></i><span>右侧目录</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="docs" aria-pressed="false" title="页面 (左侧目录树和右侧目录)">
+                            <i class="mdi mdi-file-tree-outline" aria-hidden="true"></i><span>页面</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="wide" aria-pressed="false" title="宽屏 (隐藏侧栏)">
+                            <i class="mdi mdi-arrow-expand-horizontal" aria-hidden="true"></i><span>宽屏</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="form-label d-block">键盘快捷键</span>
+                    <div class="setting-seg" id="settingKeyboardShortcuts" role="group" aria-label="键盘快捷键">
+                        <button type="button" class="seg-btn" data-value="on" aria-pressed="false" title="启用单键快捷键">
+                            <i class="mdi mdi-keyboard" aria-hidden="true"></i><span>开启</span>
+                        </button>
+                        <button type="button" class="seg-btn" data-value="off" aria-pressed="false" title="关闭单键快捷键">
+                            <i class="mdi mdi-keyboard-off" aria-hidden="true"></i><span>关闭</span>
+                        </button>
+                    </div>
+                    <p class="text-muted small mb-0 mt-1"><i class="mdi mdi-information-outline me-1"></i>关闭后 <kbd>/</kbd> <kbd>g</kbd> <kbd>e</kbd> <kbd>?</kbd> 等单键快捷键将失效 (<kbd>Ctrl/⌘+K</kbd> 始终可用).</p>
+                </div>
+<p class="text-muted small mb-0"><i class="mdi mdi-information-outline me-1"></i>设置仅保存在当前浏览器；更改布局后页面会刷新。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+  <div id="conflict-ui" class="container mt-4" style="display: none;"> <div class="conflict-header alert alert-danger" role="alert"> <div class="d-flex align-items-start justify-content-between flex-wrap gap-3"> <div class="conflict-header-info"> <h4 class="alert-heading mb-1"><i class="mdi mdi-source-merge"></i> 发生编辑冲突</h4> <p class="mb-0 small" id="conflict-summary"> <span class="conflict-chip"><i class="mdi mdi-source-branch"></i> base v<span id="conflict-base-ver">?</span></span> <span class="conflict-chip server"><i class="mdi mdi-cloud-download"></i> 서버 v<span id="conflict-server-ver">?</span> · <span id="conflict-server-changes">0</span>개
+                            변경</span> <span class="conflict-chip mine"><i class="mdi mdi-pencil"></i> 내 编辑본 · <span id="conflict-mine-changes">0</span>项改动</span> </p> </div> <div class="conflict-toolbar btn-toolbar gap-2" role="toolbar"> <div class="btn-group btn-group-sm" role="group" aria-label="浏览冲突"> <button id="conflictPrevBtn" type="button" class="btn btn-outline-secondary" onclick="jumpToConflict(-1)" title="上一个冲突"> <i class="mdi mdi-chevron-up"></i> </button> <button id="conflictNextBtn" type="button" class="btn btn-outline-secondary" onclick="jumpToConflict(1)" title="下一个冲突"> <i class="mdi mdi-chevron-down"></i> </button> </div> <div class="btn-group btn-group-sm" role="group" aria-label="差异模式"> <button id="diffModeUnifiedBtn" type="button" class="btn btn-outline-primary active" onclick="setDiffMode('unified')"> <i class="mdi mdi-format-align-justify"></i> Unified
+</button> <button id="diffModeSplitBtn" type="button" class="btn btn-outline-primary" onclick="setDiffMode('split')"> <i class="mdi mdi-view-column"></i> Split
+</button> </div> </div> </div> </div> <details class="conflict-section" id="conflict-compare-section" open> <summary> <span class="conflict-section-title"><i class="mdi mdi-compare-horizontal"></i> 比较改动</span> <span class="conflict-section-tools" onclick="event.stopPropagation();"> <select id="diffCompareMode" class="form-select form-select-sm" onchange="renderDiffView()"> <option value="mine-vs-server">我的编辑 ↔ 服务器最新版本</option> <option value="mine-vs-base">我的改动（基础版本 ↔ 我的编辑）</option> <option value="server-vs-base">服务器改动（基础版本 ↔ 最新版本）</option> </select> <button id="serverViewToggle" type="button" class="btn btn-sm btn-outline-secondary" onclick="event.preventDefault(); toggleServerView();"> <i class="mdi mdi-eye"></i> 服务器正文
+</button> </span> </summary> <div id="conflict-diff-view" class="conflict-diff-view"></div> <div id="conflict-server-raw-pane" style="display:none;"> <div class="conflict-server-raw-actions"> <button id="serverPreviewToggle" type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleServerPreview()"> <i class="mdi mdi-eye"></i> 预览
+</button> </div> <pre id="conflict-server-raw" class="conflict-server-raw"></pre> <div id="conflict-server-preview" class="wiki-content" style="display:none;"></div> </div> </details> <details class="conflict-section" id="conflict-merge-section" open> <summary> <span class="conflict-section-title"> <i class="mdi mdi-source-merge"></i> 合并草稿
+<span class="conflict-section-hint">系统会自动插入冲突标记，请手动编辑解决。</span> </span> <span class="conflict-section-tools"> <span id="conflict-marker-count" class="badge bg-warning text-dark">0 项未解决</span> </span> </summary> <div id="conflict-hunk-list" class="conflict-hunk-list"></div> <div id="conflict-local-editor"></div> </details> <div class="d-flex justify-content-end mt-3 gap-2"> <button class="btn btn-secondary" onclick="cancelConflict()"> <i class="mdi mdi-close"></i> 取消
+</button> <button class="btn btn-success" onclick="resolveConflict()"> <i class="mdi mdi-check"></i> 将解决结果应用到编辑器
+</button> </div> </div> <div class="wiki-container" id="main-editor-container"> <div class="wiki-article"> <!-- 동시편집 경고 배너 --> <div id="concurrent-edit-banner"> <i class="mdi mdi-account-alert" style="font-size: 1.2rem;"></i> <span id="concurrent-edit-text"></span> </div> <h2 class="mb-4" id="editPageTitle"> <i class="mdi mdi-pencil-box-multiple"></i> 编辑页面
+</h2> <!-- 섹션 편집 모드 배너 --> <div id="sectionEditBanner" class="alert alert-info d-none align-items-center flex-wrap gap-2 mb-3" role="alert"> <i class="mdi mdi-text-box-edit-outline" style="font-size: 1.2rem;"></i> <span>현재 <strong id="sectionEditHeading"></strong> 仅编辑当前章节，保存时只更新此章节。</span> <button type="button" id="sectionSplitToSubdocBtn" class="btn btn-sm btn-outline-primary ms-auto" onclick="openSplitToSubdocModal()"> <i class="mdi mdi-call-split"></i> 拆分为子页面
+</button> <a id="sectionEditFullLink" href="#" class="small"><i class="mdi mdi-page-next-outline"></i> 页面
+                    切换到完整页面编辑</a> </div> <!-- 슬러그(공식 식별자) — 위키 링크/트랜스클루전/URL 의 단일 진실. 편집 불가. --> <div class="mb-3"> <label for="titleInput" class="form-label fw-bold">标题</label> <input type="text" id="titleInput" class="edit-title-input" placeholder="页面 标题" maxlength="100" readonly style="opacity: 0.7; cursor: not-allowed;"> </div> <!-- 대체 제목(선택) — 표시 전용. 특수문자 허용. --> <div class="mb-3"> <label for="alternateTitleInput" class="form-label fw-bold">显示标题 <span class="text-muted fw-normal">（可选）</span></label> <input type="text" id="alternateTitleInput" class="form-control" placeholder="显示标题" maxlength="100"> </div> <div class="mb-3"> <label for="categoryTagInput" class="form-label fw-bold">分类</label> <div class="category-tag-container" id="categoryTagContainer" onclick="document.getElementById('categoryTagInput').focus()"> <input type="text" id="categoryTagInput" class="category-tag-input" placeholder="输入分类后按回车或逗号"> </div> <input type="hidden" id="categoryInput"> <div class="mt-2 d-flex gap-2 flex-wrap" id="bulkCategoryAdminPanel" style="display: none;"> <button type="button" class="btn btn-sm btn-wiki-outline" id="bulkCategoryBtn"> <i class="mdi mdi-folder-multiple-plus-outline"></i> 分类 管理
+</button> </div> </div> <div class="mb-3"> <label for="redirectInput" class="form-label fw-bold">页面重定向</label> <input type="text" id="redirectInput" class="form-control" placeholder="输入访问此页面时跳转到的目标页面标题"> <div class="form-text text-muted">保留当前页面内容，并将访客转到另一页面。</div> </div> <!-- Markdown 에디터 --> <div class="mb-3"> <div class="d-flex align-items-center gap-2 mb-1"> <label class="form-label fw-bold mb-0">内容</label> <a id="syntaxGuideLink" href="#" target="_blank" rel="noopener" class="small text-muted text-decoration-none" style="display:none"> <i class="mdi mdi-information-outline"></i> 语法指南
+</a> </div> <div id="editor"></div> <div id="editorTextCounter" class="editor-text-counter" aria-live="off"> <span data-counter="lines">1줄</span> <span data-counter="chars">0자</span> <span data-counter="charsWithSpaces">0자(含空格)</span> <span data-counter="words">0词</span> </div> </div> <!-- 변경 사항 미리보기 모드 토글 (프리뷰 패널에 통합 표시) --> <div class="mb-3" id="diffPreviewSection" style="display: none;"> <div class="diff-preview-toggles"> <div class="form-check"> <input class="form-check-input" type="checkbox" id="diffPreviewToggle"> <label class="form-check-label fw-bold" for="diffPreviewToggle"> <i class="mdi mdi-vector-difference"></i> 预览改动
+</label> </div> <div class="form-check diff-preview-subtoggle is-disabled" id="diffPreviewRenderedRow"> <input class="form-check-input" type="checkbox" id="diffPreviewRenderedToggle" disabled> <label class="form-check-label" for="diffPreviewRenderedToggle"> <i class="mdi mdi-eye-outline"></i> 预览渲染结果
+</label> </div> </div> </div> <!-- 편집 요약 --> <div class="mb-3"> <label for="summaryInput" class="form-label fw-bold">编辑摘要</label> <input type="text" id="summaryInput" class="edit-summary-input" placeholder="简要说明本次改动" maxlength="255"> </div> <!-- 편집 메모 (editor note) — 편집자 전용 비공개 메모. 리비전으로 추적되지 않음 --> <div class="mb-3"> <details id="editorNoteDetails" class="editor-note-collapse"> <summary class="form-label fw-bold editor-note-summary"> <i class="mdi mdi-note-edit-outline"></i> 编辑备注
+<small class="text-muted fw-normal ms-1">仅编辑者可见，不记录在修订历史中</small> </summary> <textarea id="editorNoteInput" class="form-control editor-note-textarea mt-2" placeholder="留下仅编辑者可见的备注，读者看不到。" rows="3"></textarea> </details> </div> <!-- 버튼 --> <div class="edit-actions d-flex align-items-center flex-wrap gap-2"> <button class="btn btn-wiki" id="saveBtn" onclick="savePage()" disabled> <i class="mdi mdi-check"></i> 保存
+</button> <button class="btn btn-wiki-outline" id="saveDraftBtn" onclick="saveDraftToLocal()" title="在此浏览器临时保存当前正文"> <i class="mdi mdi-tray-arrow-down"></i> 保存草稿
+</button> <button class="btn btn-wiki-outline" onclick="cancelEdit()"> <i class="mdi mdi-close"></i> 取消
+</button> <div class="ms-2 d-flex align-items-center gap-2"> <div id="turnstile-container"></div> <button type="button" id="turnstileRefreshBtn" class="btn btn-sm btn-outline-secondary" style="display:none;" onclick="reloadTurnstile()" title="刷新验证码" aria-label="刷新验证码"> <i class="mdi mdi-refresh" aria-hidden="true"></i> </button> </div> </div> </div> </div>  <div class="modal fade" id="imageEditorModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"> <div class="modal-dialog modal-dialog-centered"> <div class="modal-content"> <div class="modal-header"> <h6 class="modal-title"><i class="bi bi-crop"></i> 编辑图片</h6> <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button> </div> <div class="modal-body"> <div class="img-editor-canvas-wrap" id="imgEditorCanvasWrap"> <canvas id="imgEditorCanvas"></canvas> <div class="crop-overlay" id="cropOverlay" style="display:none;"> <div class="crop-box" id="cropBox"> <div class="crop-handle tl" data-handle="tl"></div> <div class="crop-handle tr" data-handle="tr"></div> <div class="crop-handle bl" data-handle="bl"></div> <div class="crop-handle br" data-handle="br"></div> </div> </div> </div> <div class="img-editor-toolbar"> <button type="button" id="btnCropToggle" title="切换裁剪模式"> <i class="bi bi-crop"></i> </button> <button type="button" id="btnCropApply" style="display:none;" title="应用裁剪"> <i class="bi bi-check-lg"></i> </button> <div class="separator"></div> <button type="button" id="btnRotateLeft" title="向左旋转 90°"> <i class="bi bi-arrow-counterclockwise"></i> </button> <button type="button" id="btnRotateRight" title="向右旋转 90°"> <i class="bi bi-arrow-clockwise"></i> </button> <div class="separator"></div> <button type="button" id="btnImgReset" title="恢复原图"> <i class="bi bi-arrow-repeat"></i> 重置
+</button> </div> <div class="img-editor-info" id="imgEditorInfo"></div> </div> <div class="modal-footer d-flex justify-content-between align-items-center w-100"> <div class="dropdown"> <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="btnImgEditorSizeToggle" data-bs-toggle="dropdown" aria-expanded="false"> <i class="mdi mdi-arrow-expand-all me-1"></i>大（默认）
+</button> <ul class="dropdown-menu" id="imgEditorSizeDropdown" aria-labelledby="btnImgEditorSizeToggle"> <li><a class="dropdown-item" href="#" data-size="icon"><i class="mdi mdi-square-medium-outline me-2"></i>图标</a></li> <li><a class="dropdown-item" href="#" data-size="small"><i class="mdi mdi-arrow-collapse me-2"></i>小</a></li> <li><a class="dropdown-item" href="#" data-size="medium"><i class="mdi mdi-square-outline me-2"></i>中</a></li> <li><a class="dropdown-item" href="#" data-size="full"><i class="mdi mdi-arrow-expand-all me-2"></i>大（默认）</a></li> </ul> </div> <div> <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button> <button type="button" class="btn btn-primary btn-sm" id="btnImgEditorDone"> <i class="bi bi-check-lg"></i> 完成编辑
+</button> </div> </div> </div> </div> </div>  <!-- ── 푸터 ── -->
+<footer class="wiki-footer">
+    <div class="wiki-footer-inner">
+        <span class="footer-copyright">&copy; <span class="app-wiki-name">VireoWiki</span></span>
+        
+    </div>
+</footer>
+    <script type="module" src="/dist/common.js"></script> <script type="module" src="/dist/render.js"></script>  <script type="module" src="/dist/diff.js"></script> <script type="module" src="/dist/edit-utils.js"></script> <script type="module" src="/dist/edit-autocomplete.js"></script> <script type="module" src="/dist/edit-modals.js"></script> <script type="module" src="/dist/edit-image.js"></script> <script type="module" src="/dist/edit-conflict.js"></script> <script type="module" src="/dist/edit-summary.js"></script> <script type="module" src="/dist/edit-table-toolbar.js"></script> <script type="module" src="/dist/edit-main.js"></script> <script type="module" src="/dist/edit-cheatsheet.js"></script> <script type="module" src="/dist/edit-bulk-category.js"></script> <script type="module" src="/dist/edit-page.js"></script>  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.24"></script><script src="https://cdn.jsdelivr.net/npm/marked@18.0.3/lib/marked.umd.js"></script><script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.2/dist/purify.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>  </body></html>

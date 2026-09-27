@@ -1,0 +1,149 @@
+---
+// 검색 결과 페이지 셸. 기존 public/search.html 과 동일한 마커/구조를 유지하되,
+// header/sidebar/footer 를 빌드 타임에 컴포넌트로 인라인한다(런타임 placeholder 주입 불필요).
+// base CDN(Bootstrap 등)은 BaseLayout 이 빌드 타임에 인라인(베이킹) — PAGE_BUNDLES['/search.html']=['base']기준으로 베이킹.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Sidebar from '../components/Sidebar.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout pagePath="/search.html" title="搜索结果 - CloudWiki">
+    <Fragment slot="head">
+        <!-- 테마 FOUC 방지: CSS 로드 후 즉시 테마 적용 -->
+        <script is:inline>try{var t=localStorage.getItem('themeMode');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+    </Fragment>
+
+    <!-- ── 네비게이션 바 ── -->
+    <Header />
+
+    <div class="wiki-layout">
+        <div class="wiki-container">
+            <div class="wiki-article">
+
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <h2 class="mb-0" id="searchTitle">
+                        <i class="mdi mdi-magnify"></i> 搜索结果
+                    </h2>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-wiki-outline btn-sm" onclick="history.back()">
+                            <i class="bi bi-arrow-left"></i> 返回
+                        </button>
+                    </div>
+                </div>
+                <p class="text-muted mb-2" id="searchQuery"></p>
+
+                <!-- 네임스페이스 칩 (모든 검색 모드 공통) -->
+                <div class="search-namespace-chips d-flex flex-wrap gap-2 mb-3" id="namespaceChips">
+                    <button type="button" class="search-chip" data-ns="doc" onclick="goDocumentSearch()">
+                        <i class="mdi mdi-file-document-outline"></i> 页面
+                    </button>
+                    <button type="button" class="search-chip" data-ns="image" onclick="goImageSearch()">
+                        <i class="mdi mdi-image-search-outline"></i> 图片
+                    </button>
+                    <button type="button" class="search-chip" data-ns="category" onclick="goCategorySearch()">
+                        <i class="mdi mdi-folder-search-outline"></i> 分类
+                    </button>
+                </div>
+
+                <!-- 검색 상단 안내 카드 (정렬 옵션 위) — search.ts 가 채운다:
+                     ① 제목 정확 일치 문서 ② map 가상 뷰 이동 ③ 새 문서 만들기 CTA -->
+                <div id="searchNotices"></div>
+
+                <!-- 필터 바 (일반 문서 검색 모드 전용 — search.ts 가 모드에 따라 표시/숨김) -->
+                <div class="search-filters card card-body mb-4 d-none" id="searchFilters">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-6 col-md-auto">
+                            <label class="form-label small mb-1" for="sortSelect">排序</label>
+                            <select id="sortSelect" class="form-select form-select-sm" onchange="onFilterChange()">
+                                <option value="relevance">相关度排序</option>
+                                <option value="recent">最新优先</option>
+                                <option value="title">标题排序</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-auto">
+                            <label class="form-label small mb-1" for="fieldSelect">搜索范围</label>
+                            <select id="fieldSelect" class="form-select form-select-sm" onchange="onFilterChange()">
+                                <option value="all">标题和正文</option>
+                                <option value="title">仅标题</option>
+                                <option value="body">仅正文</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md">
+                            <label class="form-label small mb-1" for="categoryFilter">分类</label>
+                            <input type="text" id="categoryFilter" class="form-control form-control-sm" placeholder="准确的分类名称" autocomplete="off" onchange="onFilterChange()">
+                            <!-- 카테고리 자동완성 드롭다운 (에디터 #category-autocomplete 과 동일 방식 — position:fixed 라 JS 가 입력칸 기준으로 좌표/너비를 잡는다) -->
+                            <div id="searchCategoryAutocomplete" class="list-group"></div>
+                        </div>
+                        <div class="col-6 col-md-auto">
+                            <label class="form-label small mb-1" for="fromDate">起始日期</label>
+                            <input type="date" id="fromDate" class="form-control form-control-sm" onchange="onFilterChange()">
+                        </div>
+                        <div class="col-6 col-md-auto">
+                            <label class="form-label small mb-1" for="toDate">结束日期</label>
+                            <input type="date" id="toDate" class="form-control form-control-sm" onchange="onFilterChange()">
+                        </div>
+                        <div class="col-12 col-md-auto d-none" id="includePrivateWrap">
+                            <div class="form-check mb-1 mb-md-2">
+                                <input class="form-check-input" type="checkbox" id="includePrivate" checked onchange="onFilterChange()">
+                                <label class="form-check-label small" for="includePrivate">包含私有页面</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-auto d-none" id="ragSearchWrap">
+                            <label class="form-label small mb-1 d-block" id="searchEngineLabel">搜索方式</label>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="搜索方式">
+                                <button type="button" class="btn btn-wiki-outline active" id="searchEngineFts" data-engine="fts" aria-pressed="true" onclick="onSearchEngineChange('fts')" title="使用 FTS 进行正文全文搜索。">FTS</button>
+                                <button type="button" class="btn btn-wiki-outline" id="searchEngineRag" data-engine="rag" aria-pressed="false" onclick="onSearchEngineChange('rag')" title="使用 AI Search（RAG）搜索正文，标题搜索保持不变。">RAG</button>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-wiki-outline btn-sm" id="resetFilters" onclick="resetFilters()">
+                                <i class="bi bi-x-circle"></i> 重置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 로딩 -->
+                <div id="loading" class="wiki-loading">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <span>正在搜索...</span>
+                </div>
+
+                <!-- 결과 없음 -->
+                <!-- 내용은 search.ts 의 setNoResultsState() 가 표준 빈 상태(.empty-state)로 채운다 -->
+                <div id="noResults" class="d-none">
+                    <div class="empty-state">
+                        <i class="empty-state-icon bi bi-search" aria-hidden="true"></i>
+                        <p class="empty-state-title">没有搜索结果</p>
+                        <p class="empty-state-text">试试其他关键词。</p>
+                    </div>
+                </div>
+
+                <!-- 결과 목록 -->
+                <div id="resultsList"></div>
+
+                <!-- 모바일 최근 변경 (모바일 전용) -->
+                <div class="mt-4 d-lg-none">
+                    <div class="sidebar-section">
+                        <h6 class="sidebar-title"><a href="/explore#docActivity" class="text-decoration-none text-reset"><i
+                                    class="bi bi-clock-history"></i> 最近更改<i class="bi bi-chevron-right ms-1" style="font-size:0.75em;opacity:0.45;"></i></a></h6>
+                        <div class="recent-changes-list recent-changes-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽 사이드바 (PC 전용 오프캔버스 컨테이너) -->
+        <aside class="wiki-sidebar" id="wikiSidebar">
+            <Sidebar />
+        </aside>
+    </div>
+
+    <!-- ── 푸터 ── -->
+    <Footer />
+
+    <Fragment slot="scripts">
+        <script type="module" src="/dist/common.js" is:inline></script>
+        <script type="module" src="/dist/search.js" is:inline></script>
+    </Fragment>
+</BaseLayout>

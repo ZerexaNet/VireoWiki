@@ -1,0 +1,84 @@
+# dependencies
+/node_modules
+packages/*/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/dist
+/build
+# Vite client build output (산출물은 deploy 시 자동 생성)
+/public/dist
+
+# Astro 정적 셸 스테이징 및 생성된 셸 HTML (deploy 시 자동 생성)
+/.astro-dist
+/.astro
+/public/error.html
+/public/login.html
+/public/qr-login.html
+/public/search.html
+/public/explore.html
+/public/all.html
+/public/revisions.html
+/public/user-profile.html
+/public/setup-profile.html
+/public/admin-media.html
+/public/admin-bulk-manage.html
+/public/components-json-builder.html
+/public/discussions.html
+/public/tickets.html
+/public/mypage.html
+/public/index.html
+/public/edit.html
+/public/memo.html
+/public/blog.html
+/public/admin.html
+/public/blog-edit.html
+/public/workspaces.html
+/public/ws-dashboard.html
+/public/ws-todo.html
+/public/ws-settings.html
+/public/ws-files.html
+/public/ws-media.html
+/public/ws-doc.html
+/public/ws-edit.html
+/public/ws-revisions.html
+
+# 멀티 스킨 색 테마 외부 CSS (scripts/build-skins-css.mjs 가 빌드 타임에 생성)
+/public/css/skins-*.css
+
+# 본문 렌더 스타일 (packages/wiki-shared/scripts/sync-render-css.mjs 가 빌드 타임에 생성)
+/public/render.css
+
+# wrangler / cloudflare
+.wrangler
+/wrangler.toml
+.dev.vars
+.env
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.claude/
+
+# TypeScript
+*.tsbuildinfo
+
+.gemini/
+gha-creds-*.json

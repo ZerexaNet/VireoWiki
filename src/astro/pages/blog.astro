@@ -1,0 +1,228 @@
+---
+// 블로그 목록/포스트 열람 셸. 기존 public/blog.html 과 동일한 마커/구조를 유지하되,
+// header/sidebar/footer 를 빌드 타임에 컴포넌트로 인라인한다(런타임 placeholder 주입 불필요).
+// 단, 이 셸은 요청별 데이터(_usedPalettes, 포스트별 og, CUSTOM_HEADER)가 있어
+// src/index.ts 의 renderHtml→applyPageSSR(ASTRO_SHELL_PAGES) 경로로 런타임 주입된다.
+// 따라서 head 의 og/description 메타는 런타임 치환을 위한 리터럴 placeholder 로 둔다.
+// CDN 번들(base/markdown)은 BaseLayout 이 PAGE_BUNDLES['/blog.html'] 기준으로 베이킹.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Sidebar from '../components/Sidebar.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout pagePath="/blog.html" title="블로그 - CloudWiki">
+    <Fragment slot="head">
+        <meta name="description" content="CloudWiki" />
+        <meta property="og:title" content="CloudWiki" />
+        <meta property="og:description" content="CloudWiki" />
+        <meta property="og:site_name" content="CloudWiki" />
+        <meta property="og:type" content="website" />
+        <link rel="stylesheet" href="/render.css" />
+        <!-- 테마 FOUC 방지: CSS 로드 후 즉시 테마 적용 -->
+        <script is:inline>try{var t=localStorage.getItem('themeMode');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+    </Fragment>
+
+  <!-- ── 네비게이션 바 ── -->
+  <Header />
+
+  <!-- ── 메인 레이아웃 ── -->
+  <div class="wiki-layout">
+    <div class="wiki-container">
+
+      <!-- 로딩 -->
+      <div id="blogLoading" class="wiki-loading">
+        <div class="spinner-border text-primary" role="status"></div>
+        <span>正在加载...</span>
+      </div>
+
+      <!-- 블로그 목록 -->
+      <div id="blogList" class="d-none">
+        <div class="wiki-article">
+          <div class="d-flex align-items-center justify-content-between mb-4">
+            <h1 class="wiki-article-title mb-0">블로그</h1>
+            <div id="blogAdminActions" class="d-none">
+              <a href="/blog-edit" class="btn btn-wiki btn-sm">
+                <i class="bi bi-pencil-square me-1"></i>새 포스트
+              </a>
+            </div>
+          </div>
+          <div id="blogPostsList"></div>
+          <div id="blogPagination" class="mt-4 d-flex justify-content-center gap-2"></div>
+        </div>
+      </div>
+
+      <!-- 블로그 포스트 열람 -->
+      <div id="blogPost" class="d-none">
+        <div class="wiki-article">
+          <h1 class="wiki-article-title mb-0" id="blogPostTitle"></h1>
+          <div class="wiki-article-meta mb-3">
+            <span id="blogPostDate" class="text-muted small"></span>
+          </div>
+
+          <!-- 관리자 액션 + 공유하기 드롭다운 -->
+          <div class="d-flex justify-content-end mb-2 gap-2 flex-wrap">
+            <div id="blogPostAdminActions" class="d-none d-flex gap-2" role="group" aria-label="管理员 操作">
+              <button id="blogPostAnnounceBtn" class="btn btn-wiki d-none" onclick="announceBlogPost()">
+                <i class="bi bi-megaphone me-1"></i>发布公告
+              </button>
+              <button id="blogPostUnannounceBtn" class="btn btn-wiki d-none" onclick="unannounceBlogPost()">
+                <i class="bi bi-megaphone-fill me-1"></i>공지 取消
+              </button>
+              <a id="blogPostEditBtn" href="#" class="btn btn-wiki">
+                <i class="bi bi-pencil me-1"></i>编辑
+              </a>
+              <button class="btn btn-wiki btn-wiki-danger" onclick="deleteBlogPost()">
+                <i class="bi bi-trash me-1"></i>删除
+              </button>
+              <button id="blogPostHardDeleteBtn" class="btn btn-wiki btn-wiki-danger d-none" onclick="hardDeleteBlogPost()">
+                <i class="bi bi-trash3-fill me-1"></i>영구 删除
+              </button>
+            </div>
+            <div class="dropdown">
+              <button class="btn btn-secondary dropdown-toggle no-caret" type="button" id="shareDropdown"
+                data-bs-toggle="dropdown" data-bs-display="static" data-bs-flip="false" aria-expanded="false"
+                title="分享">
+                <i class="bi bi-share"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="shareDropdown">
+                <li><button class="dropdown-item" onclick="shareNative()">
+                    <i class="bi bi-share"></i> 分享
+                  </button></li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
+                <li><button class="dropdown-item" onclick="shareCopyLink()">
+                    <i class="bi bi-link"></i> 复制链接
+                  </button></li>
+                <li><button class="dropdown-item" onclick="shareCopyText()">
+                    <i class="bi bi-copy"></i> 复制页面文字
+                  </button></li>
+                <li><button class="dropdown-item" onclick="shareCopyMarkdown()">
+                    <i class="bi bi-markdown"></i> 复制页面（Markdown）
+                  </button></li>
+                <li><button class="dropdown-item" onclick="sharePrint()">
+                    <i class="bi bi-printer"></i> 打印
+                  </button></li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
+                <li><button class="dropdown-item" onclick="shareAskClaude()">
+                    <i class="bi bi-claude"></i> 询问 Claude
+                  </button></li>
+                <li><button class="dropdown-item" onclick="shareAskChatGPT()">
+                    <i class="bi bi-openai"></i> 询问 ChatGPT
+                  </button></li>
+              </ul>
+            </div>
+          </div>
+
+          <div id="blogPostContent" class="wiki-content"></div>
+          <div class="mt-4">
+            <a href="/blog" class="btn btn-secondary btn-sm">
+              <i class="bi bi-arrow-left me-1"></i>返回列表
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 에러 -->
+      <div id="blogError" class="d-none">
+        <div class="wiki-article">
+          <h1 class="wiki-article-title">포스트를 찾을 수 없습니다</h1>
+          <p class="text-muted">존재하지 않거나 删除된 포스트입니다.</p>
+          <a href="/blog" class="btn btn-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>返回列表
+          </a>
+        </div>
+      </div>
+
+    </div>
+    <!-- 오른쪽 사이드바 (PC 전용 오프캔버스 컨테이너 및 최근 변경) -->
+    <aside class="wiki-sidebar" id="wikiSidebar">
+      <!-- 사이드바 네비게이션 (모바일 오프캔버스 렌더링 영역 공유) -->
+      <Sidebar />
+
+      <!-- 실시간 트렌딩 -->
+      <div class="mb-4">
+        <div class="sidebar-section">
+          <h6 class="sidebar-title d-flex justify-content-between align-items-center mb-2">
+            <span><i class="bi bi-graph-up-arrow text-danger"></i> 实时热门</span>
+            <a href="#" class="small text-muted text-decoration-none trending-expand-btn" style="font-size: 0.8rem;">展开
+              <i class="bi bi-chevron-down"></i></a>
+          </h6>
+          <div class="position-relative overflow-hidden trending-ticker-wrapper" style="height: 38px;">
+            <div id="trendingListPc" class="trending-container trending-ticker-list">
+              <div class="placeholder-glow px-2 py-2">
+                <span class="placeholder w-100 d-block" style="height: 1.5rem; border-radius: 4px;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 최근 변경 -->
+      <div class="mb-4">
+        <div class="sidebar-section">
+          <h6 class="sidebar-title"><i class="bi bi-clock-history"></i> 最近更改</h6>
+          <div id="recentChangesListPc" class="recent-changes-list recent-changes-container">
+            <div class="placeholder-glow">
+              <span class="placeholder w-100 d-block mb-2" style="height: 2.5rem; border-radius: 6px;"></span>
+              <span class="placeholder w-100 d-block mb-2" style="height: 2.5rem; border-radius: 6px;"></span>
+              <span class="placeholder w-100 d-block" style="height: 2.5rem; border-radius: 6px;"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ── 푸터 ── -->
+  <Footer />
+
+  <!-- 아이콘 피커 모달 (공지 발행 시 아이콘 선택) -->
+  <div class="modal fade" id="iconPickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i id="iconPickerTypeIcon" class="mdi mdi-material-design me-2"></i>
+            <span id="iconPickerTitle">选择图标</span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="icon-picker-toolbar mb-2">
+            <div class="icon-picker-tabs" role="tablist" aria-label="图标库">
+              <button type="button" id="iconPickerTabMdi" class="icon-picker-tab active" role="tab" aria-selected="true">
+                <i class="mdi mdi-material-design"></i><span>MDI</span>
+              </button>
+              <button type="button" id="iconPickerTabBi" class="icon-picker-tab" role="tab" aria-selected="false">
+                <i class="bi bi-bootstrap"></i><span>Bootstrap</span>
+              </button>
+            </div>
+            <button type="button" id="iconPickerNoneBtn" class="icon-picker-none-btn">
+              <i class="bi bi-x-lg"></i><span>无图标</span>
+            </button>
+          </div>
+          <input type="text" id="iconSearchInput" class="form-control mb-3" placeholder="搜索图标名称...">
+          <div id="iconLoadingSpinner" class="text-center py-4" style="display:none;">
+            <span class="spinner-border text-primary" role="status"></span>
+            <p class="mt-2 text-muted small">正在加载图标...</p>
+          </div>
+          <div id="iconPickerGrid" class="icon-grid-modal"></div>
+          <div id="iconPickerEmpty" class="text-center text-muted py-3" style="display:none;">
+            <i class="mdi mdi-magnify-close" style="font-size:2rem;"></i>
+            <p class="mt-1">没有搜索结果.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <Fragment slot="scripts">
+        <script type="module" src="/dist/common.js" is:inline></script>
+        <script type="module" src="/dist/render.js" is:inline></script>
+        <script type="module" src="/dist/icon-picker.js" is:inline></script>
+        <script type="module" src="/dist/blog.js" is:inline></script>
+    </Fragment>
+</BaseLayout>

@@ -1,0 +1,106 @@
+/* ── Parent Docs Navigation (breadcrumb) ── */
+.parent-docs-nav-wrapper {
+  position: relative;
+}
+
+.parent-docs-nav {
+  font-size: var(--wiki-fs-body);
+  color: var(--wiki-text-muted);
+}
+
+.parent-docs-nav a {
+  color: var(--wiki-primary);
+}
+
+.parent-docs-nav .parent-docs-create {
+  color: var(--wiki-primary);
+  text-decoration: none;
+  vertical-align: baseline;
+  line-height: 1;
+}
+
+.parent-docs-nav .parent-docs-create:hover {
+  color: var(--wiki-primary);
+  opacity: 0.75;
+}
+
+.parent-docs-nav .parent-docs-segment {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.parent-docs-nav .parent-docs-chevron {
+  color: var(--wiki-text-muted);
+  text-decoration: none;
+  vertical-align: baseline;
+  line-height: 1;
+  font-size: 0.8em;
+  transition: transform var(--wiki-dur-instant) ease, color var(--wiki-dur-instant) ease;
+}
+
+.parent-docs-nav .parent-docs-chevron:hover {
+  color: var(--wiki-primary);
+}
+
+.parent-docs-nav .parent-docs-chevron.active {
+  color: var(--wiki-primary);
+  transform: rotate(-180deg);
+}
+
+.parent-docs-siblings {
+  position: absolute;
+  z-index: 1050;
+  min-width: 12rem;
+  max-width: min(28rem, calc(100vw - 1rem));
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--wiki-space-1) 0;
+  background-color: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--wiki-radius-base);
+  box-shadow: var(--wiki-shadow-md);
+  font-size: 0.875rem;
+}
+
+.parent-docs-siblings .parent-docs-siblings-status {
+  display: block;
+  padding: 0.45rem 0.85rem;
+  color: var(--wiki-text-muted);
+  font-size: var(--wiki-fs-base);
+}
+
+.parent-docs-siblings .parent-docs-sibling-item {
+  display: block;
+  padding: 0.4rem 0.85rem;
+  color: var(--wiki-text);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.parent-docs-siblings .parent-docs-sibling-item:hover,
+.parent-docs-siblings .parent-docs-sibling-item:focus {
+  background-color: var(--wiki-primary);
+  color: var(--wiki-btn-text);
+  outline: none;
+}
+
+/* ── Backlinks Section ── */
+.backlinks-section {
+  margin-top: var(--wiki-space-8);
+  padding-top: var(--wiki-space-4);
+}
+
+.backlinks-section h5 {
+  font-size: var(--wiki-fs-xl);
+  font-weight: 700;
+  color: var(--wiki-text-muted);
+  margin-bottom: var(--wiki-space-3);
+}
+
+.backlinks-section h5 i {
+  color: var(--wiki-primary);
+}

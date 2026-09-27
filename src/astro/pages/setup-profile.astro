@@ -1,0 +1,148 @@
+---
+// 프로필 설정(가입 후) 페이지 정적 셸. 기존 public/setup-profile.html 과 동일한 마커/구조를 유지한다.
+// login 과 동일한 독립 중앙정렬 카드 — header/sidebar/footer 컴포넌트를 쓰지 않는다.
+// 인라인 <style> 은 전역 셀렉터(body 중앙정렬 등)이므로 is:inline 으로 위치/내용 그대로 보존.
+// base CDN 은 BaseLayout 이 빌드 타임에 인라인(베이킹) — PAGE_BUNDLES['/setup-profile.html']=['base']기준으로 베이킹.
+// #setupTitle/#nameInput/#submitBtn 등은 /dist/setup-profile.js·setup-profile-form.js 가 채운다.
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout pagePath="/setup-profile.html" title="个人资料 설정 - CloudWiki">
+    <Fragment slot="head">
+        <!-- 테마 FOUC 방지: CSS 로드 후 즉시 테마 적용 -->
+        <script is:inline>try{var t=localStorage.getItem('themeMode');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+        <style is:inline>
+            body {
+                background-color: var(--wiki-bg);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0;
+                padding: 20px;
+            }
+
+            .setup-container {
+                width: 100%;
+                max-width: 480px;
+                background: var(--wiki-card-bg);
+                border-radius: 20px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+                padding: 3rem 2rem;
+                text-align: center;
+                border: 1px solid var(--wiki-border);
+            }
+
+            .setup-icon {
+                font-size: 4rem;
+                color: var(--wiki-primary);
+                margin-bottom: 1rem;
+            }
+
+            .setup-title {
+                font-weight: 800;
+                margin-bottom: 0.5rem;
+                color: var(--wiki-text);
+            }
+
+            .setup-subtitle {
+                color: var(--wiki-text-muted);
+                margin-bottom: 2rem;
+            }
+
+            .form-group {
+                text-align: left;
+                margin-bottom: 1.5rem;
+            }
+
+            .name-input {
+                width: 100%;
+                padding: 1rem;
+                font-size: 1.1rem;
+                border: 2px solid var(--wiki-border);
+                border-radius: 12px;
+                transition: all 0.3s ease;
+                background: var(--wiki-toc-bg);
+                color: var(--wiki-text);
+            }
+
+            .name-input:focus {
+                outline: none;
+                border-color: var(--wiki-primary);
+                box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+            }
+
+            .submit-btn {
+                width: 100%;
+                padding: 1rem;
+                font-size: 1.1rem;
+                font-weight: 700;
+                border-radius: 12px;
+                background: var(--wiki-primary);
+                color: #ffffff;
+                border: none;
+                transition: all 0.2s ease;
+            }
+
+            .submit-btn:hover {
+                opacity: 0.9;
+                transform: translateY(-2px);
+            }
+
+            .submit-btn:active {
+                transform: translateY(0);
+            }
+
+            .warning-text {
+                font-size: 0.9rem;
+                margin-top: 0.5rem;
+                color: var(--wiki-text-muted);
+            }
+        </style>
+    </Fragment>
+
+    <div class="setup-container">
+        <i class="mdi mdi-account-cog-outline setup-icon" id="setupIcon"></i>
+        <h2 class="setup-title" id="setupTitle">欢迎！</h2>
+        <p class="setup-subtitle" id="setupSubtitle">请设置在 VireoWiki 中使用的显示名称。</p>
+
+        <div class="form-group">
+            <input type="text" id="nameInput" class="name-input" placeholder="新的显示名称" autocomplete="off"
+                maxlength="20">
+            <div id="statusMessage" class="warning-text"></div>
+        </div>
+
+        <!-- 프로필 사진 비공개 옵션 (모든 모드 공통) -->
+        <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" id="picturePrivateOptIn" style="width: 1.1rem; height: 1.1rem;">
+                <span style="color: var(--wiki-text);">隐藏头像</span>
+            </label>
+            <div class="warning-text"><i class="mdi mdi-information-outline"></i> 켜면 OAuth 공급자의 사진 대신 默认 아바타가 표시됩니다. 个人中心에서 언제든 변경할 수 있습니다.</div>
+        </div>
+
+        <!-- 승인제 모드: 가입 메시지 입력 -->
+        <div class="form-group" id="signupMessageGroup" style="display: none;">
+            <label for="signupMessage" class="form-label fw-bold" style="color: var(--wiki-text);">注册申请留言 <span
+                    class="text-muted fw-normal">（选填）</span></label>
+            <textarea id="signupMessage" class="name-input" rows="3" placeholder="输入给管理员的留言。"
+                style="resize: vertical; font-size: 1rem; padding: 0.8rem;"></textarea>
+        </div>
+
+        <!-- 승인제 모드: 결과 푸시 옵트인 (브라우저 지원 + 서버 활성 시에만 표시) -->
+        <div class="form-group" id="pushOptInGroup" style="display: none;">
+            <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" id="pushOptIn" checked style="width: 1.1rem; height: 1.1rem;">
+                <span style="color: var(--wiki-text);">通过浏览器推送接收审核结果</span>
+            </label>
+            <div class="warning-text"><i class="mdi mdi-information-outline"></i> 允许浏览器通知后可及时收到结果。</div>
+        </div>
+
+        <button class="submit-btn" id="submitBtn" onclick="saveProfile()">开始使用</button>
+    </div>
+
+    <Fragment slot="scripts">
+        <script type="module" src="/dist/common.js" is:inline></script>
+        <script type="module" src="/dist/setup-profile.js" is:inline></script>
+        <script type="module" src="/dist/setup-profile-form.js" is:inline></script>
+    </Fragment>
+</BaseLayout>

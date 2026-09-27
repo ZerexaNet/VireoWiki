@@ -1,0 +1,116 @@
+---
+// 정적 셸 공유 레이아웃.
+// 브랜딩·CDN 번들·파비콘·레이아웃 모드를 빌드 타임에 wrangler.toml 값으로 인라인(베이킹)한다.
+// 그 결과 Astro 셸은 런타임 HTMLRewriter(브랜딩 치환·번들 주입) 개입 없이 ASSETS 가 즉시 서빙한다.
+//  - headTags.prepend(폰트/Bootstrap CSS)는 /css/style.css 보다 먼저 와야 로컬 CSS 가 정상 덮어쓴다.
+//  - headTags.append(importmap/Turnstile)는 head 끝, bodyScripts(Bootstrap JS 등)는 body 끝(슬롯 스크립트 뒤).
+//  - CUSTOM_HEADER 는 /w/ 하위(revisions·discussions)에서만 인라인(injectCustomHeader) — 런타임 동작과 동일.
+import { PAGE_BUNDLES, renderHeadTags, renderBodyScripts } from '../../shared/cdn';
+import type { BundleName } from '../../shared/cdn';
+import { readBranding } from '../../../scripts/branding.mjs';
+import { resolveThemeCss, resolveThemesCss, skinsCssHref, filterRegisteredThemes, THEME_LABELS, isDarkOnlyTheme, getDarkOnlyThemes } from '../../../scripts/themes/index.mjs';
+
+interface Props {
+    title: string;
+    lang?: string;
+    pagePath: string;             // PAGE_BUNDLES 조회 키 (예: '/search.html')
+    injectCustomHeader?: boolean; // CUSTOM_HEADER 를 body 끝에 인라인할지
+}
+const { title, lang = 'zh-CN', pagePath, injectCustomHeader = false } = Astro.props;
+
+const branding = readBranding();
+const bundles: BundleName[] = PAGE_BUNDLES[pagePath] ?? ['base'];
+const headTags = renderHeadTags(bundles);
+const bodyScripts = renderBodyScripts(bundles);
+const bakedTitle = title.replace(/CloudWiki/g, branding.wikiName).replace(/Cloudwiki/g, branding.wikiName);
+const customHeader = injectCustomHeader ? branding.customHeader : '';
+// 컬러 테마 스킨.
+// - 멀티 스킨 모드(WIKI_THEMES 에 2개 이상): 각 스킨을 html[data-wiki-theme] 로 스코프
+//   베이킹하고, 운영자 기본 선택 스킨을 <html data-wiki-theme> 로 SSR(무JS·초기 페인트
+//   대응). 사용자는 개인 설정 모달에서 전환(localStorage 'themeSkin', window.__WIKI_SKINS__).
+// - 단일 스킨 모드(기존): WIKI_THEME 을 bare :root 로 베이킹. "default"면 빈 문자열(무변화).
+// 등록된 스킨(THEMES 키)만 남긴다 — 미등록 스킨이 멀티 모드를 켜거나 선택 버튼으로
+// 노출돼 베이스로 떨어지는 일을 막고, 전부 미등록이면 단일 스킨(WIKI_THEME) 폴백을 보존한다.
+const skinList = filterRegisteredThemes(branding.themes || []);
+const multiSkin = skinList.length >= 2;
+const defaultSkin = multiSkin
+    ? (skinList.includes(branding.theme) ? branding.theme : skinList[0])
+    : 'default';
+// 단일 스킨: WIKI_THEME 한 스킨을 bare :root 인라인 베이킹(작아서 인라인 유지).
+// 멀티 스킨: 등록된 모든 스킨 스코프 CSS 를 외부 콘텐츠 해시 파일(scripts/build-skins-css.mjs
+//   가 빌드 타임에 기록)로 분리하고 <link> 로 참조한다. HTML 셸에서 토큰 바이트를 빼 페이지
+//   응답을 줄이고, 파일은 페이지 이동·재방문 간 immutable 영구 캐시(_headers)로 1회만 받는다.
+//   파일명 해시는 빌드 스크립트와 동일한 skinsCssHref 로 도출해 항상 같은 경로를 가리킨다.
+const singleThemeCss = !multiSkin ? resolveThemeCss(branding.theme) : '';
+const skinsCss = multiSkin ? resolveThemesCss(skinList) : '';
+const skinsHref = skinsCssHref(skinsCss);
+// 다크 모드 전용 스킨(darkOnly: true) — 활성인 동안 밝기를 다크로 고정한다.
+// - 멀티 스킨: 허용 목록 중 다크 전용 키들을 window.__WIKI_SKINS__.darkOnly 로 노출해,
+//   사용자가 그 스킨을 고른 동안에만 강제한다(런타임 reconcile).
+// - 단일 스킨: WIKI_THEME 자체가 다크 전용이면 항상 강제.
+const darkOnlySkins = multiSkin ? getDarkOnlyThemes(skinList) : [];
+const singleDarkOnly = !multiSkin && isDarkOnlyTheme(branding.theme);
+// 멀티 스킨 모드에서만: 개인 설정 모달에 노출할 스킨 메타(목록/기본/라벨/다크전용)와 FOUC 부트 스크립트.
+const skinMeta = multiSkin
+    ? JSON.stringify({
+          list: skinList,
+          default: defaultSkin,
+          labels: Object.fromEntries(skinList.map((k) => [k, THEME_LABELS[k] || k])),
+          darkOnly: darkOnlySkins,
+      })
+    : '';
+const skinBootScript = multiSkin
+    ? `window.__WIKI_SKINS__=${skinMeta};try{var s=localStorage.getItem('themeSkin');var L=window.__WIKI_SKINS__.list;if(s&&L.indexOf(s)>=0){if(s==='default')document.documentElement.removeAttribute('data-wiki-theme');else document.documentElement.setAttribute('data-wiki-theme',s);}}catch(e){}`
+    : '';
+// SSR 기본 스킨(무JS·초기 페인트). "default" 면 베이스(style.css)가 곧 그 스킨이라 속성 생략.
+const htmlSkinAttr = multiSkin && defaultSkin !== 'default' ? defaultSkin : undefined;
+// SSR 강제 다크: 무JS·초기 페인트 대응. 단일 스킨은 WIKI_THEME, 멀티 스킨은 SSR 기본 스킨이
+// 다크 전용이면 <html data-theme="dark"> 를 빌드 타임에 박는다(color-scheme:dark → light-dark 다크).
+const ssrForceDark = multiSkin ? darkOnlySkins.includes(defaultSkin) : singleDarkOnly;
+const htmlDataTheme = ssrForceDark ? 'dark' : undefined;
+// Bootstrap 5.3 컴포넌트(.dropdown-menu/.modal-content/.form-control 등)는 data-bs-theme 로
+// 다크를 켠다. common.ts 가 런타임에 맞추지만 그 전(무JS·모듈 로드 전 초기 페인트)에는
+// 헤더의 Bootstrap 표면이 라이트로 떠 다크 스킨과 어긋난다. 강제 다크 시 data-theme 과 같이
+// data-bs-theme="dark" 도 SSR 베이킹·부트 스크립트로 함께 맞춘다.
+const htmlBsTheme = ssrForceDark ? 'dark' : undefined;
+// 강제 다크 확정 부트 스크립트 — head 끝(슬롯 뒤)에서 페이지별 themeMode FOUC 스크립트보다
+// 나중에 실행돼 사용자 밝기 선호가 다크 전용을 덮는 것을 막는다(localStorage 'themeMode'='light'
+// 라도 다크 유지). common.ts 모듈은 deferred 라 이보다 늦으므로 window.__WIKI_FORCE_DARK__/
+// __WIKI_SKINS__.darkOnly 를 읽어 동일 판정을 재현한다.
+//  - 단일 스킨: 항상 다크 강제(정적).
+//  - 멀티 스킨: 현재 data-wiki-theme 가 다크 전용 목록에 있을 때만 강제, 아니면 themeMode 복원
+//    (SSR 이 기본 스킨 기준으로 박은 dark 를, 사용자 override 스킨이 비-다크전용이면 되돌린다).
+const forceDarkBootScript = singleDarkOnly
+    ? `window.__WIKI_FORCE_DARK__=true;try{var d=document.documentElement;d.setAttribute('data-theme','dark');d.setAttribute('data-bs-theme','dark');}catch(e){}`
+    : (multiSkin && darkOnlySkins.length
+        ? `(function(){try{var L=window.__WIKI_SKINS__;if(!L||!L.darkOnly||!L.darkOnly.length)return;var d=document.documentElement;var c=d.getAttribute('data-wiki-theme')||'default';if(L.darkOnly.indexOf(c)>=0){d.setAttribute('data-theme','dark');d.setAttribute('data-bs-theme','dark');}else{var t;try{t=localStorage.getItem('themeMode');}catch(e){}var bs;if(t==='light'){d.setAttribute('data-theme','light');bs='light';}else if(t==='dark'){d.setAttribute('data-theme','dark');bs='dark';}else{d.removeAttribute('data-theme');bs=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}d.setAttribute('data-bs-theme',bs);}}catch(e){}})();`
+        : '');
+---
+<!DOCTYPE html>
+<html lang={lang} data-wiki-theme={htmlSkinAttr} data-theme={htmlDataTheme} data-bs-theme={htmlBsTheme}>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <Fragment set:html={headTags.prepend} />
+    <title class="app-wiki-name">{bakedTitle}</title>
+    <link rel="icon" id="wiki-favicon" href={branding.wikiFaviconUrl} />
+    <link rel="stylesheet" href="/css/style.css" />
+    {singleThemeCss && <style is:inline set:html={singleThemeCss}></style>}
+    {skinsHref && <link rel="stylesheet" href={skinsHref} />}
+    {skinBootScript && <script is:inline set:html={skinBootScript}></script>}
+    <slot name="head" />
+    {forceDarkBootScript && <script is:inline set:html={forceDarkBootScript}></script>}
+    <Fragment set:html={headTags.append} />
+</head>
+
+<body data-layout-mode={branding.layoutMode} style="-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+    <!-- 레이아웃 모드 사용자 오버라이드 FOUC 방지: 파싱 중 즉시 적용(common.ts applyLayoutOverride 와 동일 키). -->
+    <script is:inline>try{var m=localStorage.getItem('layoutModeOverride');if(m&&['default','left-toc','right-toc','docs','wide'].indexOf(m)>=0)document.body.setAttribute('data-layout-mode',m);}catch(e){}</script>
+    <slot />
+    <slot name="scripts" />
+    <Fragment set:html={bodyScripts} />
+    {customHeader && <Fragment set:html={customHeader} />}
+</body>
+
+</html>
