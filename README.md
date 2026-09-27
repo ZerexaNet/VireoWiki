@@ -20,4 +20,4 @@ Markdown 页面、分类、重定向、模板引用、修订历史、Diff、回�
 
 ## 开源与来源
 
-保留原项目的 [MIT 许可证](LICENSE)与版权声明。原作者的说明保存在 [UPSTREAM_README.md](UPSTREAM_README.md)。VireoWiki 的改动包括 NodeLoc OAuth 提供方、独立项目配置与构建修复。尚未在真实 NodeLoc 账号和 Cloudflare 资源上完成端到端部署验证。
+仓库保留原有的 [AGPL-3.0 许可证](LICENSE)；所引入 CloudWiki 代码的原始 [MIT 许可证与版权声明](LICENSE-UPSTREAM) 单独保存。原作者的说明保存在 [UPSTREAM_README.md](UPSTREAM_README.md)。VireoWiki 的改动包括 NodeLoc OAuth 提供方、独立项目配置与构建修复。尚未在真实 NodeLoc 账号和 Cloudflare 资源上完成端到端部署验证。
