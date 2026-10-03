@@ -1,6 +1,7 @@
 name = "vireowiki" # 可按部署环境调整 Worker 名称
 main = "src/index.ts"
 compatibility_date = "2026-03-01"
+compatibility_flags = ["nodejs_compat"]
 
 # Vite 클라이언트 빌드를 deploy 전에 자동 실행한다
 # - 입력: src/client/*.ts

@@ -10,6 +10,8 @@ Markdown 页面、分类、重定向、模板引用、修订历史、Diff、回�
 
 ## 部署
 
+首次安装请按 [中文详细部署教程](DEPLOYMENT.md) 操作；下面是简要步骤。
+
 1. 安装 Node.js 并运行 `npm ci`。
 2. 复制 `wrangler example.toml` 为 `wrangler.toml`，填写 D1、KV、R2 绑定和域名；设置 `WIKI_NAME`。
 3. 在 Cloudflare 创建至少一个 OAuth 登录应用。默认示例为 Google/Discord；NodeLoc 参见 [NodeLoc 登录接入](NODELOC_AUTH.md)。Client Secret 通过 Workers Secret 保存。
