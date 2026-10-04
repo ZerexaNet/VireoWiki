@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { trackSearch } from '../utils/analytics';
@@ -172,7 +173,7 @@ search.get('/search', async (c) => {
     // 아래 일반 검색 경로로 폴스루한다(wiki.get('/w/:slug')의 폴스루와 일관 유지).
     if (mode === 'content' && query.trim().startsWith('이미지:')) {
         if (c.env.WIKI_VISIBILITY === 'closed' && !user) {
-            return c.json({ error: '로그인이 필요합니다.' }, 401);
+            return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
         }
         const imageQuery = query.trim().substring('이미지:'.length).trim();
 
@@ -248,7 +249,7 @@ search.get('/search', async (c) => {
     // 일반 pages 검색으로 폴스루한다(이미지: 네임스페이스 분기와 동일한 fallthrough 패턴).
     if (mode === 'content' && query.trim().startsWith('카테고리:')) {
         if (c.env.WIKI_VISIBILITY === 'closed' && !user) {
-            return c.json({ error: '로그인이 필요합니다.' }, 401);
+            return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
         }
         const catQuery = query.trim().substring('카테고리:'.length).trim();
 

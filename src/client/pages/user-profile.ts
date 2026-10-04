@@ -8,6 +8,7 @@
 //  - HTML on* 속성에서 호출되는, 이 블록에서 정의된 함수(adminBanUser /
 //    adminChangeRole / goToContributionsPage)는 파일 끝에서 window.* 로 노출한다.
 
+import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 let profileUser = null;
 let contributionsPage = 1;
 let contributionsTotal = 0;
@@ -25,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userId = getUserIdFromUrl();
     if (!userId) {
         document.getElementById('profileHeader').innerHTML =
-            '<div class="text-center text-muted py-3">유효하지 않은 사용자 ID입니다.</div>';
+            ui("m_1dbb06603c3f640a");
         return;
     }
 
@@ -54,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!res.ok) {
             const data = await res.json();
-            throw new Error(data.error || '사용자를 찾을 수 없습니다.');
+            throw new Error(data.error || ui("m_5e480fde00b98d8b"));
         }
         profileUser = await res.json();
         renderProfile();
@@ -69,13 +70,13 @@ async function renderProfile() {
     const header = document.getElementById('profileHeader');
 
     const joinDate = profileUser.created_at
-        ? new Date(profileUser.created_at * 1000).toLocaleDateString('zh-CN', {
+        ? new Date(profileUser.created_at * 1000).toLocaleDateString(getLocale(), {
             year: 'numeric', month: 'long', day: 'numeric'
         })
-        : '未知用户';
+        : ui("m_1ac13841ba2ea68b");
 
     const avatarHtml = profileUser.picture
-        ? `<img src="${profileUser.picture}" class="profile-avatar" alt="프로필" loading="lazy">`
+        ? ui("m_ca7edd9b33f4259e", [profileUser.picture])
         : `<div class="profile-avatar-placeholder">${window.escapeHtml(profileUser.name.charAt(0))}</div>`;
 
     // 쪽지 보내기 버튼 표시 여부
@@ -85,7 +86,7 @@ async function renderProfile() {
             // 차단 사용자: 소명(이의제기) 채널로 관리자에게만 쪽지 발송 가능.
             // 공개 프로필은 role 을 숨기므로 안전한 is_admin 플래그로 관리자 여부를 판단한다.
             if (profileUser.is_admin) {
-                sendMsgBtn = `<button class="btn btn-sm btn-outline-primary mt-2" data-uid="${profileUser.id}" data-uname="${window.escapeHtml(profileUser.name)}" onclick="sendMessage(+this.dataset.uid, this.dataset.uname)"><i class="mdi mdi-email-plus-outline"></i> 관리자에게 소명</button>`;
+                sendMsgBtn = ui("m_ceb1572e3656864c", [profileUser.id, window.escapeHtml(profileUser.name)]);
             }
         } else {
             try {
@@ -95,27 +96,18 @@ async function renderProfile() {
 
                 if (dmData.allow_direct_message === 1 || canBypassDm) {
                     if (profileUser.role === 'deleted') {
-                        sendMsgBtn = `<button class="btn btn-sm btn-outline-secondary mt-2" disabled><i class="mdi mdi-email-plus-outline"></i> 쪽지 보내기 (탈퇴한 사용자)</button>`;
+                        sendMsgBtn = ui("m_bbea705fd7043e15");
                     } else {
-                        sendMsgBtn = `<button class="btn btn-sm btn-outline-primary mt-2" data-uid="${profileUser.id}" data-uname="${window.escapeHtml(profileUser.name)}" onclick="sendMessage(+this.dataset.uid, this.dataset.uname)"><i class="mdi mdi-email-plus-outline"></i> 쪽지 보내기</button>`;
+                        sendMsgBtn = ui("m_31940b1a15c1746b", [profileUser.id, window.escapeHtml(profileUser.name)]);
                     }
                 }
             } catch (e) { }
         }
     }
 
-    header.innerHTML = `
-        ${avatarHtml}
-        <div class="profile-info">
-            <h2>${window.escapeHtml(profileUser.name)}</h2>
-            <div class="text-muted"><i class="mdi mdi-calendar"></i> ${joinDate} 가입</div>
-            <div class="d-flex flex-wrap gap-2 align-items-center">
-                ${sendMsgBtn}
-            </div>
-        </div>
-    `;
+    header.innerHTML = ui("m_593c6c3e3a530a79", [avatarHtml, window.escapeHtml(profileUser.name), joinDate, sendMsgBtn]);
 
-    document.title = `${profileUser.name} - 사용자 프로필 - ${window.appConfig.wikiName}`;
+    document.title = ui("m_d6ff3dc0f8832748", [profileUser.name, window.appConfig.wikiName]);
     renderAdminControls();
 }
 
@@ -138,35 +130,26 @@ function renderAdminControls() {
     const targetIsAdmin = profileUser.role === 'admin';
     if (targetIsSuperAdmin) {
         // super_admin은 제어 불가
-        html += `<span class="badge bg-dark fs-6"><i class="mdi mdi-shield-crown"></i> 超级管理员 (제어 불가)</span>`;
+        html += ui("m_3f12acfd4e196e1e");
     } else if (!isSuperAdmin && targetIsAdmin) {
         // 일반 관리자는 다른 관리자를 차단할 수 없음
-        html += `<span class="badge bg-secondary fs-6"><i class="mdi mdi-shield-account"></i> 관리자 (차단 불가)</span>`;
+        html += ui("m_4289645737356723");
     } else {
         const banLabel = isBanned
-            ? '<i class="mdi mdi-lock-open-outline"></i> 차단 해제'
-            : '<i class="mdi mdi-block-helper"></i> 차단';
+            ? ui("m_70893e3a01dea663")
+            : ui("m_d4d5dd0f4e88cfdf");
         const banClass = isBanned ? 'btn btn-outline-secondary' : 'btn btn-outline-danger';
         html += `<button class="${banClass}" onclick="adminBanUser()">${banLabel}</button>`;
 
         if (isBanned) {
-            const until = new Date(profileUser.banned_until * 1000).toLocaleDateString('zh-CN');
-            html += `<span class="badge bg-danger">차단 중 (~${until})</span>`;
+            const until = new Date(profileUser.banned_until * 1000).toLocaleDateString(getLocale());
+            html += ui("m_0bd20e10ce10219e", [until]);
         }
     }
 
     // 역할 변경 (super_admin 뷰어이고 대상이 super_admin이 아닌 경우)
     if (isSuperAdmin && !targetIsSuperAdmin) {
-        html += `
-            <div class="d-flex align-items-center gap-2 ms-auto">
-                <label class="form-label mb-0 text-muted">역할:</label>
-                <select class="form-select form-select-sm w-auto" onchange="adminChangeRole(this.value)">
-                    <option value="user" ${profileUser.role === 'user' ? 'selected' : ''}>用户</option>
-                    <option value="discussion_manager" ${profileUser.role === 'discussion_manager' ? 'selected' : ''}>讨论管理员</option>
-                    <option value="admin" ${profileUser.role === 'admin' ? 'selected' : ''}>관리자</option>
-                </select>
-            </div>
-        `;
+        html += ui("m_34c1cc53cb025244", [profileUser.role === 'user' ? 'selected' : '', profileUser.role === 'discussion_manager' ? 'selected' : '', profileUser.role === 'admin' ? 'selected' : '']);
     }
 
     html += '</div>';
@@ -176,14 +159,14 @@ function renderAdminControls() {
 async function adminBanUser() {
     const isBanned = profileUser.banned_until && profileUser.banned_until * 1000 > Date.now();
     const { value: days } = await Swal.fire({
-        titleText: `${profileUser.name} 차단`,
+        titleText: ui("m_f4e3ec810bc2950d", [profileUser.name]),
         input: 'number',
-        inputLabel: '차단 일수 (0 = 해제)',
+        inputLabel: ui("m_b5cff10605f8765f"),
         inputValue: isBanned ? 0 : 7,
         inputAttributes: { min: 0 },
         showCancelButton: true,
-        cancelButtonText: '取消',
-        confirmButtonText: '应用',
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
+        confirmButtonText: ui("m_63c73c4730f4473e"),
     });
     if (days === undefined) return;
     const res = await fetch(`/api/admin/users/${profileUser.id}/ban`, {
@@ -196,7 +179,7 @@ async function adminBanUser() {
         profileUser.banned_until = data.banned_until;
         renderAdminControls();
     } else {
-        Swal.fire('错误', data.error || '차단 실패', 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), data.error || ui("m_ce49766856ea5ccc"), 'error');
     }
 }
 
@@ -210,9 +193,9 @@ async function adminChangeRole(role) {
     if (res.ok) {
         profileUser.role = role;
         renderAdminControls();
-        Swal.fire({ icon: 'success', title: '변경됨', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+        Swal.fire({ icon: 'success', title: ui("m_4b785e68bbaeafb2"), toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
     } else {
-        Swal.fire('错误', data.error || '변경 실패', 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), data.error || ui("m_b8462c884b380729"), 'error');
     }
 }
 
@@ -241,12 +224,7 @@ async function loadContributions(page = 1) {
         // 통계 표시
         const statsSection = document.getElementById('statsSection');
         statsSection.style.display = '';
-        document.getElementById('statCards').innerHTML = `
-            <div class="stat-card">
-                <div class="stat-value">${contributionsTotal}</div>
-                <div class="stat-label">총 편집 횟수</div>
-            </div>
-        `;
+        document.getElementById('statCards').innerHTML = ui("m_e15101c3bcd95685", [contributionsTotal]);
 
         // 기여 목록
         const section = document.getElementById('contributionsSection');
@@ -254,7 +232,7 @@ async function loadContributions(page = 1) {
 
         if (total === 0) {
             contributionsPage = 1;
-            listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-inbox', title: '편집 내역이 없습니다' });
+            listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-inbox', title: ui("m_2758a88ab03cb3f7") });
             paginationEl.innerHTML = '';
             return;
         }
@@ -272,7 +250,7 @@ async function loadContributions(page = 1) {
 
     } catch (e) {
         if (seq !== contributionsRequestSeq) return;
-        listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '불러오기 실패', text: '请稍后再试。' });
+        listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_ebaf4022cf1aed6d"), text: ui("m_5ddbb7be6b11cc08") });
         paginationEl.innerHTML = '';
     }
 }
@@ -313,8 +291,8 @@ function renderContributionsPagination() {
     const isLast = contributionsPage === totalPages;
 
     let html = '<ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap">';
-    html += `<li class="page-item ${isFirst ? 'disabled' : ''}"><button type="button" class="page-link" onclick="goToContributionsPage(1)" ${isFirst ? 'disabled' : ''} aria-label="처음"><i class="mdi mdi-chevron-double-left"></i></button></li>`;
-    html += `<li class="page-item ${isFirst ? 'disabled' : ''}"><button type="button" class="page-link" onclick="goToContributionsPage(${contributionsPage - 1})" ${isFirst ? 'disabled' : ''} aria-label="上一页"><i class="mdi mdi-chevron-left"></i></button></li>`;
+    html += ui("m_398351989ec50691", [isFirst ? 'disabled' : '', isFirst ? 'disabled' : '']);
+    html += ui("m_6c0fb654ae359b4f", [isFirst ? 'disabled' : '', contributionsPage - 1, isFirst ? 'disabled' : '']);
     for (const p of pages) {
         if (p === '...') {
             html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
@@ -323,17 +301,17 @@ function renderContributionsPagination() {
             html += `<li class="page-item ${active}"><button type="button" class="page-link" onclick="goToContributionsPage(${p})">${p}</button></li>`;
         }
     }
-    html += `<li class="page-item ${isLast ? 'disabled' : ''}"><button type="button" class="page-link" onclick="goToContributionsPage(${contributionsPage + 1})" ${isLast ? 'disabled' : ''} aria-label="下一页"><i class="mdi mdi-chevron-right"></i></button></li>`;
-    html += `<li class="page-item ${isLast ? 'disabled' : ''}"><button type="button" class="page-link" onclick="goToContributionsPage(${totalPages})" ${isLast ? 'disabled' : ''} aria-label="마지막"><i class="mdi mdi-chevron-double-right"></i></button></li>`;
+    html += ui("m_c8b6761d4b749cdb", [isLast ? 'disabled' : '', contributionsPage + 1, isLast ? 'disabled' : '']);
+    html += ui("m_e18398471f8e2d1a", [isLast ? 'disabled' : '', totalPages, isLast ? 'disabled' : '']);
     html += '</ul>';
     container.innerHTML = html;
 }
 
 function renderContribution(c) {
-    const date = new Date(c.created_at * 1000).toLocaleString('zh-CN');
+    const date = new Date(c.created_at * 1000).toLocaleString(getLocale());
     const summaryHtml = c.summary
         ? `<span class="summary">- ${window.escapeHtml(c.summary)}</span>`
-        : '<span class="summary text-muted">- （无编辑摘要）</span>';
+        : ui("m_dd1ad9208422091e");
     return `
         <div class="contribution-item">
             <div>

@@ -14,6 +14,7 @@
 // 그 어느 것도 본 모듈을 import 하지 않는다(순환 없음). apply_edit 도구의 dispatch 는 routes/mcp 가
 // 호출하며 admin-mcp 는 본 모듈을 참조하지 않는다.
 
+import { ui } from '../i18n/server';
 import type { Context } from 'hono';
 import type { Env, User } from '../types';
 import type { RBAC } from './role';
@@ -83,13 +84,13 @@ export async function applyDraftMutation(
             'SELECT id, version, content, category, last_revision_id, title, is_private, editor_note FROM pages WHERE slug = ? AND deleted_at IS NULL'
         ).bind(slug).first<{ id: number; version: number; content: string; category: string | null; last_revision_id: number | null; title: string | null; is_private: number; editor_note: string | null }>();
         if (!page) {
-            return { ok: false, status: 409, body: { error: 'conflict', reason: 'page_missing' } };
+            return { ok: false, status: 409, body: { error: "conflict", reason: "page_missing" } };
         }
         if (page.last_revision_id !== draft.base_revision_id || page.version !== draft.base_version) {
             return {
                 ok: false, status: 409, body: {
-                    error: 'conflict',
-                    reason: 'concurrent_modification',
+                    error: "conflict",
+                    reason: "concurrent_modification",
                     base_revision_id: draft.base_revision_id,
                     base_version: draft.base_version,
                     current_revision_id: page.last_revision_id,
@@ -114,11 +115,11 @@ export async function applyDraftMutation(
                     const isAdminOnlyFail = ev.decisive === 'admin_only';
                     return {
                         ok: false, status: 403, body: {
-                            error: 'forbidden',
+                            error: "forbidden",
                             reason: isAdminOnlyFail ? 'admin_only' : 'edit_acl',
                             message: isAdminOnlyFail
-                                ? '이 문서는 관리자만 편집할 수 있습니다.'
-                                : '이 문서를 편집할 권한이 부족합니다.',
+                                ? ui("m_718e2147e1a2bdab")
+                                : ui("m_6f5fe96067957fb8"),
                             edit_acl: pageAcl,
                             min_age_days: minAge,
                         }
@@ -133,7 +134,7 @@ export async function applyDraftMutation(
             const addedCats = splitCategoryString(draft.category).filter(cat => !currentCats.has(cat));
             const catErr = await enforceAdminOnlyCategories(c.env.DB, rbac, user, addedCats.join(','));
             if (catErr) {
-                return { ok: false, status: 403, body: { error: 'forbidden', reason: 'admin_only_category', message: catErr } };
+                return { ok: false, status: 403, body: { error: "forbidden", reason: "admin_only_category", message: catErr } };
             }
         }
 
@@ -143,11 +144,11 @@ export async function applyDraftMutation(
             if (titleConflict) {
                 return {
                     ok: false, status: 409, body: {
-                        error: 'conflict',
+                        error: "conflict",
                         reason: titleConflict.matchedColumn === 'slug' ? 'title_collides_with_slug' : 'title_taken',
                         message: titleConflict.matchedColumn === 'slug'
-                            ? `'${draft.title}' 는 이미 다른 문서의 제목입니다.`
-                            : `'${draft.title}' 는 이미 다른 문서의 대체 제목입니다.`,
+                            ? ui("m_f504b0f8c23b04cd", [draft.title])
+                            : ui("m_11d121b9c8d723da", [draft.title]),
                     }
                 };
             }
@@ -187,7 +188,7 @@ export async function applyDraftMutation(
             await c.env.DB.prepare('UPDATE pages SET editor_note = ?, updated_at = unixepoch() WHERE id = ?')
                 .bind(draftEditorNote, page.id).run();
             try {
-                await insertVirtualRevision(c.env.DB, page.id, '[편집메모] 편집 메모 변경', user.id);
+                await insertVirtualRevision(c.env.DB, page.id, ui("m_a47db840b4ed0d13"), user.id);
             } catch (e) {
                 console.error('mcpDraftApply editor-note virtual revision failed:', e);
             }
@@ -213,7 +214,7 @@ export async function applyDraftMutation(
         const summaryWithDiff = diffStats ? buildCommitSummary(finalSummary, diffStats) : finalSummary;
         // 편집 메모 변경이 본문 수정에 동반된 경우, 자동요약에 편집 메모 변경을 명시.
         const finalSummaryWithNote = editorNoteChanged && contentChanged
-            ? (summaryWithDiff ? `${summaryWithDiff} / [편집메모] 변경` : '[편집메모] 변경')
+            ? (summaryWithDiff ? ui("m_32865686a43ee5c7", [summaryWithDiff]) : ui("m_1747995f753a201c"))
             : summaryWithDiff;
 
         try {
@@ -253,27 +254,27 @@ export async function applyDraftMutation(
             if (e?.code === 'CONCURRENT_MODIFICATION') {
                 return {
                     ok: false, status: 409, body: {
-                        error: 'conflict',
-                        reason: 'concurrent_modification',
+                        error: "conflict",
+                        reason: "concurrent_modification",
                         base_revision_id: draft.base_revision_id,
                         base_version: draft.base_version,
                     }
                 };
             }
-            return { ok: false, status: 500, body: { error: 'apply_failed', message: e?.message || String(e) } };
+            return { ok: false, status: 500, body: { error: "apply_failed", message: e?.message || String(e) } };
         }
     }
 
     if (draft.action === 'create') {
         const livePage = await c.env.DB.prepare('SELECT id FROM pages WHERE slug = ? AND deleted_at IS NULL').bind(slug).first();
-        if (livePage) return { ok: false, status: 409, body: { error: 'conflict', reason: 'slug_taken' } };
+        if (livePage) return { ok: false, status: 409, body: { error: "conflict", reason: "slug_taken" } };
         const deletedConflict = await c.env.DB.prepare('SELECT id FROM pages WHERE slug = ? AND deleted_at IS NOT NULL').bind(slug).first();
         if (deletedConflict) {
             return {
                 ok: false, status: 409, body: {
-                    error: 'conflict',
-                    reason: 'slug_soft_deleted',
-                    message: '동일 제목의 소프트 삭제된 문서가 존재합니다. 관리자가 먼저 복원/영구삭제 처리해야 합니다.',
+                    error: "conflict",
+                    reason: "slug_soft_deleted",
+                    message: ui("m_ae96a9eefa60c215"),
                 }
             };
         }
@@ -282,9 +283,9 @@ export async function applyDraftMutation(
         if (slugTitleConflict && slugTitleConflict.matchedColumn === 'title') {
             return {
                 ok: false, status: 409, body: {
-                    error: 'conflict',
-                    reason: 'slug_collides_with_title',
-                    message: `'${slug}' 는 다른 문서의 대체 제목과 충돌해 제목으로 사용할 수 없습니다.`,
+                    error: "conflict",
+                    reason: "slug_collides_with_title",
+                    message: ui("m_725e09fd82e3d485", [slug]),
                 }
             };
         }
@@ -293,11 +294,11 @@ export async function applyDraftMutation(
             if (titleConflict) {
                 return {
                     ok: false, status: 409, body: {
-                        error: 'conflict',
+                        error: "conflict",
                         reason: titleConflict.matchedColumn === 'slug' ? 'title_collides_with_slug' : 'title_taken',
                         message: titleConflict.matchedColumn === 'slug'
-                            ? `'${draft.title}' 는 이미 다른 문서의 제목입니다.`
-                            : `'${draft.title}' 는 이미 다른 문서의 대체 제목입니다.`,
+                            ? ui("m_f504b0f8c23b04cd", [draft.title])
+                            : ui("m_11d121b9c8d723da", [draft.title]),
                     }
                 };
             }
@@ -309,7 +310,7 @@ export async function applyDraftMutation(
             if (autoCat && !catsToCheck.includes(autoCat)) catsToCheck.push(autoCat);
             const catErr = await enforceAdminOnlyCategories(c.env.DB, rbac, user, catsToCheck.join(','));
             if (catErr) {
-                return { ok: false, status: 403, body: { error: 'forbidden', reason: 'admin_only_category', message: catErr } };
+                return { ok: false, status: 403, body: { error: "forbidden", reason: "admin_only_category", message: catErr } };
             }
         }
 
@@ -342,11 +343,11 @@ export async function applyDraftMutation(
                     const isAdminOnlyFail = ev.decisive === 'admin_only';
                     return {
                         ok: false, status: 403, body: {
-                            error: 'forbidden',
+                            error: "forbidden",
                             reason: isAdminOnlyFail ? 'admin_only' : 'edit_acl',
                             message: isAdminOnlyFail
-                                ? '이 슬러그로 시작하는 문서는 관리자만 새로 생성할 수 있습니다.'
-                                : '이 슬러그로 시작하는 문서는 ACL 정책상 새로 생성할 수 없습니다.',
+                                ? ui("m_40db2d51a7822a45")
+                                : ui("m_7092531bf8f16176"),
                             edit_acl: finalAclForCheck,
                             min_age_days: minAge,
                         }
@@ -394,16 +395,16 @@ export async function applyDraftMutation(
             };
         } catch (e: any) {
             if (e?.code === 'SLUG_TAKEN') {
-                return { ok: false, status: 409, body: { error: 'conflict', reason: 'slug_taken' } };
+                return { ok: false, status: 409, body: { error: "conflict", reason: "slug_taken" } };
             }
             if (e?.code === 'TITLE_TAKEN') {
-                return { ok: false, status: 409, body: { error: 'conflict', reason: 'title_taken' } };
+                return { ok: false, status: 409, body: { error: "conflict", reason: "title_taken" } };
             }
-            return { ok: false, status: 500, body: { error: 'apply_failed', message: e?.message || String(e) } };
+            return { ok: false, status: 500, body: { error: "apply_failed", message: e?.message || String(e) } };
         }
     }
 
-    return { ok: false, status: 400, body: { error: 'unknown_action', action: draft.action } };
+    return { ok: false, status: 400, body: { error: "unknown_action", action: draft.action } };
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -412,12 +413,12 @@ export async function applyDraftMutation(
 
 export const APPLY_EDIT_TOOL_DEF = {
     name: 'apply_edit',
-    description: 'draft 에 누적된 편집을 승인 단계 없이 **즉시** 새 리비전으로 확정합니다 (마이페이지에서 "MCP 편집 즉시반영 허용" 을 켠 경우에만 노출). commit_edit 이 승인 대기로 제출하는 것과 달리, 이 도구는 곧바로 저장합니다.\n\ncommit_edit 와 동일한 충돌 검증을 적용합니다 — base_revision_id 가 그 사이 변경되었거나(다른 사용자가 페이지 수정), 신규 페이지 draft 인데 같은 슬러그가 이미 존재하면 거부합니다. 편집 권한(edit_acl)/관리자 전용 카테고리도 적용 시점에 재검증됩니다.\n\nsummary 는 새 리비전의 편집 요약입니다 (선택, 최대 255자). 저장 시 자동으로 `[MCP] [+N줄 -M줄] ` 접두가 붙습니다. 응답에는 새 revision_id 와 라인 단위 변경량(lines_added / lines_removed)이 포함됩니다.\n\n승인 검토가 필요하면 apply_edit 대신 commit_edit 을 사용하세요.',
+    description: ui("m_24851445d7e308d5"),
     inputSchema: {
         type: 'object',
         properties: {
-            draft_id: { type: 'number', description: '즉시 적용할 draft 의 id (편집 도구 응답에서 받은 값)' },
-            summary: { type: 'string', description: '편집 요약 (선택, 최대 255자, 저장 시 [MCP] 접두 자동 부여)' },
+            draft_id: { type: 'number', description: ui("m_15b5eab43f6782bb") },
+            summary: { type: 'string', description: ui("m_d94deba089b9cc19") },
         },
         required: ['draft_id'],
     },
@@ -448,8 +449,8 @@ function notifyInstantApply(
     const version = typeof body.version === 'number' ? body.version : null;
     const revisionId = typeof body.revision_id === 'number' ? body.revision_id : null;
     const notifContent = isCreate
-        ? `MCP 즉시반영으로 "${slug}" 문서가 생성되었습니다.`
-        : `MCP 즉시반영으로 "${slug}" 문서가 편집되었습니다.${version !== null ? ` (v${version})` : ''}`;
+        ? ui("m_3cb04c545466a1f2", [slug])
+        : ui("m_ecee15dca2358682", [slug, version !== null ? ` (v${version})` : '']);
     // 생성은 비교할 이전 리비전이 없으므로 문서 자체로, 수정은 방금 만든 리비전 diff 로 링크한다.
     const link = (isCreate || revisionId === null)
         ? `/w/${encodeURIComponent(slug)}`
@@ -462,7 +463,7 @@ function notifyInstantApply(
             link,
             refId: revisionId,
             push: {
-                title: 'MCP 즉시반영',
+                title: ui("m_610d40599b80cbb8"),
                 body: notifContent,
                 url: link,
                 // 태그는 문서 단위로 둔다 — AI 가 한 문서를 연속 즉시반영할 때 OS 푸시가 최신 1건으로
@@ -487,16 +488,16 @@ export async function dispatchApplyEditTool(
     await ensureMcpDraftsMigration(db);
     await ensureEditorNoteMigration(db);
     if (!rbac.can(user.role, 'wiki:edit')) {
-        return toolError('Error: wiki:edit 권한이 필요합니다.');
+        return toolError(ui("m_eaf5dbfe425cfa3f"));
     }
     // 방어선: 도구 노출은 mcp.ts 에서 게이팅하지만 디스패처에서도 설정을 재확인한다.
     if (!user.mcp_instant_apply) {
-        return toolError('Error: MCP 편집 즉시반영이 비활성화되어 있습니다. 마이페이지 설정에서 활성화한 뒤 사용하거나, commit_edit 으로 승인 대기 제출하세요.');
+        return toolError(ui("m_322e63282d28faa3"));
     }
 
     const draftId = Number(args.draft_id);
     if (!Number.isFinite(draftId) || draftId <= 0) {
-        return toolError('Error: draft_id 는 양의 정수여야 합니다.');
+        return toolError(ui("m_b61bfa2e7e9f6307"));
     }
     const summary = (typeof args.summary === 'string' && args.summary.length > 0) ? args.summary : null;
     const summaryLengthError = validateMcpSummaryLength(summary);
@@ -510,13 +511,13 @@ export async function dispatchApplyEditTool(
          FROM mcp_drafts WHERE id = ?`
     ).bind(draftId).first<ApplyDraftInput & { user_id: number; submitted_at: number | null }>();
     if (!draft) {
-        return toolError('Error: draft 를 찾을 수 없습니다 (이미 commit/discard 됐거나 12시간 TTL 만료).');
+        return toolError(ui("m_1e2db7eab1f0eda0"));
     }
     if (draft.user_id !== user.id) {
-        return toolError('Error: 다른 사용자의 draft 는 적용할 수 없습니다.');
+        return toolError(ui("m_56686db518ce8807"));
     }
     if (draft.submitted_at !== null) {
-        return toolError('Error: 이 draft 는 이미 승인 대기로 제출된 상태입니다. 마이페이지에서 승인하거나 discard_edit 후 다시 시도하세요.');
+        return toolError(ui("m_428b5a484acfe97a"));
     }
 
     const outcome = await applyDraftMutation(c, user, rbac, draft, summary);
@@ -525,7 +526,7 @@ export async function dispatchApplyEditTool(
         notifyInstantApply(c, user, draft.slug, outcome.body);
     }
     const body = outcome.ok
-        ? { ...outcome.body, applied: true, notice: '즉시 반영되어 새 리비전이 생성되었습니다.' }
+        ? { ...outcome.body, applied: true, notice: ui("m_1b5dd20687b6eeb9") }
         : outcome.body;
     return { content: [{ type: 'text', text: JSON.stringify(body, null, 2) }], isError: !outcome.ok };
 }

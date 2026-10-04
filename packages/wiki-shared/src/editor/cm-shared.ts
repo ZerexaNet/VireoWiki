@@ -1,17 +1,4 @@
-// 위키 에디터(edit/main.ts)와 워크스페이스 에디터(pages/ws-edit.ts)가 공유하는
-// CodeMirror6 빌딩 블록 단일 소스. 두 에디터가 동일한 레이아웃·마크다운 하이라이트·
-// 라이트/다크 테마·툴바 버튼 팩토리·서식 삽입 헬퍼를 쓰도록 일원화해, 과거 ws-edit 가
-// 보유하던 분기된 간소 사본(서로 다른 색/툴바/레이아웃)을 제거한다.
-//
-// CodeMirror 모듈은 두 진입점 모두 런타임 동적 import(esm.sh, vite external) 로 받으므로,
-// 이 파일은 CM 을 static import 하지 않고 필요한 생성자(HighlightStyle/EditorView/tags)를
-// 인자로 받는다(번들에 CM 정적 의존성을 추가하지 않기 위함).
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-// ── 마크다운 문법 하이라이트 스타일 (라이트/다크) ──
-// 헤딩 폰트 크기는 cm-md-h* 라인 클래스(public/css/edit.css)가 줄 단위로 적용하므로
-// 여기서는 색/굵기만 지정한다(인라인 fontSize 중복 곱셈 방지).
+import { ui } from '../i18n/client';
 export function makeMarkdownHighlightStyles(HighlightStyle: any, t: any): { light: any; dark: any } {
     const light = HighlightStyle.define([
         { tag: t.heading1, color: "#0550ae", fontWeight: "700" },
@@ -164,7 +151,7 @@ export function makeFormatHelpers(view: any): FormatHelpers {
     function wrapSelection(prefix: string, suffix: string) {
         const { main } = view.state.selection;
         const selected = view.state.sliceDoc(main.from, main.to);
-        const wrapped = prefix + (selected || '텍스트') + suffix;
+        const wrapped = prefix + (selected || ui("m_258ad4b095a1841b")) + suffix;
         view.dispatch({
             changes: { from: main.from, to: main.to, insert: wrapped },
             selection: { anchor: main.from + prefix.length, head: main.from + wrapped.length - suffix.length }
@@ -180,7 +167,7 @@ export function makeFormatHelpers(view: any): FormatHelpers {
     function insertOrWrapWikiBlock(blockType: string) {
         const { main } = view.state.selection;
         const selected = view.state.sliceDoc(main.from, main.to);
-        const inner = selected || `{palette:primary}{stat:값1|라벨1}\n{palette:secondary}{stat:값2|라벨2}\n{palette:success}{stat:값3|라벨3}`;
+        const inner = selected || ui("m_48cec4d8d32e8c6f");
         const lineStart = view.state.doc.lineAt(main.from);
         const lineEnd = view.state.doc.lineAt(main.to);
         const prefix = (main.from === lineStart.from) ? '' : '\n';
@@ -231,78 +218,78 @@ export function buildSharedToolbar(
     const insertText = opts.insertText;
 
     // ── 포맷 ──
-    toolbar.appendChild(createToolbarBtn('<b>H</b>', '제목', () => insertPrefix('## ')));
-    toolbar.appendChild(createToolbarBtn('<b>B</b>', '굵게', () => wrapSelection('**', '**')));
-    toolbar.appendChild(createToolbarBtn('<i>I</i>', '기울임', () => wrapSelection('*', '*')));
-    toolbar.appendChild(createToolbarBtn('<s>S</s>', '취소선', () => wrapSelection('~~', '~~')));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-format-underline"></i>', '밑줄', () => wrapSelection('__', '__')));
+    toolbar.appendChild(createToolbarBtn('<b>H</b>', ui("m_08b17e433630742b"), () => insertPrefix('## ')));
+    toolbar.appendChild(createToolbarBtn('<b>B</b>', ui("m_fba83d218eea748c"), () => wrapSelection('**', '**')));
+    toolbar.appendChild(createToolbarBtn('<i>I</i>', ui("m_dd933ae8c2d8fac8"), () => wrapSelection('*', '*')));
+    toolbar.appendChild(createToolbarBtn('<s>S</s>', ui("m_a862dac745e78146"), () => wrapSelection('~~', '~~')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-format-underline"></i>', ui("m_f88f8ea2b7099d9d"), () => wrapSelection('__', '__')));
     // ==...== 는 형식 지정 캐리어라 단독으로는 강조가 없다(기본 형광펜 제거). 형광펜 버튼은
     // 배경/글자색 토큰을 함께 감싸 실제 노란 형광펜을 만든다(bg·color 둘 다 지정 → 다크모드 가독성 안전).
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-marker"></i>', '형광펜', () => wrapSelection('{bg:yellow}{color:black}==', '==')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-marker"></i>', ui("m_425c77dfa9261c85"), () => wrapSelection('{bg:yellow}{color:black}==', '==')));
     toolbar.appendChild(createToolbarSep());
     // ── 구분선/인용 ──
-    toolbar.appendChild(createToolbarBtn('─', '구분선', () => insertText('\n---\n')));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-format-quote-close"></i>', '인용', () => insertPrefix('> ')));
+    toolbar.appendChild(createToolbarBtn('─', ui("m_d9488fcb2def80e5"), () => insertText('\n---\n')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-format-quote-close"></i>', ui("m_4a02004ab78c6f58"), () => insertPrefix('> ')));
     toolbar.appendChild(createToolbarSep());
     // ── 목록 ──
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-format-list-bulleted"></i>', '목록', () => insertPrefix('- ')));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-format-list-numbered"></i>', '번호 목록', () => insertPrefix('1. ')));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-checkbox-marked-outline"></i>', '체크리스트', () => insertPrefix('- [ ] ')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-format-list-bulleted"></i>', ui("m_f07b32009d77b4f6"), () => insertPrefix('- ')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-format-list-numbered"></i>', ui("m_f09a17e1297a71b2"), () => insertPrefix('1. ')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-checkbox-marked-outline"></i>', ui("m_c1ccf498b9d46c70"), () => insertPrefix('- [ ] ')));
     toolbar.appendChild(createToolbarSep());
     // ── 그리드/row ──
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-view-grid-outline"></i>', '그리드', () => insertOrWrapWikiBlock('grid')));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-view-week-outline"></i>', 'row(가로 배치)', () => insertOrWrapWikiBlock('row')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-view-grid-outline"></i>', ui("m_14a173232a613b6e"), () => insertOrWrapWikiBlock('grid')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-view-week-outline"></i>', ui("m_03084381746f9d3f"), () => insertOrWrapWikiBlock('row')));
     toolbar.appendChild(createToolbarSep());
     // ── 표 ──
     // setupTableInsertPopover(edit-modals.js)이 로드돼 있으면 팝오버를, 아니면 기본 스니펫을 삽입한다.
     // edit-modals.js 는 위키 에디터와 워크스페이스 에디터 모두 로드하므로 enableWikiModals 와 무관하다.
-    const tableBtn = createToolbarBtn('<i class="mdi mdi-table"></i>', '표', () => { });
+    const tableBtn = createToolbarBtn('<i class="mdi mdi-table"></i>', ui("m_40ec1a2864faf2b4"), () => { });
     toolbar.appendChild(tableBtn);
     if (typeof w.setupTableInsertPopover === 'function') {
         w.setupTableInsertPopover(tableBtn);
     } else {
-        tableBtn.addEventListener('click', () => insertText('\n| 머리글1 | 머리글2 |\n| --- | --- |\n| 셀1 | 셀2 |\n'));
+        tableBtn.addEventListener('click', () => insertText(ui("m_89c93f8d51cb6b27")));
     }
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-link-variant"></i>', '링크', () => wrapSelection('[', '](url)')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-link-variant"></i>', ui("m_3d54da9c8367da77"), () => wrapSelection('[', '](url)')));
     toolbar.appendChild(createToolbarSep());
 
     // ── 위키 문법 버튼(모달 비의존) ──
-    toolbar.appendChild(createToolbarBtn('[[ ]]', '위키 링크 삽입', () => insertText('[[문서제목]]')));
-    toolbar.appendChild(createToolbarBtn('{{ }}', '틀 삽입', () => insertText('{{틀제목}}')));
-    toolbar.appendChild(createToolbarBtn('[*]', '각주 삽입', () => insertText('[* 각주 내용]')));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-form-dropdown"></i>', '펼치기 접기', () => insertText('[+ 펼치기/접기 제목]\n여기에 숨겨진 내용이 들어갑니다.\n[-]')));
+    toolbar.appendChild(createToolbarBtn('[[ ]]', ui("m_b0b29ad61c3a4dbd"), () => insertText(ui("m_63a835c695516cf2"))));
+    toolbar.appendChild(createToolbarBtn('{{ }}', ui("m_6d7d3b4a3fb130a5"), () => insertText(ui("m_2fd9854b72b78403"))));
+    toolbar.appendChild(createToolbarBtn('[*]', ui("m_7d564631b75f58ca"), () => insertText(ui("m_90f5c358f338ef2c"))));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-form-dropdown"></i>', ui("m_eeb99d66983b2d76"), () => insertText(ui("m_6754eb453d1381b3"))));
 
     // ── edit-modals.js 에 의존하되 API 독립적인 버튼(위키·워크스페이스 공용) ──
     // window.* 함수가 아직 로드되지 않은 경우 optional chain 으로 no-op 처리한다.
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-calendar-clock"></i>', '타임스탬프 삽입', () => w.openTimestampInsertModal?.()));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-calendar-clock"></i>', ui("m_59f567500d74d9da"), () => w.openTimestampInsertModal?.()));
     toolbar.appendChild(createToolbarSep());
-    const specialCharBtn = createToolbarBtn('<span class="cm-toolbar-omega">Ω</span>', '특수문자 삽입', () => { });
+    const specialCharBtn = createToolbarBtn('<span class="cm-toolbar-omega">Ω</span>', ui("m_aca561ad6616b9c6"), () => { });
     toolbar.appendChild(specialCharBtn);
     if (typeof w.setupSpecialCharPicker === 'function') w.setupSpecialCharPicker(specialCharBtn);
     toolbar.appendChild(createToolbarSep());
     if (w.selectedIconsOnly) {
-        toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-vector-square"></i>', '아이콘 삽입', () => w.openSelectedIconsPicker?.()));
+        toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-vector-square"></i>', ui("m_678e6857dbfa791e"), () => w.openSelectedIconsPicker?.()));
     } else {
-        toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-vector-square"></i>', 'MDI 아이콘', () => w.openIconPicker?.('mdi')));
-        toolbar.appendChild(createToolbarBtn('<i class="bi bi-bootstrap-fill"></i>', 'Bootstrap 아이콘', () => w.openIconPicker?.('bi')));
+        toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-vector-square"></i>', ui("m_1f038fec36e3ef39"), () => w.openIconPicker?.('mdi')));
+        toolbar.appendChild(createToolbarBtn('<i class="bi bi-bootstrap-fill"></i>', ui("m_1d1a784d512f3d57"), () => w.openIconPicker?.('bi')));
     }
     toolbar.appendChild(createToolbarSep());
-    toolbar.appendChild(createToolbarBtn('<i class="bi bi-card-heading"></i>', '카드 블록', () => w.openCardInsertModal?.()));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-view-dashboard-outline"></i>', '탭 / 아코디언 / 진행상황', () => w.openStructureBlockInsertModal?.()));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-palette-outline"></i>', '색상 삽입', () => w.openPaletteColorModal?.()));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-label-outline"></i>', '배지', () => w.openBadgeInsertModal?.()));
+    toolbar.appendChild(createToolbarBtn('<i class="bi bi-card-heading"></i>', ui("m_418dde62ead8a731"), () => w.openCardInsertModal?.()));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-view-dashboard-outline"></i>', ui("m_ce7f3924e442da20"), () => w.openStructureBlockInsertModal?.()));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-palette-outline"></i>', ui("m_e43408e86524c8cc"), () => w.openPaletteColorModal?.()));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-label-outline"></i>', ui("m_57ff1b60f5b9be4b"), () => w.openBadgeInsertModal?.()));
 
     // ── 위키 전용 버튼(워크스페이스 문서 목록 / 검색 API 의존) ──
     if (opts.enableWikiModals) {
-        toolbar.appendChild(createToolbarBtn('<i class="bi bi-diagram-3-fill"></i>', '하위 문서', () => w.openSubdocInsertModal?.()));
+        toolbar.appendChild(createToolbarBtn('<i class="bi bi-diagram-3-fill"></i>', ui("m_a08b29f109b398dc"), () => w.openSubdocInsertModal?.()));
     }
     toolbar.appendChild(createToolbarSep());
     // ── 코드 ──
-    toolbar.appendChild(createToolbarBtn('<code>&lt;/&gt;</code>', '인라인 코드', () => wrapSelection('`', '`')));
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-code-braces"></i>', '코드 블록', () => wrapSelection('\n```\n', '\n```\n')));
+    toolbar.appendChild(createToolbarBtn('<code>&lt;/&gt;</code>', ui("m_8d79ff34d4f67a6e"), () => wrapSelection('`', '`')));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-code-braces"></i>', ui("m_af4eb87c4024e6a8"), () => wrapSelection('\n```\n', '\n```\n')));
 
     toolbar.appendChild(createToolbarSep());
-    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-google-maps"></i>', '구글 지도 삽입', () => w.openGoogleMapsEmbedModal?.()));
+    toolbar.appendChild(createToolbarBtn('<i class="mdi mdi-google-maps"></i>', ui("m_e2cd97fd2dde76e7"), () => w.openGoogleMapsEmbedModal?.()));
 
     // ── 이미지 ──
     toolbar.appendChild(createToolbarSep());
@@ -310,7 +297,7 @@ export function buildSharedToolbar(
     if (imgBtn.mode === 'wiki-popup') {
         buildImageUploadPopupButton(toolbar, insertText);
     } else {
-        const btn = createToolbarBtn('<i class="mdi mdi-image-plus"></i>', '이미지 업로드', () => imgBtn.handler());
+        const btn = createToolbarBtn('<i class="mdi mdi-image-plus"></i>', ui("m_cead00a863df4d5d"), () => imgBtn.handler());
         btn.id = 'wsEditMediaBtn';
         toolbar.appendChild(btn);
     }
@@ -320,7 +307,7 @@ export function buildSharedToolbar(
 // window.handleImageUpload / window.openExistingImageSearch(edit-modals.js)에 의존한다.
 function buildImageUploadPopupButton(toolbar: HTMLElement, insertText: (text: string) => void): void {
     const w = window as any;
-    const imageUploadBtn = createToolbarBtn('<i class="mdi mdi-image-plus"></i>', '이미지 업로드', () => { });
+    const imageUploadBtn = createToolbarBtn('<i class="mdi mdi-image-plus"></i>', ui("m_cead00a863df4d5d"), () => { });
     toolbar.appendChild(imageUploadBtn);
 
     const insertImage = (url: string, alt: string, size?: string) => {
@@ -332,16 +319,7 @@ function buildImageUploadPopupButton(toolbar: HTMLElement, insertText: (text: st
 
     const imgUploadPopup = document.createElement('div');
     imgUploadPopup.className = 'img-upload-popup';
-    imgUploadPopup.innerHTML = `
-        <div class="img-upload-dropzone">
-            <i class="mdi mdi-cloud-upload-outline"></i>
-            <div class="drop-main-text">이미지를 여기에 드래그하세요</div>
-            <div class="drop-sub-text">또는 클릭하여 파일 선택</div>
-        </div>
-        <button type="button" class="img-upload-search-btn">
-            <i class="mdi mdi-magnify"></i> 기존 이미지 검색
-        </button>
-    `;
+    imgUploadPopup.innerHTML = ui("m_bb515988d3b48720");
     document.body.appendChild(imgUploadPopup);
 
     const imgDropzone = imgUploadPopup.querySelector('.img-upload-dropzone') as HTMLElement;
@@ -413,7 +391,7 @@ function buildImageUploadPopupButton(toolbar: HTMLElement, insertText: (text: st
         const file = files[0];
         const acceptTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
         if (!acceptTypes.includes(file.type)) {
-            w.Swal?.fire('오류', '지원하지 않는 파일 형식입니다.', 'warning');
+            w.Swal?.fire(ui("m_b49f20d86148ddfd"), ui("m_9f4eb7d3aa1c1688"), 'warning');
             return;
         }
         imgUploadPopup.classList.remove('active');
@@ -435,53 +413,11 @@ export function buildEditorLayoutHTML(opts: EditorLayoutOptions = {}): string {
     const slideZones = !!opts.slideZones;
     const tocFab = !!opts.tocFab;
 
-    const slideTop = slideZones ? `
-                        <div class="slide-add-zone slide-add-zone-top" id="slideAddZoneTop" hidden>
-                            <i class="mdi mdi-plus-circle-outline"></i>
-                            <div class="slide-add-main">위에 새 슬라이드</div>
-                            <div class="slide-add-sub">현재 슬라이드 앞에 빈 슬라이드 추가</div>
-                        </div>` : '';
-    const slideBottom = slideZones ? `
-                        <div class="slide-add-zone slide-add-zone-bottom" id="slideAddZoneBottom" hidden>
-                            <i class="mdi mdi-plus-circle-outline"></i>
-                            <div class="slide-add-main">아래에 새 슬라이드</div>
-                            <div class="slide-add-sub">현재 슬라이드 뒤에 빈 슬라이드 추가</div>
-                        </div>
-                        <div class="slide-edit-nav" id="slideEditNav" hidden role="toolbar" aria-label="슬라이드 이동">
-                            <button type="button" class="slide-edit-nav-btn" data-slide-nav="prev" aria-label="이전 슬라이드"><i class="bi bi-chevron-left"></i></button>
-                            <span class="slide-edit-nav-indicator" id="slideEditNavIndicator" aria-live="polite">1 / 1</span>
-                            <button type="button" class="slide-edit-nav-btn" data-slide-nav="next" aria-label="다음 슬라이드"><i class="bi bi-chevron-right"></i></button>
-                            <button type="button" class="slide-edit-nav-btn slide-edit-nav-btn-overview" data-slide-nav="overview" title="전체 보기 (그리드)" aria-label="전체 슬라이드 그리드 보기" aria-pressed="false"><i class="bi bi-grid-3x3-gap"></i></button>
-                            <button type="button" class="slide-edit-nav-btn slide-edit-nav-btn-fullscreen" data-slide-nav="fullscreen" title="전체 화면" aria-label="전체 화면 전환"><i class="bi bi-arrows-fullscreen"></i></button>
-                        </div>` : '';
-    const tocFabHtml = tocFab ? `
-                    <div class="toc-floating-panel" id="editorTocFloatingPanel">
-                        <div class="toc-floating-header">
-                            <span><i class="mdi mdi-format-list-bulleted-square me-1"></i> 목차</span>
-                        </div>
-                        <nav class="toc-floating-body" id="editorTocFloatingNav"></nav>
-                    </div>
-                    <div class="scroll-fab-group" id="editorScrollFabGroup">
-                        <button class="scroll-fab" id="editorTocFabBtn" onclick="toggleEditorFloatingToc()" title="목차">
-                            <i class="mdi mdi-format-list-bulleted-square"></i>
-                        </button>
-                    </div>` : '';
+    const slideTop = slideZones ? ui("m_e556342b438d499f") : '';
+    const slideBottom = slideZones ? ui("m_f02b935997f88b93") : '';
+    const tocFabHtml = tocFab ? ui("m_ad517c180afa0165") : '';
 
-    return `
-            <div class="wiki-editor-layout">
-                <div class="cm-mobile-tabs" id="cm-mobile-tabs">
-                    <button class="cm-tab-btn active" data-tab="editor"><i class="mdi mdi-pencil"></i> 에디터</button>
-                    <button class="cm-tab-btn" data-tab="preview"><i class="mdi mdi-eye"></i> 프리뷰</button>
-                </div>
-                <div id="cm-toolbar" class="cm-toolbar"></div>
-                <div class="wiki-editor-split-row" id="wiki-editor-split-row">
-                    <div class="wiki-editor-pane" id="cm-editor-pane">${slideTop}
-                        <div id="cm-editor"></div>${slideBottom}
-                    </div>
-                    <div class="wiki-preview-pane" id="custom-wiki-preview"></div>${tocFabHtml}
-                </div>
-            </div>
-        `;
+    return ui("m_b29c4d9dd8ee7fc7", [slideTop, slideBottom, tocFabHtml]);
 }
 
 // ── 모바일 탭(에디터/프리뷰) + PC 보기 모드(일반/작성/보기) 스위처 ──
@@ -502,9 +438,9 @@ export interface TabSwitcher {
 }
 
 const PC_MODES: Record<string, { icon: string; label: string; desc: string }> = {
-    split: { icon: 'mdi-view-split-vertical', label: '일반 모드', desc: '에디터 + 프리뷰' },
-    edit: { icon: 'mdi-pencil', label: '작성 모드', desc: '에디터만' },
-    preview: { icon: 'mdi-eye-outline', label: '보기 모드', desc: '프리뷰만' },
+    split: { icon: 'mdi-view-split-vertical', label: ui("m_e641c71c0d190e8a"), desc: ui("m_aa91acdd84951b8f") },
+    edit: { icon: 'mdi-pencil', label: ui("m_41b56eb1bf8a1682"), desc: ui("m_70112194ffe3dda1") },
+    preview: { icon: 'mdi-eye-outline', label: ui("m_868dabeaade8d9d4"), desc: ui("m_e07317efd9062e52") },
 };
 
 // 워크스페이스 에디터용 경량 탭/모드 스위처. cm-toolbar 끝에 PC 모드 드롭다운 버튼을
@@ -539,7 +475,7 @@ export function setupTabSwitcher(
     let currentPcMode: 'split' | 'edit' | 'preview' = 'split';
     const modeBtn = createToolbarBtn(
         `<i class="mdi ${PC_MODES.split.icon}"></i><i class="mdi mdi-menu-down cm-toolbar-caret"></i>`,
-        '보기 방식 전환',
+        ui("m_d294c765583f8080"),
         () => toggleModePanel()
     );
     modeBtn.id = 'cm-mode-btn';
@@ -618,7 +554,7 @@ export function setupTabSwitcher(
         else layoutEl.dataset.pcMode = mode;
         const m = PC_MODES[mode];
         modeBtn.innerHTML = `<i class="mdi ${m.icon}"></i><i class="mdi mdi-menu-down cm-toolbar-caret"></i>`;
-        modeBtn.title = `보기 방식: ${m.label}`;
+        modeBtn.title = ui("m_636e9d2eec6f82bc", [m.label]);
         modeBtn.classList.toggle('active', mode !== 'split');
         if (mode !== 'edit') opts.onPreviewShown?.();
         opts.onModeChange?.(mode);

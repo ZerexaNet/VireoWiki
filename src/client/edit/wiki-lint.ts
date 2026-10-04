@@ -16,6 +16,7 @@
  * 코드펜스(``` / ~~~) 내부와 인라인 코드(`...`) 내부의 토큰은 검사에서 제외한다.
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 export interface WikiLintDiag {
     /** 1-기반 라인 번호 */
     line: number;
@@ -70,7 +71,7 @@ export function computeWikiLint(doc: string, knownPalettes: Set<string>): WikiLi
 
         // ── 줄 시작 제로폭 문자 검사 (코드펜스 밖에서만 — 코드 본문은 사용자 데이터) ──
         if (fenceChar === null && /^[\u200B\uFEFF]/.test(text)) {
-            diags.push({ line: lineNo, message: '줄 맨 앞에 보이지 않는 문자(제로폭 공백)가 있습니다 — 헤딩(#)·목록 등 줄 시작 문법이 인식되지 않을 수 있습니다. 저장 시 자동 제거됩니다.' });
+            diags.push({ line: lineNo, message: ui("m_75315ee45ec4712a") });
         }
 
         // ── 코드펜스 상태 추적 (펜스 라인/내부는 디렉티브·토큰 검사 제외) ──
@@ -130,7 +131,7 @@ export function computeWikiLint(doc: string, knownPalettes: Set<string>): WikiLi
             // 만 짚어 주도록, 직계 area 2개 이상이 모두 span 을 명시했는데 합이 12의 배수가
             // 아닐 때만 경고한다(단독 span<12 패널 같은 의도적 부분 폭은 areaCount>=2 로 제외).
             if (frame.isCanvas && frame.areaCount >= 2 && frame.allAreasHaveSpan && frame.spanSum % 12 !== 0) {
-                diags.push({ line: frame.line, message: `캔버스 area span 합이 12의 배수가 아닙니다 (현재 ${frame.spanSum} — 행이 꽉 차지 않을 수 있음).` });
+                diags.push({ line: frame.line, message: ui("m_c80a6dcbf6960a9f", [frame.spanSum]) });
             }
         }
 
@@ -142,7 +143,7 @@ export function computeWikiLint(doc: string, knownPalettes: Set<string>): WikiLi
                 if (isInInlineCode(text, pm.index)) continue;
                 const nm = pm[1].trim();
                 if (nm && !knownPalettes.has(nm)) {
-                    diags.push({ line: lineNo, message: `등록되지 않은 팔레트: "${nm}".` });
+                    diags.push({ line: lineNo, message: ui("m_41c6f48afae8edc4", [nm]) });
                 }
             }
         }
@@ -163,7 +164,7 @@ export function computeWikiLint(doc: string, knownPalettes: Set<string>): WikiLi
 
     // ── 미종료 블록 (스택에 남은 프레임) ──
     for (const frame of stack) {
-        diags.push({ line: frame.line, message: `블록 ":::${frame.name}" 이(가) 닫히지 않았습니다 (::: 필요).` });
+        diags.push({ line: frame.line, message: ui("m_fe956171e5a0b99d", [frame.name]) });
     }
 
     // ── 중복 {id:} ──
@@ -172,7 +173,7 @@ export function computeWikiLint(doc: string, knownPalettes: Set<string>): WikiLi
     for (const [nm, occ] of idOccurrences) {
         if (occ.length > 1) {
             for (const ln of new Set(occ)) {
-                diags.push({ line: ln, message: `중복된 {id:${nm}} — 문서에서 ${occ.length}회 사용됨.` });
+                diags.push({ line: ln, message: ui("m_39230b204bd49873", [nm, occ.length]) });
             }
         }
     }

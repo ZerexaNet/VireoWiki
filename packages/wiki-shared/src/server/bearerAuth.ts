@@ -11,6 +11,7 @@
  */
 
 /** MCP OAuth 스코프 상수 (두 앱 공용). */
+import { translate, DEFAULT_LOCALE, type Locale } from '../i18n/core';
 export const OAUTH_SCOPE_MCP       = 'mcp';
 export const OAUTH_SCOPE_ADMIN_MCP = 'admin-mcp';
 export const OAUTH_ACCEPTED_SCOPES = new Set<string>([OAUTH_SCOPE_MCP, OAUTH_SCOPE_ADMIN_MCP]);
@@ -83,13 +84,15 @@ export async function resolveBearerAuth(
     authHeader: string,
     db: D1DatabaseLike,
     ctx: ExecutionContextLike | null,
+    locale: Locale = DEFAULT_LOCALE,
 ): Promise<BearerAuthResult> {
+    const ui = (key: string) => translate(key, locale);
     if (!authHeader) return { kind: 'none' };
     if (!authHeader.toLowerCase().startsWith('bearer ')) {
-        return { kind: 'error', message: 'Bearer token required' };
+        return { kind: 'error', message: ui("m_cee3585ff1175382") };
     }
     const token = authHeader.slice(7).trim();
-    if (!token) return { kind: 'error', message: 'Empty bearer token' };
+    if (!token) return { kind: 'error', message: ui("m_a9cc4e895f5a5a91") };
 
     const tokenHash = await sha256Hex(token);
     const now = Math.floor(Date.now() / 1000);
@@ -116,7 +119,7 @@ export async function resolveBearerAuth(
                 .first<BearerUserRow & { expires_at: number }>();
 
             if (row) {
-                if (row.expires_at < now) return { kind: 'error', message: 'Token expired' };
+                if (row.expires_at < now) return { kind: 'error', message: ui("m_605a25cfb239ed2d") };
                 userRow = row;
                 scope = 'mcp admin-mcp';
             } else {
@@ -141,14 +144,14 @@ export async function resolveBearerAuth(
             .bind(tokenHash)
             .first<BearerUserRow & { id: number; scope: string | null; access_expires_at: number; revoked_at: number | null }>();
 
-        if (!row) return { kind: 'error', message: 'Token not found' };
-        if (row.revoked_at) return { kind: 'error', message: 'Token revoked' };
-        if (row.access_expires_at < now) return { kind: 'error', message: 'Token expired' };
+        if (!row) return { kind: 'error', message: ui("m_4441b4b45947e726") };
+        if (row.revoked_at) return { kind: 'error', message: ui("m_cd7e9dbe5eec7bd9") };
+        if (row.access_expires_at < now) return { kind: 'error', message: ui("m_605a25cfb239ed2d") };
 
         const scopeVal = row.scope || OAUTH_SCOPE_ADMIN_MCP;
         const scopeTokens = scopeVal.split(/\s+/).filter(Boolean);
         if (!scopeTokens.some(s => OAUTH_ACCEPTED_SCOPES.has(s))) {
-            return { kind: 'error', message: 'Token scope does not permit MCP access' };
+            return { kind: 'error', message: ui("m_a7b4e9ad19b36f5f") };
         }
 
         userRow = row;
@@ -164,7 +167,7 @@ export async function resolveBearerAuth(
     }
 
     if (!userRow) {
-        return { kind: 'error', message: 'Token not found' };
+        return { kind: 'error', message: ui("m_4441b4b45947e726") };
     }
 
     return { kind: 'authenticated', user: userRow, tokenId, scope };

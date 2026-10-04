@@ -32,6 +32,7 @@ export default defineConfig({
         sourcemap: false,
         rollupOptions: {
             input: {
+                'i18n': resolve(__dirname, 'src/client/i18n.ts'),
                 '404': resolve(__dirname, 'src/client/404.ts'),
                 'login': resolve(__dirname, 'src/client/pages/login.ts'),
                 'qr-login-approve': resolve(__dirname, 'src/client/pages/qr-login-approve.ts'),

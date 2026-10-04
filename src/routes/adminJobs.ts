@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../types';
@@ -26,7 +27,7 @@ function requireSuperAdmin(c: Context<Env>): Response | null {
     const user = c.get('user');
     const rbac = c.get('rbac') as RBAC | undefined;
     if (!user || !rbac || !rbac.can(user.role, '*')) {
-        return c.json({ error: '최고 관리자만 사용할 수 있습니다.' }, 403);
+        return c.json({ error: ui("m_1276de4f2ff69f84") }, 403);
     }
     return null;
 }
@@ -36,7 +37,7 @@ function getDoStub(c: Context<Env>): DurableObjectStub | Response {
     const ns = c.env.ADMIN_JOB_DO;
     if (!ns) {
         return c.json({
-            error: '관리자 잡 러너(ADMIN_JOB_DO)가 비활성화되어 있습니다. DO 전용 Worker(cloudwiki-do)를 배포하고 wrangler.toml 의 Durable Object 바인딩(script_name)을 구성한 뒤 배포하세요. → docs/durable-object-worker.md',
+            error: ui("m_41a6a0a71ad6255d"),
         }, 503);
     }
     return ns.get(ns.idFromName('global'));
@@ -91,7 +92,7 @@ adminJobRoutes.post('/bulk-manage/jobs', async (c) => {
 
     const type = body.type;
     if (type !== 'reindex-backlinks' && type !== 'bulk-move' && type !== 'bulk-delete' && type !== 'rag-backfill') {
-        return c.json({ error: '알 수 없는 잡 유형입니다.' }, 400);
+        return c.json({ error: ui("m_3a0a5279aa52b485") }, 400);
     }
     const resume = body.resume === true;
 
@@ -101,11 +102,11 @@ adminJobRoutes.post('/bulk-manage/jobs', async (c) => {
     if (!resume) {
         if (type === 'bulk-delete') {
             const mode = body.mode === 'hard' ? 'hard' : body.mode === 'soft' ? 'soft' : null;
-            if (!mode) return c.json({ error: "mode 는 'soft' 또는 'hard' 여야 합니다." }, 400);
+            if (!mode) return c.json({ error: ui("m_de2dcb8236fb280d") }, 400);
             const ids = normalizeIds(body.ids);
-            if (ids.length === 0) return c.json({ error: '삭제할 문서를 선택하세요.' }, 400);
+            if (ids.length === 0) return c.json({ error: ui("m_154745f0cb57b53e") }, 400);
             if (ids.length > BULK_MANAGE_MAX) {
-                return c.json({ error: `한 번에 처리할 수 있는 문서는 ${BULK_MANAGE_MAX}개까지입니다.` }, 400);
+                return c.json({ error: ui("m_b3caf5b30c7fbe72", [BULK_MANAGE_MAX]) }, 400);
             }
             startBody = {
                 type,
@@ -115,13 +116,13 @@ adminJobRoutes.post('/bulk-manage/jobs', async (c) => {
         } else if (type === 'bulk-move') {
             const find = typeof body.find === 'string' ? body.find : '';
             const replace = typeof body.replace === 'string' ? body.replace : '';
-            if (!find) return c.json({ error: '찾을 내용(find)을 입력하세요.' }, 400);
-            if (find === replace) return c.json({ error: '찾을 내용과 바꿀 내용이 동일합니다.' }, 400);
+            if (!find) return c.json({ error: ui("m_e6a33083a9e9c7ac") }, 400);
+            if (find === replace) return c.json({ error: ui("m_9ff821ce3db62627") }, 400);
             const updateBacklinks = body.update_backlinks === true;
             const ids = normalizeIds(body.ids);
-            if (ids.length === 0) return c.json({ error: '이동할 문서를 선택하세요.' }, 400);
+            if (ids.length === 0) return c.json({ error: ui("m_bd77cc3b242f9d7b") }, 400);
             if (ids.length > BULK_MANAGE_MAX) {
-                return c.json({ error: `한 번에 처리할 수 있는 문서는 ${BULK_MANAGE_MAX}개까지입니다.` }, 400);
+                return c.json({ error: ui("m_b3caf5b30c7fbe72", [BULK_MANAGE_MAX]) }, 400);
             }
 
             // 제출 시점 id→slug 1회 조회로 items 생성(예약 네임스페이스 제외, slug ASC 정렬).
@@ -143,7 +144,7 @@ adminJobRoutes.post('/bulk-manage/jobs', async (c) => {
                     .all<{ id: number; slug: string }>();
                 for (const r of results) items.push({ id: r.id, slug: r.slug });
             }
-            if (items.length === 0) return c.json({ error: '이동할 문서를 찾을 수 없습니다.' }, 400);
+            if (items.length === 0) return c.json({ error: ui("m_51ddd7ceb38ce1db") }, 400);
             items.sort((a, b) => (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
 
             startBody = {
@@ -185,7 +186,7 @@ adminJobRoutes.post('/bulk-manage/jobs', async (c) => {
         c.executionCtx.waitUntil(
             c.env.DB
                 .prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('bulk_job_start', `대량 잡 시작: ${type}${count ? ` (${count}건)` : ''}${resume ? ' [재개]' : ''}`, currentUser.id)
+                .bind('bulk_job_start', ui("m_38dafb8bfccdd2b3", [type, count ? ui("m_9f9ae346568f9372", [count]) : '', resume ? ui("m_562eb6e6e08ecf12") : '']), currentUser.id)
                 .run()
                 .catch((e: unknown) => console.error('admin log failed:', e)),
         );

@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env, Discussion, DiscussionComment } from '../types';
 import { requireAuth, requireAuthAllowBanned, requirePermission } from '../middleware/session';
@@ -117,10 +118,10 @@ discussionRoutes.post('/discussions/:pageId', requireAuth, requirePermission('co
     const { title, content } = await c.req.json<{ title: string; content: string }>();
 
     if (!title || !title.trim()) {
-        return c.json({ error: '토론 제목을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_43f6b5f54afb6f6e") }, 400);
     }
     if (!content || !content.trim()) {
-        return c.json({ error: '토론 내용을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_589412d24ed3a617") }, 400);
     }
 
     // 문서 존재 확인
@@ -129,7 +130,7 @@ discussionRoutes.post('/discussions/:pageId', requireAuth, requirePermission('co
         .bind(pageId)
         .first<{ id: number; slug: string; is_private: number | null }>();
     if (!page) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     // 토론 생성
@@ -159,7 +160,7 @@ discussionRoutes.post('/discussions/:pageId', requireAuth, requirePermission('co
         }
         if (mentionRecipients.length > 0) {
             const link = `/w/${encodeURIComponent(page.slug)}?mode=discussions&id=${discussionId}`;
-            const mentionContent = `'${title.trim()}' 토론에서 회원님을 언급했습니다.`;
+            const mentionContent = ui("m_60167e66b99afbb1", [title.trim()]);
             await createNotifications(c.env, c.executionCtx, mentionRecipients.map(r => ({
                 userId: r.id,
                 type: 'mention',
@@ -213,7 +214,7 @@ discussionRoutes.get('/discussions/thread/:id', async (c) => {
     `).bind(discussionId).first<Record<string, any>>();
 
     if (!discussion) {
-        return c.json({ error: '토론을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_262938999161fa7c") }, 404);
     }
 
     const rbac = c.get('rbac') as RBAC;
@@ -224,14 +225,14 @@ discussionRoutes.get('/discussions/thread/:id', async (c) => {
         (discussion._page_is_private === 1 && (!user || !rbac.can(user.role, 'wiki:private'))) ||
         (discussion._page_deleted_at && (!user || !rbac.can(user.role, 'admin:access')))
     ) {
-        return c.json({ error: '토론을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_262938999161fa7c") }, 404);
     }
     delete discussion._page_is_private;
     delete discussion._page_deleted_at;
 
     // soft delete된 토론은 admin 이상만 볼 수 있음
     if (discussion.deleted_at && (!user || !rbac.can(user.role, 'admin:access'))) {
-        return c.json({ error: '삭제된 토론입니다.' }, 404);
+        return c.json({ error: ui("m_dff9cab3adad9f5f") }, 404);
     }
 
     enrichRole(discussion, 'author_role', '_author_email', c.env);
@@ -281,7 +282,7 @@ discussionRoutes.post('/discussions/thread/:id/comments', requireAuth, requirePe
     const { content, parent_id } = await c.req.json<{ content: string; parent_id?: number }>();
 
     if (!content || !content.trim()) {
-        return c.json({ error: '댓글 내용을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_223fe5dd823bd69d") }, 400);
     }
 
     // 토론 존재 확인 + open 상태 확인
@@ -290,10 +291,10 @@ discussionRoutes.post('/discussions/thread/:id/comments', requireAuth, requirePe
     ).bind(discussionId).first<Discussion>();
 
     if (!discussion || discussion.deleted_at) {
-        return c.json({ error: '토론을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_262938999161fa7c") }, 404);
     }
     if (discussion.status === 'closed') {
-        return c.json({ error: '닫힌 토론에는 댓글을 작성할 수 없습니다.' }, 403);
+        return c.json({ error: ui("m_1c01e15935816b50") }, 403);
     }
 
     // parent_id 유효성 확인
@@ -302,7 +303,7 @@ discussionRoutes.post('/discussions/thread/:id/comments', requireAuth, requirePe
             'SELECT id FROM discussion_comments WHERE id = ? AND discussion_id = ?'
         ).bind(parent_id, discussionId).first();
         if (!parentComment) {
-            return c.json({ error: '원본 댓글을 찾을 수 없습니다.' }, 404);
+            return c.json({ error: ui("m_887a3d6748f61f1b") }, 404);
         }
     }
 
@@ -353,7 +354,7 @@ discussionRoutes.post('/discussions/thread/:id/comments', requireAuth, requirePe
             }
 
             const link = `/w/${encodeURIComponent(discussionInfo.slug)}?mode=discussions&id=${discussionId}`;
-            const notifContent = `'${discussionInfo.title}' 토론에 새 댓글이 달렸습니다.`;
+            const notifContent = ui("m_417980f272a6a783", [discussionInfo.title]);
 
             // 멘션(@[user:N]) 수신자 해석. 비공개/삭제 페이지는 참여자와 동일 권한 규칙 적용.
             // (직접 멘션은 의도적 호출이므로 토론 뮤트와 무관하게 알린다 — Slack/GitHub 관례)
@@ -370,7 +371,7 @@ discussionRoutes.post('/discussions/thread/:id/comments', requireAuth, requirePe
 
             // 멘션된 사람은 일반 댓글 알림 대신 멘션 알림만 수신(중복 제거).
             const commentRecipients = recipientIds.filter(id => !mentionIdSet.has(id));
-            const mentionContent = `'${discussionInfo.title}' 토론에서 회원님을 언급했습니다.`;
+            const mentionContent = ui("m_60167e66b99afbb1", [discussionInfo.title]);
 
             const notifications = [
                 ...commentRecipients.map(userId => ({
@@ -421,7 +422,7 @@ discussionRoutes.put('/discussions/thread/:id/status', requireAuth, async (c) =>
     const { status } = await c.req.json<{ status: 'open' | 'closed' }>();
 
     if (status !== 'open' && status !== 'closed') {
-        return c.json({ error: '올바른 상태값이 아닙니다.' }, 400);
+        return c.json({ error: ui("m_21e074f59c6a9b9b") }, 400);
     }
 
     const discussion = await db.prepare(
@@ -429,7 +430,7 @@ discussionRoutes.put('/discussions/thread/:id/status', requireAuth, async (c) =>
     ).bind(discussionId).first<Discussion>();
 
     if (!discussion || discussion.deleted_at) {
-        return c.json({ error: '토론을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_262938999161fa7c") }, 404);
     }
 
     // 권한 확인: 토론 생성자 또는 discussion_manager 이상
@@ -438,7 +439,7 @@ discussionRoutes.put('/discussions/thread/:id/status', requireAuth, async (c) =>
     const hasManagerRole = rbac.can(user.role, 'discussion:manage');
 
     if (!isAuthor && !hasManagerRole) {
-        return c.json({ error: '토론 상태를 변경할 권한이 없습니다.' }, 403);
+        return c.json({ error: ui("m_c6ab4ba1441ff48f") }, 403);
     }
 
     await db.prepare(
@@ -474,7 +475,7 @@ discussionRoutes.delete('/discussions/thread/:id', requireAuth, async (c) => {
     const db = c.env.DB;
 
     if (!rbac.can(user.role, 'discussion:manage')) {
-        return c.json({ error: '권한이 부족합니다.' }, 403);
+        return c.json({ error: ui("m_5a8f94f360fbf077") }, 403);
     }
 
     const discussion = await db.prepare(
@@ -482,11 +483,11 @@ discussionRoutes.delete('/discussions/thread/:id', requireAuth, async (c) => {
     ).bind(discussionId).first<Discussion>();
 
     if (!discussion) {
-        return c.json({ error: '토론을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_262938999161fa7c") }, 404);
     }
 
     if (discussion.deleted_at) {
-        return c.json({ error: '이미 삭제된 토론입니다.' }, 400);
+        return c.json({ error: ui("m_b6d12020a3b7d027") }, 400);
     }
 
     await db.prepare(
@@ -520,7 +521,7 @@ discussionRoutes.delete('/discussions/thread/:id/hard', requireAuth, async (c) =
     const db = c.env.DB;
 
     if (!rbac.can(user.role, '*')) {
-        return c.json({ error: '최고 관리자만 완전 삭제할 수 있습니다.' }, 403);
+        return c.json({ error: ui("m_3a98a9bf830588d5") }, 403);
     }
 
     // 삭제 전 알림 링크 확보 (삭제 후에는 조회 불가)
@@ -541,7 +542,7 @@ discussionRoutes.delete('/discussions/thread/:id/hard', requireAuth, async (c) =
     const result = await db.prepare('DELETE FROM discussions WHERE id = ?').bind(discussionId).run();
 
     if (result.meta.changes === 0) {
-        return c.json({ error: '토론을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_262938999161fa7c") }, 404);
     }
 
     // 관련 알림 정리
@@ -568,7 +569,7 @@ discussionRoutes.delete('/discussions/comment/:id', requireAuth, async (c) => {
     const db = c.env.DB;
 
     if (!rbac.can(user.role, 'discussion:manage')) {
-        return c.json({ error: '권한이 부족합니다.' }, 403);
+        return c.json({ error: ui("m_5a8f94f360fbf077") }, 403);
     }
 
     const comment = await db.prepare(
@@ -576,11 +577,11 @@ discussionRoutes.delete('/discussions/comment/:id', requireAuth, async (c) => {
     ).bind(commentId).first<DiscussionComment>();
 
     if (!comment) {
-        return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_cf7600fc999a9f1c") }, 404);
     }
 
     if (comment.deleted_at) {
-        return c.json({ error: '이미 삭제된 댓글입니다.' }, 400);
+        return c.json({ error: ui("m_cfbd9cf6e8eb8640") }, 400);
     }
 
     await db.prepare(
@@ -601,7 +602,7 @@ discussionRoutes.delete('/discussions/comment/:id/hard', requireAuth, async (c) 
     const db = c.env.DB;
 
     if (!rbac.can(user.role, '*')) {
-        return c.json({ error: '최고 관리자만 완전 삭제할 수 있습니다.' }, 403);
+        return c.json({ error: ui("m_3a98a9bf830588d5") }, 403);
     }
 
     // 이 댓글에 매달린 page_links 정리 (이미지 역링크)
@@ -612,7 +613,7 @@ discussionRoutes.delete('/discussions/comment/:id/hard', requireAuth, async (c) 
     const result = await db.prepare('DELETE FROM discussion_comments WHERE id = ?').bind(commentId).run();
 
     if (result.meta.changes === 0) {
-        return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_cf7600fc999a9f1c") }, 404);
     }
 
     return c.json({ success: true });

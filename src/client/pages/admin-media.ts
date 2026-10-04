@@ -10,6 +10,7 @@
 //    (runGarbageCollector / gcSelectAll / gcDeselectAll / gcDeleteSelected /
 //     changeMediaSort / searchMedia / goToMediaPage / trackBacklinks / deleteMedia)
 
+import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 document.addEventListener("DOMContentLoaded", async () => {
   await window.loadConfig();
   try {
@@ -22,8 +23,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.currentUser.role !== "super_admin"
     ) {
       Swal.fire(
-        "접근 제한",
-        "관리자만 접근할 수 있습니다.",
+        ui("m_d6f5e3691cc6008b"),
+        ui("m_25044a9beab77aac"),
         "error",
       ).then(() => {
         window.location.href = "/";
@@ -88,7 +89,7 @@ async function loadMedia(page = 1) {
     document.getElementById("mediaList").innerHTML = window.uiSkeletonCards(6);
 
     const res = await fetch(`/api/admin/media?${params.toString()}`);
-    if (!res.ok) throw new Error("图片列表 로딩 실패");
+    if (!res.ok) throw new Error(ui("m_290aea65c3f16fa7"));
     const data = await res.json();
 
     mediaTotal = data.total;
@@ -102,7 +103,7 @@ async function loadMedia(page = 1) {
     renderMedia();
   } catch (err) {
     document.getElementById("mediaList").innerHTML =
-      window.uiEmptyState({ icon: 'bi bi-exclamation-triangle', title: '图片列表을 불러올 수 없습니다' });
+      window.uiEmptyState({ icon: 'bi bi-exclamation-triangle', title: ui("m_83382c601afc0ed6") });
     document.getElementById("mediaPagination").innerHTML = "";
     document.getElementById("mediaTotalInfo").textContent = "";
   }
@@ -163,8 +164,8 @@ function renderMediaPagination() {
 
   let html =
     '<ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap">';
-  html += `<li class="page-item ${isFirst ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToMediaPage(1)" ${isFirst ? "disabled" : ""} aria-label="처음"><i class="mdi mdi-chevron-double-left"></i></button></li>`;
-  html += `<li class="page-item ${isFirst ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToMediaPage(${mediaPage - 1})" ${isFirst ? "disabled" : ""} aria-label="上一页"><i class="mdi mdi-chevron-left"></i></button></li>`;
+  html += ui("m_e6c8a4e6ff6206e1", [isFirst ? "disabled" : "", isFirst ? "disabled" : ""]);
+  html += ui("m_56faeea9d4279b1a", [isFirst ? "disabled" : "", mediaPage - 1, isFirst ? "disabled" : ""]);
   for (const p of pages) {
     if (p === "...") {
       html +=
@@ -174,8 +175,8 @@ function renderMediaPagination() {
       html += `<li class="page-item ${active}"><button type="button" class="page-link" onclick="goToMediaPage(${p})">${p}</button></li>`;
     }
   }
-  html += `<li class="page-item ${isLast ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToMediaPage(${mediaPage + 1})" ${isLast ? "disabled" : ""} aria-label="下一页"><i class="mdi mdi-chevron-right"></i></button></li>`;
-  html += `<li class="page-item ${isLast ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToMediaPage(${totalPages})" ${isLast ? "disabled" : ""} aria-label="마지막"><i class="mdi mdi-chevron-double-right"></i></button></li>`;
+  html += ui("m_1ebf863315a6276d", [isLast ? "disabled" : "", mediaPage + 1, isLast ? "disabled" : ""]);
+  html += ui("m_18abceefc15fa773", [isLast ? "disabled" : "", totalPages, isLast ? "disabled" : ""]);
   html += "</ul>";
   container.innerHTML = html;
 }
@@ -185,7 +186,7 @@ function renderMedia() {
   const totalInfo = document.getElementById("mediaTotalInfo");
 
   if (!mediaItems || mediaItems.length === 0) {
-    listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-images', title: '이미지가 없습니다' });
+    listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-images', title: ui("m_4e35e2915449a848") });
     document.getElementById("mediaPagination").innerHTML = "";
     totalInfo.textContent = "";
     return;
@@ -207,57 +208,38 @@ function renderMedia() {
             : `${(m.size / (1024 * 1024)).toFixed(1)} MB`;
 
       const uploadDate = m.created_at
-        ? new Date(m.created_at * 1000).toLocaleString("zh-CN")
-        : "未知用户";
+        ? new Date(m.created_at * 1000).toLocaleString(getLocale())
+        : ui("m_1ac13841ba2ea68b");
 
       const uploaderName = m.uploader_name
         ? window.escapeHtml(m.uploader_name)
-        : "未知用户";
+        : ui("m_1ac13841ba2ea68b");
 
       const tagsHtml =
         m.tags && m.tags.length > 0
           ? `<div class="media-item-tags">${m.tags.map((t) => `<span class="media-item-tag">${window.escapeHtml(t)}</span>`).join("")}</div>`
           : "";
 
-      return `
-                    <div class="media-item" id="media-item-${m.id}">
-                        ${preview}
-                        <div class="media-item-info">
-                            <a class="filename" href="/w/${encodeURIComponent(`이미지:${m.filename}`)}" title="${window.escapeHtml(m.filename)} 문서로 이동">${window.escapeHtml(m.filename)}</a>
-                            <div class="meta">${sizeStr} · ${uploadDate} · 업로더: ${uploaderName}</div>
-                            ${tagsHtml}
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-info" data-id="${m.id}" data-filename="${window.escapeHtml(m.filename)}" onclick="trackBacklinks(+this.dataset.id, this.dataset.filename)"
-                                title="역링크 추적">
-                                <i class="mdi mdi-link-variant"></i> 역링크 추적
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" data-id="${m.id}" data-filename="${window.escapeHtml(m.filename)}" onclick="deleteMedia(+this.dataset.id, this.dataset.filename)"
-                                title="删除">
-                                <i class="mdi mdi-delete"></i> 删除
-                            </button>
-                        </div>
-                    </div>
-                `;
+      return ui("m_89fa716c20d6975b", [m.id, preview, encodeURIComponent(`이미지:${m.filename}`), window.escapeHtml(m.filename), window.escapeHtml(m.filename), sizeStr, uploadDate, uploaderName, tagsHtml, m.id, window.escapeHtml(m.filename), m.id, window.escapeHtml(m.filename)]);
     })
     .join("");
 
   const totalPages = Math.max(1, Math.ceil(mediaTotal / mediaPageSize));
   const rangeStart = (mediaPage - 1) * mediaPageSize + 1;
   const rangeEnd = (mediaPage - 1) * mediaPageSize + mediaItems.length;
-  totalInfo.textContent = `총 ${mediaTotal}개 · ${rangeStart}-${rangeEnd}번 표시 · 페이지 ${mediaPage}/${totalPages}`;
+  totalInfo.textContent = ui("m_02121e9f89592303", [mediaTotal, rangeStart, rangeEnd, mediaPage, totalPages]);
 
   renderMediaPagination();
 }
 
 async function deleteMedia(id, filename) {
   const result = await Swal.fire({
-    title: "이미지 삭제",
-    text: `"${filename}" 이미지를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+    title: ui("m_4fb0bcdb64aa72c6"),
+    text: ui("m_7fe8eb1fe4c3e8b2", [filename]),
     icon: "warning",
     showCancelButton: true,
-    confirmButtonText: "删除",
-    cancelButtonText: "取消",
+    confirmButtonText: ui("m_2f9daa828907b93f"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c"),
     confirmButtonColor: "#d33",
   });
 
@@ -267,20 +249,20 @@ async function deleteMedia(id, filename) {
         method: "DELETE",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "删除失败");
+      if (!res.ok) throw new Error(data.error || ui("m_c228558cf257fc49"));
 
       await loadMedia(mediaPage);
 
       Swal.fire({
         icon: "success",
-        title: "已删除",
+        title: ui("m_077a6d37719a0e21"),
         toast: true,
         position: "top-end",
         showConfirmButton: false,
         timer: 1500,
       });
     } catch (err) {
-      Swal.fire("错误", err.message, "error");
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, "error");
     }
   }
 }
@@ -298,23 +280,23 @@ async function runGarbageCollector() {
   gcBody.style.display = "block";
   gcActions.style.display = "none";
   gcList.innerHTML = "";
-  gcStatus.innerHTML = window.uiInlineLoading({ text: '미사용 이미지를 검색하는 중... (시간이 걸릴 수 있습니다)' });
+  gcStatus.innerHTML = window.uiInlineLoading({ text: ui("m_74c1a50ecff0bebf") });
   gcRunBtn.disabled = true;
 
   try {
     const res = await fetch("/api/admin/media/gc");
-    if (!res.ok) throw new Error("搜索失败");
+    if (!res.ok) throw new Error(ui("m_6b5dde6e3a599a71"));
     const data = await res.json();
 
     gcItems = data.unused || [];
 
     if (gcItems.length === 0) {
       gcStatus.innerHTML =
-        '<div class="alert alert-success mb-0"><i class="mdi mdi-check-circle"></i> 미사용 이미지가 없습니다. 모든 이미지가 문서에서 사용 중입니다.</div>';
+        ui("m_ff106bdf32342a01");
       return;
     }
 
-    gcStatus.innerHTML = `<div class="alert alert-warning mb-0"><i class="mdi mdi-alert"></i> 전체 ${data.total_media}개 이미지 중 <strong>${data.unused_count}개</strong>가 어떤 문서에서도 사용되지 않고 있습니다.</div>`;
+    gcStatus.innerHTML = ui("m_08e1c6d38e3fef61", [data.total_media, data.unused_count]);
 
     gcList.innerHTML = gcItems
       .map((m) => {
@@ -332,31 +314,20 @@ async function runGarbageCollector() {
               : `${(m.size / (1024 * 1024)).toFixed(1)} MB`;
 
         const uploadDate = m.created_at
-          ? new Date(m.created_at * 1000).toLocaleString("zh-CN")
-          : "未知用户";
+          ? new Date(m.created_at * 1000).toLocaleString(getLocale())
+          : ui("m_1ac13841ba2ea68b");
 
         const uploaderName = m.uploader_name
           ? window.escapeHtml(m.uploader_name)
-          : "未知用户";
+          : ui("m_1ac13841ba2ea68b");
 
-        return `
-                            <div class="media-item" style="border-color: var(--wiki-warning);">
-                                <input type="checkbox" class="form-check-input gc-check" data-id="${m.id}" checked style="flex-shrink:0;">
-                                ${preview}
-                                <div class="media-item-info">
-                                    <a class="filename" href="/w/${encodeURIComponent(`이미지:${m.filename}`)}" title="${window.escapeHtml(m.filename)} 문서로 이동">${window.escapeHtml(m.filename)}</a>
-                                    <div class="meta">${sizeStr} · ${uploadDate} · 업로더: ${uploaderName}</div>
-                                </div>
-                                <button class="btn btn-sm btn-outline-info" data-id="${m.id}" data-filename="${window.escapeHtml(m.filename)}" onclick="trackBacklinks(+this.dataset.id, this.dataset.filename)" title="역링크 확인">
-                                    <i class="mdi mdi-link-variant"></i>
-                                </button>
-                            </div>`;
+        return ui("m_4fab65f10314a98f", [m.id, preview, encodeURIComponent(`이미지:${m.filename}`), window.escapeHtml(m.filename), window.escapeHtml(m.filename), sizeStr, uploadDate, uploaderName, m.id, window.escapeHtml(m.filename)]);
       })
       .join("");
 
     gcActions.style.display = "block";
   } catch (err) {
-    gcStatus.innerHTML = `<div class="alert alert-danger mb-0">오류: ${err.message}</div>`;
+    gcStatus.innerHTML = ui("m_f9e39928a681db2a", [err.message]);
   } finally {
     gcRunBtn.disabled = false;
   }
@@ -380,17 +351,17 @@ async function gcDeleteSelected() {
   ).map((cb) => Number(cb.dataset.id));
 
   if (selectedIds.length === 0) {
-    Swal.fire("提示", "삭제할 이미지를 선택해주세요.", "info");
+    Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_6592941155924ffc"), "info");
     return;
   }
 
   const result = await Swal.fire({
-    title: "미사용 이미지 삭제",
-    html: `선택된 <strong>${selectedIds.length}개</strong> 이미지를 永久删除하시겠습니까?<br><small class="text-muted">이 작업은 되돌릴 수 없습니다.</small>`,
+    title: ui("m_517f80d5e802c50e"),
+    html: ui("m_9505857337fbdb51", [selectedIds.length]),
     icon: "warning",
     showCancelButton: true,
-    confirmButtonText: "删除",
-    cancelButtonText: "取消",
+    confirmButtonText: ui("m_2f9daa828907b93f"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c"),
     confirmButtonColor: "#d33",
   });
 
@@ -398,7 +369,7 @@ async function gcDeleteSelected() {
 
   const gcDeleteBtn = document.getElementById("gcDeleteBtn");
   gcDeleteBtn.disabled = true;
-  gcDeleteBtn.innerHTML = window.uiInlineLoading({ text: '삭제 중...' });
+  gcDeleteBtn.innerHTML = window.uiInlineLoading({ text: ui("m_d37f24fb4e0d7b1d") });
 
   try {
     // 서버는 1회 호출당 ids 200개 상한을 두므로(자원 고갈 방지), 선택 항목이 많으면
@@ -414,21 +385,21 @@ async function gcDeleteSelected() {
         body: JSON.stringify({ ids: chunk }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "删除失败");
+      if (!res.ok) throw new Error(data.error || ui("m_c228558cf257fc49"));
       totalDeleted += data.deleted_count || 0;
       if (data.errors && data.errors.length > 0) allErrors.push(...data.errors);
     }
 
-    let msg = `${totalDeleted}개 이미지가 삭제되었습니다.`;
+    let msg = ui("m_c6c7a20bf9453422", [totalDeleted]);
     if (allErrors.length > 0) {
-      msg += `\n\n경고:\n${allErrors.join("\n")}`;
+      msg += ui("m_6d235d1bf6051e40", [allErrors.join("\n")]);
     }
 
     Swal.fire({
       icon: totalDeleted > 0 ? "success" : "warning",
-      title: "쓰레기 수집 완료",
+      title: ui("m_a9734db6fb176602"),
       text: msg,
-      confirmButtonText: "확인",
+      confirmButtonText: ui("m_1aacb54c49924296"),
     });
 
     // 메인 목록 현재 페이지 재로드
@@ -437,19 +408,19 @@ async function gcDeleteSelected() {
     // GC 결과 다시 검색
     runGarbageCollector();
   } catch (err) {
-    Swal.fire("错误", err.message, "error");
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, "error");
   } finally {
     gcDeleteBtn.disabled = false;
     gcDeleteBtn.innerHTML =
-      '<i class="mdi mdi-delete-forever"></i> 删除所选';
+      ui("m_ac1f587179b371a1");
   }
 }
 
 async function trackBacklinks(id, filename) {
   try {
     Swal.fire({
-      title: "역링크 추적 중...",
-      text: "잠시만 기다려주세요.",
+      title: ui("m_1157eee8b9283734"),
+      text: ui("m_38372774e5415a6e"),
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
@@ -459,7 +430,7 @@ async function trackBacklinks(id, filename) {
     const res = await fetch(`/api/admin/media/${id}/backlinks`);
     if (!res.ok) {
       const data = await res.json();
-      throw new Error(data.error || "역링크 추적 실패");
+      throw new Error(data.error || ui("m_4291ef38489ca46a"));
     }
     const data = await res.json();
 
@@ -469,57 +440,35 @@ async function trackBacklinks(id, filename) {
         '<ul class="list-group text-start mt-3" style="max-height: 300px; overflow-y: auto;">';
       data.backlinks.forEach((item) => {
         if (item.type === "blog") {
-          htmlContent += `
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <a href="/blog/${encodeURIComponent(item.id)}" target="_blank" class="text-decoration-none">
-                                        ${window.escapeHtml(item.title || `#${item.id}`)}
-                                    </a>
-                                    <span class="badge bg-info rounded-pill">블로그</span>
-                                </li>`;
+          htmlContent += ui("m_1ce6d6664cb04530", [encodeURIComponent(item.id), window.escapeHtml(item.title || `#${item.id}`)]);
         } else if (item.type === "discussion") {
           // 토론: page_slug 가 있으면 /w/:slug?mode=discussions&id=:id 로 링크, 없으면 텍스트만
           const inner = item.page_slug
             ? `<a href="/w/${encodeURIComponent(item.page_slug)}?mode=discussions&id=${item.id}" target="_blank" class="text-decoration-none">${window.escapeHtml(item.title || `#${item.id}`)}</a>`
             : `<span>${window.escapeHtml(item.title || `#${item.id}`)}</span>`;
-          htmlContent += `
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    ${inner}
-                                    <span class="badge bg-warning text-dark rounded-pill">讨论</span>
-                                </li>`;
+          htmlContent += ui("m_990b4c1d7cad17e1", [inner]);
         } else if (item.type === "ticket") {
-          htmlContent += `
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <a href="/tickets/${item.id}" target="_blank" class="text-decoration-none">
-                                        ${window.escapeHtml(item.title || `#${item.id}`)}
-                                    </a>
-                                    <span class="badge bg-secondary rounded-pill">티켓</span>
-                                </li>`;
+          htmlContent += ui("m_33cbb4602073fb78", [item.id, window.escapeHtml(item.title || `#${item.id}`)]);
         } else {
-          htmlContent += `
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <a href="/w/${encodeURIComponent(item.slug)}" target="_blank" class="text-decoration-none">
-                                        ${window.escapeHtml(item.slug)}
-                                    </a>
-                                    <span class="badge bg-secondary rounded-pill">页面</span>
-                                </li>`;
+          htmlContent += ui("m_f1e3e9ce7c1fb7dd", [encodeURIComponent(item.slug), window.escapeHtml(item.slug)]);
         }
       });
       htmlContent += "</ul>";
     } else {
       htmlContent =
-        '<div class="alert alert-info mt-3 mb-0">이 이미지를 사용 중인 暂无页面.</div>';
+        ui("m_7f6ade650e10d379");
     }
 
     Swal.fire({
-      title: "역링크 추적 결과",
+      title: ui("m_fd33b1a4b07e2384"),
       html:
-        `<strong>${window.escapeHtml(filename)}</strong> 사용 문서 목록<br>` +
+        ui("m_7ed12ac44a9887cb", [window.escapeHtml(filename)]) +
         htmlContent,
       width: "600px",
-      confirmButtonText: "关闭",
+      confirmButtonText: ui("m_3fd47edce45b3603"),
     });
   } catch (err) {
-    Swal.fire("错误", err.message, "error");
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, "error");
   }
 }
 

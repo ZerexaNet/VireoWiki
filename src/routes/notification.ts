@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env, Message } from '../types';
 import { requireAuthAllowBanned } from '../middleware/session';
@@ -87,7 +88,7 @@ notificationRoutes.post('/notifications/read/by-link', requireAuthAllowBanned, a
     const { link } = await c.req.json<{ link: string }>();
 
     if (!link || !link.trim()) {
-        return c.json({ error: 'link 파라미터가 필요합니다.' }, 400);
+        return c.json({ error: ui("m_4c8911ca66612cb4") }, 400);
     }
 
     const now = Math.floor(Date.now() / 1000);
@@ -108,7 +109,7 @@ notificationRoutes.post('/notifications/:id/read', requireAuthAllowBanned, async
     await ensureNotificationsMigration(db);
     const notifId = Number(c.req.param('id'));
     if (!Number.isInteger(notifId)) {
-        return c.json({ error: '잘못된 알림 ID 입니다.' }, 400);
+        return c.json({ error: ui("m_e3557c550ab973d5") }, 400);
     }
     const now = Math.floor(Date.now() / 1000);
     const result = await db.prepare(
@@ -145,7 +146,7 @@ notificationRoutes.delete('/notifications/:id', requireAuthAllowBanned, async (c
     ).bind(notifId, user.id).first<{ id: number; type: string; ref_id: number | null }>();
 
     if (!notif) {
-        return c.json({ error: '알림을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_1a974badb6e47009") }, 404);
     }
 
     // 알림 레코드 삭제 (쪽지는 받은 쪽지함에 그대로 남음)
@@ -179,23 +180,23 @@ notificationRoutes.post('/messages', requireAuthAllowBanned, async (c) => {
     }>();
 
     if (!content || !content.trim()) {
-        return c.json({ error: '쪽지 내용을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_0f410dd168933fef") }, 400);
     }
     if (!receiver_id) {
-        return c.json({ error: '수신자를 지정해주세요.' }, 400);
+        return c.json({ error: ui("m_89975bae3b090120") }, 400);
     }
     if (receiver_id === user.id) {
-        return c.json({ error: '자기 자신에게 쪽지를 보낼 수 없습니다.' }, 400);
+        return c.json({ error: ui("m_724b58cf4d967d21") }, 400);
     }
 
     // 수신자 존재 확인
     const receiver = await db.prepare('SELECT id, name, role, email FROM users WHERE id = ?')
         .bind(receiver_id).first<{ id: number; name: string; role: string; email: string }>();
     if (!receiver) {
-        return c.json({ error: '수신자를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_70a66c8ef6d4b156") }, 404);
     }
     if (receiver.role === 'deleted') {
-        return c.json({ error: '탈퇴한 사용자에게는 쪽지를 보낼 수 없습니다.' }, 400);
+        return c.json({ error: ui("m_4838f659f04b4d4f") }, 400);
     }
 
     const rbac = c.get('rbac') as RBAC;
@@ -206,7 +207,7 @@ notificationRoutes.post('/messages', requireAuthAllowBanned, async (c) => {
     if (isBanned) {
         const receiverIsAdmin = rbac.can(receiver.role, 'admin:access') || isSuperAdmin(receiver.email, c.env);
         if (!receiverIsAdmin) {
-            return c.json({ error: '차단된 계정은 관리자에게만 쪽지를 보낼 수 있습니다.' }, 403);
+            return c.json({ error: ui("m_8a1213b5ecd8904b") }, 403);
         }
     }
 
@@ -221,7 +222,7 @@ notificationRoutes.post('/messages', requireAuthAllowBanned, async (c) => {
     if (!dmAllowed && !canBypassDmGate) {
         // 비활성화 상태에서 일반 유저는 관리자/토론관리자 쪽지에 대한 답장만 가능
         if (!reply_to) {
-            return c.json({ error: '개인 쪽지가 비활성화 상태입니다.' }, 403);
+            return c.json({ error: ui("m_154d463aa34cb9a0") }, 403);
         }
 
         // reply_to가 관리자가 나에게 보낸 쪽지인지 확인
@@ -230,7 +231,7 @@ notificationRoutes.post('/messages', requireAuthAllowBanned, async (c) => {
         ).bind(reply_to).first<{ sender_id: number; receiver_id: number }>();
 
         if (!originalMsg || originalMsg.receiver_id !== user.id) {
-            return c.json({ error: '답장 권한이 없습니다.' }, 403);
+            return c.json({ error: ui("m_959db104077054ad") }, 403);
         }
 
         // 원본 발신자의 역할 확인 (관리자/토론관리자가 보낸 쪽지여야 답장 가능)
@@ -243,7 +244,7 @@ notificationRoutes.post('/messages', requireAuthAllowBanned, async (c) => {
             isSuperAdmin(originalSender.email, c.env)
         );
         if (!senderCanBypass) {
-            return c.json({ error: '개인 쪽지가 비활성화 상태입니다.' }, 403);
+            return c.json({ error: ui("m_154d463aa34cb9a0") }, 403);
         }
     }
 
@@ -258,10 +259,10 @@ notificationRoutes.post('/messages', requireAuthAllowBanned, async (c) => {
     await createNotification(c.env, c.executionCtx, {
         userId: receiver_id,
         type: 'message',
-        content: `${user.name}님이 쪽지를 보냈습니다.`,
+        content: ui("m_ee608891fa7c8c85", [user.name]),
         refId: Number(messageId),
         push: {
-            title: `${user.name}님의 쪽지`,
+            title: ui("m_5277a4f4f1272fba", [user.name]),
             body: content.trim().slice(0, 120),
             url: '/mypage#messages',
             tag: `message:${messageId}`,
@@ -335,7 +336,7 @@ notificationRoutes.delete('/messages/:id', requireAuthAllowBanned, async (c) => 
         .bind(messageId).first<{ receiver_id: number }>();
 
     if (!msg || msg.receiver_id !== user.id) {
-        return c.json({ error: '권한이 없거나 쪽지를 찾을 수 없습니다.' }, 403);
+        return c.json({ error: ui("m_0994aca6a079dc8b") }, 403);
     }
 
     // 쪽지 Soft Delete 처리
@@ -368,12 +369,12 @@ notificationRoutes.get('/messages/:id', requireAuthAllowBanned, async (c) => {
     `).bind(messageId).first();
 
     if (!msg) {
-        return c.json({ error: '쪽지를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_066622ae90180124") }, 404);
     }
 
     // 발신자 또는 수신자만 조회 가능
     if (msg.sender_id !== user.id && msg.receiver_id !== user.id) {
-        return c.json({ error: '권한이 없습니다.' }, 403);
+        return c.json({ error: ui("m_a20ccb3e6b01e324") }, 403);
     }
 
     // super_admin 은 role 컬럼이 아닌 이메일로 판별되므로 sender_role 을 보정한 뒤 이메일은 제거.

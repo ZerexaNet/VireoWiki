@@ -1,5 +1,6 @@
 // 가입 신청 / 거부 / 가입 완료(open + approved) Discord 이벤트 빌더.
 
+import { ui } from '../../../i18n/server';
 import type { Env } from '../../../types';
 import type { WebhookEvent } from '../discord';
 import { absoluteUrl, escapeMd, nowIso, truncate } from '../format';
@@ -18,21 +19,21 @@ export function signupPending(args: {
     const { requestId, name, email, provider, env } = args;
     const adminUrl = absoluteUrl(env, '/admin#signup-requests');
     const description = adminUrl
-        ? `**${escapeMd(name)}** 님이 가입을 신청했습니다.\n[승인하러 가기](${adminUrl})`
-        : `**${escapeMd(name)}** 님이 가입을 신청했습니다.`;
+        ? ui("m_4d07a4b5339c6e9d", [escapeMd(name), adminUrl])
+        : ui("m_59802849b7e95cc3", [escapeMd(name)]);
 
     return {
         channel: 'admin',
         type: 'signup_pending',
         embed: {
             color: COLOR_PENDING,
-            title: '🆕 가입 신청',
+            title: ui("m_9990d458ebd03b13"),
             description,
             fields: [
-                { name: '이메일', value: `\`${escapeMd(email)}\``, inline: true },
-                { name: '공급자', value: escapeMd(provider), inline: true },
+                { name: ui("m_3b7dbc4c0c4cebca"), value: `\`${escapeMd(email)}\``, inline: true },
+                { name: ui("m_b84abfbe481c6010"), value: escapeMd(provider), inline: true },
             ],
-            footer: { text: `Request #${requestId}` },
+            footer: { text: ui("m_9cd880d519c81b65", [requestId]) },
             timestamp: nowIso(),
         },
     };
@@ -46,7 +47,7 @@ export function signupRejected(args: {
 }): WebhookEvent {
     const { name, email, actorName, reason } = args;
     const fields = reason
-        ? [{ name: '사유', value: truncate(escapeMd(reason), 200) }]
+        ? [{ name: ui("m_ab9442a23e772cce"), value: truncate(escapeMd(reason), 200) }]
         : undefined;
 
     return {
@@ -54,8 +55,8 @@ export function signupRejected(args: {
         type: 'signup_rejected',
         embed: {
             color: COLOR_REJECTED,
-            title: '🚫 가입 신청 거부',
-            description: `**${escapeMd(name)}** (\`${escapeMd(email)}\`) 의 가입 신청이 거부되었습니다.`,
+            title: ui("m_f722391e108aee57"),
+            description: ui("m_fc9929c6d6a254fb", [escapeMd(name), escapeMd(email)]),
             author: { name: `by ${actorName}` },
             fields,
             timestamp: nowIso(),
@@ -76,8 +77,8 @@ export function userJoined(args: {
         type: 'user_joined',
         embed: {
             color: COLOR_JOINED,
-            title: '👋 새 사용자 가입',
-            description: `**${escapeMd(user.name)}** 님이 합류했습니다. 환영해주세요!`,
+            title: ui("m_67f12481a97255e5"),
+            description: ui("m_31b3cbb904761ba4", [escapeMd(user.name)]),
             url: profileUrl,
             thumbnail: thumbnailUrl ? { url: thumbnailUrl } : undefined,
             timestamp: nowIso(),

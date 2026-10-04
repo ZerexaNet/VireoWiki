@@ -13,7 +13,8 @@
 //    startReply / deleteComment)는 파일 끝에서 window.* 로 노출한다.
 
     // ── 전역 상태 ──
-    let currentSlug = null;
+    import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
+let currentSlug = null;
     let currentDiscussionPageId = null;
     let currentThreadId = null;
     let currentDiscussionFilter = '';
@@ -80,7 +81,7 @@
       const parsed = parseUrl();
       if (!parsed) {
         document.getElementById('loading').classList.add('d-none');
-        Swal.fire('错误', '链接无效。', 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_e0a12b740b1aedad"), 'error');
         return;
       }
 
@@ -98,11 +99,11 @@
     function getRelativeTime(unixTs) {
       const now = Math.floor(Date.now() / 1000);
       const diff = now - unixTs;
-      if (diff < 60) return '刚刚';
-      if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
-      if (diff < 604800) return `${Math.floor(diff / 86400)} 天前`;
-      return new Date(unixTs * 1000).toLocaleDateString('zh-CN');
+      if (diff < 60) return ui("m_de6785d99e028971");
+      if (diff < 3600) return ui("m_2f10882d8db32301", [Math.floor(diff / 60)]);
+      if (diff < 86400) return ui("m_13d9a4afbbd1b91f", [Math.floor(diff / 3600)]);
+      if (diff < 604800) return ui("m_dd30752bcdb324d3", [Math.floor(diff / 86400)]);
+      return new Date(unixTs * 1000).toLocaleDateString(getLocale());
     }
 
 
@@ -121,7 +122,7 @@
 
       try {
         const pageRes = await fetch(`/api/w/${encodeURIComponent(slug)}`);
-        if (!pageRes.ok) throw new Error('找不到页面。');
+        if (!pageRes.ok) throw new Error(ui("m_5fc9b515e116cb41"));
         const pageData = await pageRes.json();
         currentDiscussionPageId = pageData.id;
 
@@ -137,17 +138,17 @@
         let url = `/api/discussions/${pageData.id}`;
         if (currentDiscussionFilter) url += `?status=${currentDiscussionFilter}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('讨论列表加载失败');
+        if (!res.ok) throw new Error(ui("m_f1a9bc043acd56fb"));
         const data = await res.json();
 
         const listEl = document.getElementById('discussionsList');
         if (!data.discussions || data.discussions.length === 0) {
-          listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-chat-left-text', title: '暂无讨论', text: '来发起第一条讨论吧！' });
+          listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-chat-left-text', title: ui("m_a55633de7a5bc19d"), text: ui("m_ec35a93d8e9346f0") });
         } else {
           listEl.innerHTML = data.discussions.map(d => {
             const statusBadge = d.status === 'open'
-              ? '<span class="badge bg-success">开放</span>'
-              : '<span class="badge bg-secondary">已关闭</span>';
+              ? ui("m_9580dffa5369affc")
+              : ui("m_e2d4b1508e527978");
             const date = getRelativeTime(d.created_at);
             return `
               <div class="discussion-item d-flex flex-column py-3 px-3 px-md-4 mb-3 position-relative shadow-sm" style="border-radius: 12px; transition: transform 0.2s, box-shadow 0.2s;">
@@ -159,7 +160,7 @@
                     </div>
                   </div>
                   <div class="discussion-item-meta d-flex flex-wrap gap-3 text-muted mt-2" style="font-size: 0.85rem;">
-                    <span class="d-flex align-items-center gap-1"><i class="bi bi-person"></i> ${d.author_id ? `<a href="/profile/${d.author_id}" class="discussion-author-link text-decoration-none fw-semibold position-relative" style="z-index: 2;" onclick="event.stopPropagation()">${window.escapeHtml(d.author_name || '未知用户')}${window.renderUserRoleIcon(d.author_role)}</a>` : `<span class="fw-semibold">${window.escapeHtml(d.author_name || '未知用户')}${window.renderUserRoleIcon(d.author_role)}</span>`}</span>
+                    <span class="d-flex align-items-center gap-1"><i class="bi bi-person"></i> ${d.author_id ? `<a href="/profile/${d.author_id}" class="discussion-author-link text-decoration-none fw-semibold position-relative" style="z-index: 2;" onclick="event.stopPropagation()">${window.escapeHtml(d.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(d.author_role)}</a>` : `<span class="fw-semibold">${window.escapeHtml(d.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(d.author_role)}</span>`}</span>
                     <span class="d-flex align-items-center gap-1"><i class="bi bi-clock"></i> ${date}</span>
                     <span class="d-flex align-items-center gap-1"><i class="bi bi-chat-dots"></i> ${d.comment_count || 0}</span>
                   </div>
@@ -172,13 +173,13 @@
         hideAllPages();
         document.getElementById('newDiscussionForm').classList.add('d-none');
         document.getElementById('discussionListPage').classList.remove('d-none');
-        document.title = `토론 - ${pageData.slug} - ${window.appConfig.wikiName}`;
+        document.title = ui("m_a9b779030ba406be", [pageData.slug, window.appConfig.wikiName]);
         window.initRoleIconPopovers(document.getElementById('discussionsList'));
 
       } catch (err) {
         console.error(err);
         hideAllPages();
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
@@ -190,7 +191,7 @@
 
     async function showNewDiscussionForm() {
       if (!window.currentUser) {
-        Swal.fire('需要登录', '登录后才能发起讨论。', 'info');
+        Swal.fire(ui("m_6eb1b64e260a2dd3"), ui("m_18ed63153aead016"), 'info');
         return;
       }
       document.getElementById('newDiscussionForm').classList.remove('d-none');
@@ -210,7 +211,7 @@
             const carryOver = fallback.value;
             newDiscussionEditor = await create(rootEl, {
               initialValue: carryOver,
-              placeholder: '请输入讨论内容（支持 Wiki 语法）',
+              placeholder: ui("m_5cebfd65259ac709"),
             });
             fallback.classList.add('d-none');
             fallback.value = '';
@@ -235,8 +236,8 @@
       const title = document.getElementById('newDiscussionTitle').value.trim();
       const content = getNewDiscussionContent().trim();
 
-      if (!title) { Swal.fire('提示', '请输入讨论标题。', 'warning'); return; }
-      if (!content) { Swal.fire('提示', '请输入讨论内容。', 'warning'); return; }
+      if (!title) { Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_01602da2a6cbb28a"), 'warning'); return; }
+      if (!content) { Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_0db6b347ddb9e2ee"), 'warning'); return; }
 
       try {
         const res = await fetch(`/api/discussions/${currentDiscussionPageId}`, {
@@ -245,13 +246,13 @@
           body: JSON.stringify({ title, content })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '创建讨论失败');
+        if (!res.ok) throw new Error(data.error || ui("m_1078e87a30b8b5ab"));
 
-        Swal.fire('成功', '讨论已创建。', 'success').then(() => {
+        Swal.fire(ui("m_053461ce86d26572"), ui("m_c4a7070d6b95bf4d"), 'success').then(() => {
           window.location.href = `/w/${encodeURIComponent(currentSlug)}?mode=discussions&id=${data.id}`;
         });
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
@@ -263,7 +264,7 @@
 
       try {
         const res = await fetch(`/api/discussions/thread/${threadId}`);
-        if (!res.ok) throw new Error('无法加载讨论。');
+        if (!res.ok) throw new Error(ui("m_e7937f4eca684a0b"));
         const data = await res.json();
         const discussion = data.discussion;
         const comments = data.comments;
@@ -292,16 +293,10 @@
 
         // 메타 정보
         const statusBadge = discussion.status === 'open'
-          ? '<span class="badge bg-success px-2 py-1 fs-6">开放</span>'
-          : '<span class="badge bg-secondary px-2 py-1 fs-6">已关闭</span>';
-        const date = new Date(discussion.created_at * 1000).toLocaleString('zh-CN');
-        document.getElementById('threadMeta').innerHTML = `
-          <div class="d-flex align-items-center gap-2">${statusBadge}</div>
-          <div class="d-flex flex-wrap align-items-center gap-3 ms-md-4 w-100">
-            <span class="text-muted d-flex align-items-center gap-2"><i class="bi bi-person-fill fs-5"></i> 작성자: ${discussion.author_id ? `<a href="/profile/${discussion.author_id}" class="discussion-author-link text-decoration-none fw-semibold">${window.escapeHtml(discussion.author_name || '未知用户')}${window.renderUserRoleIcon(discussion.author_role)}</a>` : `<span class="fw-semibold">${window.escapeHtml(discussion.author_name || '未知用户')}${window.renderUserRoleIcon(discussion.author_role)}</span>`}</span>
-            <span class="text-muted ms-auto d-flex align-items-center gap-2 small"><i class="bi bi-clock-history"></i> ${date}</span>
-          </div>
-        `;
+          ? ui("m_6141dc48c34cb9ca")
+          : ui("m_5535377aef9a2853");
+        const date = new Date(discussion.created_at * 1000).toLocaleString(getLocale());
+        document.getElementById('threadMeta').innerHTML = ui("m_6354f809c0c6d6ed", [statusBadge, discussion.author_id ? `<a href="/profile/${discussion.author_id}" class="discussion-author-link text-decoration-none fw-semibold">${window.escapeHtml(discussion.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(discussion.author_role)}</a>` : `<span class="fw-semibold">${window.escapeHtml(discussion.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(discussion.author_role)}</span>`, date]);
         window.initRoleIconPopovers(document.getElementById('threadMeta'));
 
         // 액션 버튼들
@@ -315,29 +310,23 @@
 
           if (isAuthor || isDiscManager) {
             if (discussion.status === 'open') {
-              actionsHtml += `<button class="btn btn-outline-danger btn-sm" onclick="changeDiscussionStatus(${threadId}, 'closed')">
-                <i class="bi bi-x-circle"></i> 토론 닫기</button>`;
+              actionsHtml += ui("m_bbac86c33fa62ec5", [threadId]);
             } else {
-              actionsHtml += `<button class="btn btn-outline-success btn-sm" onclick="changeDiscussionStatus(${threadId}, 'open')">
-                <i class="bi bi-arrow-counterclockwise"></i> 토론 重新开放</button>`;
+              actionsHtml += ui("m_f2f337bc0796f89a", [threadId]);
             }
           }
 
           if (isAdmin && !discussion.deleted_at) {
-            actionsHtml += `<button class="btn btn-outline-danger btn-sm" onclick="deleteDiscussion(${threadId}, false)">
-              <i class="bi bi-trash"></i> 删除</button>`;
+            actionsHtml += ui("m_473eec20aca9156f", [threadId]);
           }
 
           if (isSuperAdmin) {
-            actionsHtml += `<button class="btn btn-danger btn-sm" onclick="deleteDiscussion(${threadId}, true)">
-              <i class="bi bi-trash-fill"></i> 완전 삭제</button>`;
+            actionsHtml += ui("m_d833f7d3befdb938", [threadId]);
           }
         }
         // 알림 뮤트 토글 버튼 (로그인 유저만)
         if (window.currentUser && window.currentUser.role !== 'banned') {
-          actionsHtml += `<button class="btn btn-outline-secondary btn-sm" id="muteToggleBtn" onclick="toggleDiscussionMute(${threadId})">
-            <i class="bi bi-bell"></i> <span id="muteToggleLabel">알림 켜짐</span>
-          </button>`;
+          actionsHtml += ui("m_69d22d2cd30127df", [threadId]);
         }
 
         document.getElementById('threadActions').innerHTML = actionsHtml;
@@ -373,7 +362,7 @@
 
         hideAllPages();
         document.getElementById('discussionThreadPage').classList.remove('d-none');
-        document.title = `${discussion.title} - 토론 - ${window.appConfig.wikiName}`;
+        document.title = ui("m_5f4c2a67212fa887", [discussion.title, window.appConfig.wikiName]);
 
         // 해당 토론 관련 알림 일괄 읽음 처리 (로그인 유저만, 백그라운드 처리)
         if (window.currentUser) {
@@ -393,38 +382,31 @@
       } catch (err) {
         console.error(err);
         hideAllPages();
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
     function renderComment(c, discussion) {
       const isDeleted = !!c.deleted_at;
-      const date = new Date(c.created_at * 1000).toLocaleString('zh-CN');
+      const date = new Date(c.created_at * 1000).toLocaleString(getLocale());
 
       let quoteHtml = '';
       if (c.parent_id && c.quoted_content) {
-        quoteHtml = `
-          <div class="discussion-quote px-3 py-2 mb-3 bg-secondary bg-opacity-10 border-start border-primary border-4 rounded-end w-100">
-            <div class="discussion-quote-author fw-bold mb-1" style="font-size: 0.85rem;"><i class="bi bi-reply-fill text-primary"></i> ${window.escapeHtml(c.quoted_author_name || '未知用户')}님에게 답글:</div>
-            <div class="discussion-quote-text text-muted" style="font-size: 0.9rem; line-height: 1.4;">${window.escapeHtml(c.quoted_content || '')}</div>
-          </div>
-        `;
+        quoteHtml = ui("m_88ab2e933294a15e", [window.escapeHtml(c.quoted_author_name || ui("m_1ac13841ba2ea68b")), window.escapeHtml(c.quoted_content || '')]);
       }
 
       // 본문은 위키 렌더링이 비동기이므로 빈 컨테이너만 박아두고 호출자가 별도 렌더.
       // 삭제된 댓글만 즉시 표시.
       let contentHtml;
       if (isDeleted) {
-        contentHtml = '<span class="text-muted fst-italic">评论已删除。</span>';
+        contentHtml = ui("m_d15600fe57d00775");
       } else {
         contentHtml = '';
       }
 
       let commentActions = '';
       if (!isDeleted && window.currentUser && window.currentUser.role !== 'banned' && discussion.status === 'open') {
-        commentActions += `<button class="btn btn-sm btn-link text-muted" data-id="${c.id}" data-author="${window.escapeHtml(c.author_name || '未知用户')}" data-content="${window.escapeHtml((c.content || '').substring(0, 100))}" onclick="startReply(+this.dataset.id, this.dataset.author, this.dataset.content)">
-          <i class="bi bi-reply"></i> 답글
-        </button>`;
+        commentActions += ui("m_572402f7759511c7", [c.id, window.escapeHtml(c.author_name || ui("m_1ac13841ba2ea68b")), window.escapeHtml((c.content || '').substring(0, 100))]);
       }
       if (!isDeleted && window.currentUser) {
         const isAdmin = ['admin', 'super_admin'].includes(window.currentUser.role);
@@ -445,7 +427,7 @@
         <div class="discussion-comment ${isDeleted ? 'discussion-comment-deleted' : ''} p-3 p-md-4 mb-4 shadow-sm w-100" style="border-radius: 12px; background: var(--wiki-card-bg); border: 1px solid var(--wiki-border);" id="comment-${c.id}">
           <div class="discussion-comment-header d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 pb-2 border-bottom border-secondary border-opacity-25 w-100">
             <span class="discussion-comment-author d-flex align-items-center gap-2 fw-bold w-100 w-sm-auto mb-2 mb-sm-0" style="font-size: 1.05rem;">
-              ${c.author_id ? `<a href="/profile/${c.author_id}" class="discussion-author-link text-decoration-none d-flex align-items-center gap-2">${c.author_picture ? `<img src="${c.author_picture}" class="discussion-comment-avatar rounded-circle border object-fit-cover" style="width: 32px; height: 32px;" alt="" loading="lazy">` : '<i class="bi bi-person-circle fs-3 text-secondary"></i>'}${window.escapeHtml(c.author_name || '未知用户')}${window.renderUserRoleIcon(c.author_role)}</a>` : `<span class="d-flex align-items-center gap-2">${c.author_picture ? `<img src="${c.author_picture}" class="discussion-comment-avatar rounded-circle border object-fit-cover" style="width: 32px; height: 32px;" alt="" loading="lazy">` : '<i class="bi bi-person-circle fs-3 text-secondary"></i>'}${window.escapeHtml(c.author_name || '未知用户')}${window.renderUserRoleIcon(c.author_role)}</span>`}
+              ${c.author_id ? `<a href="/profile/${c.author_id}" class="discussion-author-link text-decoration-none d-flex align-items-center gap-2">${c.author_picture ? `<img src="${c.author_picture}" class="discussion-comment-avatar rounded-circle border object-fit-cover" style="width: 32px; height: 32px;" alt="" loading="lazy">` : '<i class="bi bi-person-circle fs-3 text-secondary"></i>'}${window.escapeHtml(c.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(c.author_role)}</a>` : `<span class="d-flex align-items-center gap-2">${c.author_picture ? `<img src="${c.author_picture}" class="discussion-comment-avatar rounded-circle border object-fit-cover" style="width: 32px; height: 32px;" alt="" loading="lazy">` : '<i class="bi bi-person-circle fs-3 text-secondary"></i>'}${window.escapeHtml(c.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(c.author_role)}</span>`}
             </span>
             <span class="discussion-comment-date text-muted mt-1 mt-sm-0 ms-sm-auto" style="font-size: 0.85rem;"><i class="bi bi-clock-history"></i> ${date}</span>
           </div>
@@ -460,12 +442,7 @@
     function startReply(parentId, authorName, preview) {
       document.getElementById('replyParentId').value = parentId;
       const quoteEl = document.getElementById('replyQuote');
-      quoteEl.innerHTML = `
-        <div class="discussion-quote px-3 py-2 mb-3 bg-secondary bg-opacity-10 border-start border-primary border-4 rounded-end w-100">
-          <div class="discussion-quote-author fw-bold mb-1" style="font-size: 0.85rem;"><i class="bi bi-reply-fill text-primary"></i> ${window.escapeHtml(authorName)}님에게 답글:</div>
-          <div class="discussion-quote-text text-muted" style="font-size: 0.9rem; line-height: 1.4;">${window.escapeHtml(preview)}${preview.length >= 100 ? '...' : ''}</div>
-        </div>
-      `;
+      quoteEl.innerHTML = ui("m_82e0fd924912502c", [window.escapeHtml(authorName), window.escapeHtml(preview), preview.length >= 100 ? '...' : '']);
       quoteEl.classList.remove('d-none');
       document.getElementById('cancelReplyBtn').classList.remove('d-none');
       if (commentEditor) {
@@ -497,7 +474,7 @@
       const content = getCommentContent().trim();
       const parentId = document.getElementById('replyParentId').value;
 
-      if (!content) { Swal.fire('提示', '请输入评论内容。', 'warning'); return; }
+      if (!content) { Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_fb5329841caa622f"), 'warning'); return; }
 
       try {
         const body = { content };
@@ -509,14 +486,14 @@
           body: JSON.stringify(body)
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '发表评论失败');
+        if (!res.ok) throw new Error(data.error || ui("m_ccf19617f6bcd97c"));
 
         clearCommentContent();
         cancelReply();
         // 스레드 새로고침
         showDiscussionThread(currentSlug, currentThreadId);
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
@@ -540,7 +517,7 @@
         const carryOver = fb ? fb.value : '';
         commentEditor = await create(rootEl, {
           initialValue: carryOver,
-          placeholder: '请输入评论（支持 Wiki 语法）',
+          placeholder: ui("m_2b00c5e5001419da"),
           getMentionCandidates: () => currentMentionParticipants,
         });
         if (fb) { fb.classList.add('d-none'); fb.value = ''; }
@@ -551,14 +528,14 @@
 
     // ── 토론 상태 변경 ──
     async function changeDiscussionStatus(threadId, status) {
-      const label = status === 'closed' ? '关闭' : '重新开放';
+      const label = status === 'closed' ? ui("m_3fd47edce45b3603") : ui("m_f18368c5975d3952");
       const result = await Swal.fire({
-        title: `토론 ${label}`,
-        text: `정말 이 토론을 ${label}하시겠습니까?`,
+        title: ui("m_3b36e01f4a720657", [label]),
+        text: ui("m_570ffaa19c47fe77", [label]),
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: label,
-        cancelButtonText: '取消'
+        cancelButtonText: ui("m_2cd0f3be8738a86c")
       });
 
       if (!result.isConfirmed) return;
@@ -570,25 +547,25 @@
           body: JSON.stringify({ status })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '状态修改失败');
+        if (!res.ok) throw new Error(data.error || ui("m_3d5ef5f99249355c"));
 
         showDiscussionThread(currentSlug, threadId);
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
     // ── 토론 삭제 ──
     async function deleteDiscussion(threadId, hard) {
-      const label = hard ? '永久删除（无法恢复）' : '删除';
+      const label = hard ? ui("m_5397333d5562291a") : ui("m_2f9daa828907b93f");
       const result = await Swal.fire({
-        title: `토론 ${label}`,
-        text: hard ? '이 토론과 모든 댓글이 영구적으로 삭제됩니다.' : '이 토론을 삭제하시겠습니까?',
+        title: ui("m_3b36e01f4a720657", [label]),
+        text: hard ? ui("m_9697a7e6c9418935") : ui("m_e4650415394afb7b"),
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         confirmButtonText: label,
-        cancelButtonText: '取消'
+        cancelButtonText: ui("m_2cd0f3be8738a86c")
       });
 
       if (!result.isConfirmed) return;
@@ -599,13 +576,13 @@
           : `/api/discussions/thread/${threadId}`;
         const res = await fetch(url, { method: 'DELETE' });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '删除失败');
+        if (!res.ok) throw new Error(data.error || ui("m_c228558cf257fc49"));
 
-        Swal.fire('已删除', '토론이 삭제되었습니다.', 'success').then(() => {
+        Swal.fire(ui("m_077a6d37719a0e21"), ui("m_42c9bbf297ec0afd"), 'success').then(() => {
           window.location.href = `/w/${encodeURIComponent(currentSlug)}?mode=discussions`;
         });
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
@@ -627,12 +604,12 @@
         btn.classList.remove('btn-outline-secondary');
         btn.classList.add('btn-outline-warning');
         btn.querySelector('i').className = 'bi bi-bell-slash';
-        label.textContent = '알림 꺼짐';
+        label.textContent = ui("m_76e220caaef33b47");
       } else {
         btn.classList.remove('btn-outline-warning');
         btn.classList.add('btn-outline-secondary');
         btn.querySelector('i').className = 'bi bi-bell';
-        label.textContent = '알림 켜짐';
+        label.textContent = ui("m_a89f2d786c66d32b");
       }
     }
 
@@ -643,21 +620,21 @@
         const data = await res.json();
         updateMuteButton(data.muted);
       } catch (e) {
-        Swal.fire('错误', '알림 설정 변경에 실패했습니다.', 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_e9fcb2e837f4b23a"), 'error');
       }
     }
 
     // ── 댓글 삭제 ──
     async function deleteComment(commentId, hard) {
-      const label = hard ? '완전 삭제' : '删除';
+      const label = hard ? ui("m_41d62abcf8fafc00") : ui("m_2f9daa828907b93f");
       const result = await Swal.fire({
-        title: `댓글 ${label}`,
-        text: hard ? '이 댓글이 영구적으로 삭제됩니다.' : '이 댓글을 삭제하시겠습니까?',
+        title: ui("m_ce7bd71253be4191", [label]),
+        text: hard ? ui("m_8b1416695c6437b4") : ui("m_1482b30a82762df1"),
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         confirmButtonText: label,
-        cancelButtonText: '取消'
+        cancelButtonText: ui("m_2cd0f3be8738a86c")
       });
 
       if (!result.isConfirmed) return;
@@ -668,11 +645,11 @@
           : `/api/discussions/comment/${commentId}`;
         const res = await fetch(url, { method: 'DELETE' });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '删除失败');
+        if (!res.ok) throw new Error(data.error || ui("m_c228558cf257fc49"));
 
         showDiscussionThread(currentSlug, currentThreadId);
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 

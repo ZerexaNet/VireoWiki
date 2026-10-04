@@ -7,6 +7,7 @@
 // 라우트 계층(wiki.ts 등)을 import 하지 않고 util 계층(role/notification)만 의존해
 // wiki ↔ pagePipeline 순환 import 를 피한다.
 
+import { ui } from '../../i18n/server';
 import type { Context } from 'hono';
 import type { Env } from '../../types';
 import { ROLE_CASE_SQL, enrichRoles, type RBAC } from '../role';
@@ -140,7 +141,7 @@ export function notifyPageWatchers(
                     ? [...rawSummary].slice(0, 15).join('') + '...'
                     : rawSummary;
                 const summarySuffix = truncatedSummary ? ` (${truncatedSummary})` : '';
-                const notifContent = `${editorName}님이 "${slug}" 문서를 편집했습니다.${summarySuffix}`;
+                const notifContent = ui("m_1509a20063ffedfe", [editorName, slug, summarySuffix]);
                 await createNotifications(c.env, c.executionCtx, watchers.map(uid => ({
                     userId: uid,
                     type: 'page_watch',

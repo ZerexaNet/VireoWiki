@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env, BlogPost } from '../types';
 import { requireAdmin } from '../middleware/session';
@@ -134,7 +135,7 @@ blog.get('/blog', async (c) => {
     const db = c.env.DB;
     const user = c.get('user');
     if (c.env.WIKI_VISIBILITY === 'closed' && !user) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const rbac = c.get('rbac') as RBAC;
     const isAdmin = user && rbac.can(user.role, 'admin:access');
@@ -171,13 +172,13 @@ blog.get('/blog/:id', async (c) => {
     const db = c.env.DB;
     const user = c.get('user');
     if (c.env.WIKI_VISIBILITY === 'closed' && !user) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const rbac = c.get('rbac') as RBAC;
     const isAdmin = user && rbac.can(user.role, 'admin:access');
 
     const idParam = c.req.param('id');
-    if (!/^\d+$/.test(idParam)) return c.json({ error: 'Not Found' }, 404);
+    if (!/^\d+$/.test(idParam)) return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
     const id = Number(idParam);
 
     const post = await db
@@ -185,8 +186,8 @@ blog.get('/blog/:id', async (c) => {
         .bind(id)
         .first<BlogPost>();
 
-    if (!post) return c.json({ error: 'Not Found' }, 404);
-    if (post.deleted_at && !isAdmin) return c.json({ error: 'Not Found' }, 404);
+    if (!post) return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
+    if (post.deleted_at && !isAdmin) return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
 
     // 본문이 참조하는 커스텀 팔레트만 응답에 동봉 (SPA 네비게이션 대응).
     // post.content 도 함께 넘겨 저장 직후 page_links 비동기 갱신 윈도우를 폴백 처리.
@@ -215,19 +216,19 @@ blog.post('/blog', requireAdmin, async (c) => {
     try {
         body = await c.req.json();
     } catch {
-        return c.json({ error: 'Invalid JSON' }, 400);
+        return c.json({ error: ui("m_f60c824125e6408e") }, 400);
     }
 
     if (body.title !== undefined && typeof body.title !== 'string') {
-        return c.json({ error: 'title은 문자열이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_877f03b47ea6c52b") }, 400);
     }
     if (body.content !== undefined && typeof body.content !== 'string') {
-        return c.json({ error: 'content는 문자열이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_8dd4e38868d9e2ba") }, 400);
     }
 
     const title = (typeof body.title === 'string' ? body.title : '').trim();
-    if (!title) return c.json({ error: '제목을 입력해주세요.' }, 400);
-    if (title.length > 500) return c.json({ error: '제목은 500자 이내여야 합니다.' }, 400);
+    if (!title) return c.json({ error: ui("m_c5348ab5543850dd") }, 400);
+    if (title.length > 500) return c.json({ error: ui("m_c9a7bb5bfc3daffd") }, 400);
 
     const rawContent = typeof body.content === 'string' ? body.content : '';
     // 줄 시작 제로폭 문자(U+200B/U+FEFF) 제거(코드펜스 본문 보존) — 위키 저장과 동일 정규화.
@@ -246,7 +247,7 @@ blog.post('/blog', requireAdmin, async (c) => {
         .run();
 
     const newId = result.meta?.last_row_id;
-    if (!newId) return c.json({ error: '저장 실패' }, 500);
+    if (!newId) return c.json({ error: ui("m_ae94ec51b2c23b4f") }, 500);
 
     // 이미지 역링크 갱신
     c.executionCtx.waitUntil(rebuildBlogImageLinks(db, Number(newId), content));
@@ -254,7 +255,7 @@ blog.post('/blog', requireAdmin, async (c) => {
     // admin_log
     c.executionCtx.waitUntil(
         db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-            .bind('blog_create', `블로그 작성: ${title}`, user.id)
+            .bind('blog_create', ui("m_589c6079fe4fd614", [title]), user.id)
             .run()
             .catch((e: any) => console.error('Failed to write admin_log for blog_create:', e))
     );
@@ -272,32 +273,32 @@ blog.put('/blog/:id', requireAdmin, async (c) => {
     const user = c.get('user')!;
 
     const idParam = c.req.param('id');
-    if (!/^\d+$/.test(idParam)) return c.json({ error: 'Not Found' }, 404);
+    if (!/^\d+$/.test(idParam)) return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
     const id = Number(idParam);
 
     const existing = await db
         .prepare('SELECT id, title FROM blog_posts WHERE id = ? AND deleted_at IS NULL')
         .bind(id)
         .first<{ id: number; title: string }>();
-    if (!existing) return c.json({ error: 'Not Found' }, 404);
+    if (!existing) return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
 
     let body: { title?: unknown; content?: unknown };
     try {
         body = await c.req.json();
     } catch {
-        return c.json({ error: 'Invalid JSON' }, 400);
+        return c.json({ error: ui("m_f60c824125e6408e") }, 400);
     }
 
     if (body.title !== undefined && typeof body.title !== 'string') {
-        return c.json({ error: 'title은 문자열이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_877f03b47ea6c52b") }, 400);
     }
     if (body.content !== undefined && typeof body.content !== 'string') {
-        return c.json({ error: 'content는 문자열이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_8dd4e38868d9e2ba") }, 400);
     }
 
     const title = typeof body.title === 'string' ? body.title.trim() : existing.title;
-    if (!title) return c.json({ error: '제목을 입력해주세요.' }, 400);
-    if (title.length > 500) return c.json({ error: '제목은 500자 이내여야 합니다.' }, 400);
+    if (!title) return c.json({ error: ui("m_c5348ab5543850dd") }, 400);
+    if (title.length > 500) return c.json({ error: ui("m_c9a7bb5bfc3daffd") }, 400);
 
     const content = typeof body.content === 'string'
         ? stripLineLeadingZeroWidth(body.content.replace(/\r\n/g, '\n').replace(/\r/g, '\n'))
@@ -322,7 +323,7 @@ blog.put('/blog/:id', requireAdmin, async (c) => {
     // admin_log
     c.executionCtx.waitUntil(
         db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-            .bind('blog_update', `블로그 수정: ${title}`, user.id)
+            .bind('blog_update', ui("m_dfe13dc6a95de8ac", [title]), user.id)
             .run()
             .catch((e: any) => console.error('Failed to write admin_log for blog_update:', e))
     );
@@ -347,18 +348,18 @@ blog.delete('/blog/:id', requireAdmin, async (c) => {
     const hard = c.req.query('hard') === 'true';
 
     const idParam = c.req.param('id');
-    if (!/^\d+$/.test(idParam)) return c.json({ error: 'Not Found' }, 404);
+    if (!/^\d+$/.test(idParam)) return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
     const id = Number(idParam);
 
     const existing = await db
         .prepare('SELECT id, title, deleted_at FROM blog_posts WHERE id = ?')
         .bind(id)
         .first<{ id: number; title: string; deleted_at: number | null }>();
-    if (!existing) return c.json({ error: 'Not Found' }, 404);
+    if (!existing) return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
 
     if (hard) {
         if (!rbac.can(user.role, '*')) {
-            return c.json({ error: '영구 삭제는 최고 관리자만 가능합니다.' }, 403);
+            return c.json({ error: ui("m_43389606b46c0865") }, 403);
         }
 
         // 포스트를 참조하는 모든 데이터를 함께 제거 (orphan 방지).
@@ -379,15 +380,15 @@ blog.delete('/blog/:id', requireAdmin, async (c) => {
 
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('blog_hard_delete', `블로그 영구 삭제: ${existing.title}`, user.id)
+                .bind('blog_hard_delete', ui("m_3d13a68580ebd7d4", [existing.title]), user.id)
                 .run()
                 .catch((e: any) => console.error('Failed to write admin_log for blog_hard_delete:', e))
         );
 
-        return c.json({ message: '블로그 포스트가 영구 삭제되었습니다.', id });
+        return c.json({ message: ui("m_5ae1150363fc7430"), id });
     }
 
-    if (existing.deleted_at) return c.json({ error: '이미 삭제된 포스트입니다.' }, 400);
+    if (existing.deleted_at) return c.json({ error: ui("m_e18dca82ed4affb8") }, 400);
 
     await db.prepare(
         'UPDATE blog_posts SET deleted_at = unixepoch() WHERE id = ?'
@@ -404,7 +405,7 @@ blog.delete('/blog/:id', requireAdmin, async (c) => {
     // admin_log
     c.executionCtx.waitUntil(
         db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-            .bind('blog_delete', `블로그 삭제: ${existing.title}`, user.id)
+            .bind('blog_delete', ui("m_99fd6c450b6f66ea", [existing.title]), user.id)
             .run()
             .catch((e: any) => console.error('Failed to write admin_log for blog_delete:', e))
     );
@@ -446,7 +447,7 @@ blog.post('/blog/announcement/cancel', requireAdmin, async (c) => {
         if (e instanceof AnnouncementMutationError) return c.json({ error: e.message }, 503);
         throw e;
     }
-    writeAdminLog(c, 'announce', `공지 취소${logSuffix}`, c.get('user')!.id);
+    writeAdminLog(c, 'announce', ui("m_122b952526e327eb", [logSuffix]), c.get('user')!.id);
     return c.json({ success: true });
 });
 
@@ -460,21 +461,21 @@ blog.post('/blog/announcement/cancel', requireAdmin, async (c) => {
  */
 blog.post('/blog/:id/announce', requireAdmin, async (c) => {
     const idParam = c.req.param('id');
-    if (!/^\d+$/.test(idParam)) return c.json({ error: 'Not Found' }, 404);
+    if (!/^\d+$/.test(idParam)) return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
     const id = Number(idParam);
 
     const body = await c.req.json<{ title?: unknown; icon?: unknown }>().catch(() => ({} as any));
     if (typeof body.title !== 'string') {
-        return c.json({ error: '제목은 문자열이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_30646c645d38dae7") }, 400);
     }
     const title = body.title.trim();
-    if (!title) return c.json({ error: '제목을 입력하세요.' }, 400);
-    if (title.length > 200) return c.json({ error: '제목은 200자 이하여야 합니다.' }, 400);
+    if (!title) return c.json({ error: ui("m_80a42fdc93a8b3a3") }, 400);
+    if (title.length > 200) return c.json({ error: ui("m_6065324cc601db46") }, 400);
 
     let icon: string | null = null;
     if (typeof body.icon === 'string' && body.icon.trim()) {
         if (!/^(mdi mdi-[a-z0-9-]+|bi bi-[a-z0-9-]+)$/.test(body.icon)) {
-            return c.json({ error: '아이콘 형식이 올바르지 않습니다.' }, 400);
+            return c.json({ error: ui("m_fb575a3d25163990") }, 400);
         }
         icon = body.icon;
     }
@@ -483,7 +484,7 @@ blog.post('/blog/:id/announce', requireAdmin, async (c) => {
         .prepare('SELECT id, title, content, thumbnail, deleted_at FROM blog_posts WHERE id = ?')
         .bind(id)
         .first<{ id: number; title: string; content: string; thumbnail: string | null; deleted_at: number | null }>();
-    if (!post || post.deleted_at) return c.json({ error: 'Not Found' }, 404);
+    if (!post || post.deleted_at) return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
 
     const db = c.env.DB;
     let conflict = false;
@@ -504,11 +505,11 @@ blog.post('/blog/:id/announce', requireAdmin, async (c) => {
         throw e;
     }
     if (conflict) {
-        return c.json({ error: '해당 포스트는 이미 공지로 발행되어 있습니다.' }, 409);
+        return c.json({ error: ui("m_4a56a9fd9cd50e72") }, 409);
     }
 
     const currentUser = c.get('user')!;
-    writeAdminLog(c, 'announce', `공지 발행: blog#${id} "${title}"`, currentUser.id);
+    writeAdminLog(c, 'announce', ui("m_5269372cce84ab59", [id, title]), currentUser.id);
 
     dispatchDiscord(c.env, c.executionCtx, announcementPublish({
         postId: id,

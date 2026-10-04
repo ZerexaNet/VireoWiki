@@ -10,6 +10,7 @@
  * - 사전 체크된(이미 카테고리를 가진) 행의 체크를 해제하면 그 문서에서 카테고리를 제거한다.
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import '../utils/swal';
 
 import { normalizeSlug } from '../utils/slug';
@@ -77,14 +78,14 @@ async function fetchSubpages(prefix: string): Promise<SubpagesResponse | { error
     const res = await fetch(`/api/admin/category-prefix-rules/subpages?prefix=${encodeURIComponent(prefix)}`);
     if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
-        return { error: err.error || `오류 (${res.status})` };
+        return { error: err.error || ui("m_f887c5441fa72e31", [res.status]) };
     }
     return (await res.json()) as SubpagesResponse;
 }
 
 function rulesTableHtml(rules: PrefixRule[]): string {
     if (rules.length === 0) {
-        return '<div class="bulkcat-rules-empty">이 문서와 관련된 자동 규칙이 없습니다.</div>';
+        return ui("m_217f3927ada2d495");
     }
     const rows = rules
         .map(
@@ -100,61 +101,11 @@ function rulesTableHtml(rules: PrefixRule[]): string {
             </tr>`
         )
         .join('');
-    return `
-        <table class="bulkcat-rules-table">
-            <thead>
-                <tr><th>접두사</th><th>자동 부여 카테고리</th><th aria-label="删除"></th></tr>
-            </thead>
-            <tbody>${rows}</tbody>
-        </table>
-    `;
+    return ui("m_da4b78a039d7ecf1", [rows]);
 }
 
 function buildModalHtml(currentSlug: string, rules: PrefixRule[]): string {
-    return `
-        <div class="bulkcat-modal">
-            <section class="bulkcat-section">
-                <header class="bulkcat-section-head">
-                    <h6 class="bulkcat-section-title">대상 하위 문서</h6>
-                    <span class="bulkcat-counter" id="bulkCatCounter">正在加载…</span>
-                </header>
-                <div class="bulkcat-prefix-line">
-                    <span class="bulkcat-prefix-label">prefix</span>
-                    <code class="bulkcat-prefix-code">${escapeHtml(currentSlug)}/**</code>
-                </div>
-                <div class="bulkcat-subpages-panel" id="bulkCatSubpagesPanel">
-                    ${window.uiInlineLoading({ block: true })}
-                </div>
-            </section>
-
-            <section class="bulkcat-section">
-                <header class="bulkcat-section-head">
-                    <h6 class="bulkcat-section-title">
-                        <label for="bulkCatTagInput" class="bulkcat-section-title-label">적용할 카테고리</label>
-                    </h6>
-                </header>
-                <div class="category-tag-container bulkcat-tag-container" id="bulkCatTagContainer">
-                    <input type="text" id="bulkCatTagInput" class="category-tag-input"
-                        placeholder="카테고리 입력 후 엔터나 쉼표" autocomplete="off">
-                </div>
-                <p class="bulkcat-section-hint">
-                    체크된 문서에 카테고리를 <b>추가</b>하고, 사전 체크된 문서의 체크를 해제하면
-                    그 문서에서 카테고리를 <b>제거</b>합니다.
-                </p>
-                <label class="bulkcat-persist-row">
-                    <input class="form-check-input" type="checkbox" id="bulkCatPersist">
-                    <span>자동 규칙으로 저장 <span class="bulkcat-persist-sub">(이후 新页面 생성/이동 시 자동 적용 — 추가 전용)</span></span>
-                </label>
-            </section>
-
-            <section class="bulkcat-section">
-                <header class="bulkcat-section-head">
-                    <h6 class="bulkcat-section-title">관련 자동 규칙</h6>
-                </header>
-                <div class="bulkcat-rules-wrap" id="bulkCatRulesTable">${rulesTableHtml(rules)}</div>
-            </section>
-        </div>
-    `;
+    return ui("m_7f64fa2837b5a993", [escapeHtml(currentSlug), window.uiInlineLoading({ block: true }), rulesTableHtml(rules)]);
 }
 
 async function deleteRule(id: number): Promise<boolean> {
@@ -177,18 +128,18 @@ function hookRuleDeleteButtons(container: HTMLElement, relatedTo: string) {
             if (!Number.isFinite(id)) return;
             const swal = window.Swal;
             const confirm = await swal?.fire({
-                title: '규칙 삭제',
-                text: '이 자동 규칙을 삭제하시겠습니까? (이미 적용된 카테고리는 그대로 유지됩니다)',
+                title: ui("m_7c29f4abd8717ff2"),
+                text: ui("m_93e382fd871dcc17"),
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: '删除',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_2f9daa828907b93f"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
                 confirmButtonColor: '#EF4444',
             });
             if (!confirm?.isConfirmed) return;
             const ok = await deleteRule(id);
             if (!ok) {
-                swal?.fire({ icon: 'error', title: '删除失败', toast: true, position: 'top-end', timer: 2500, showConfirmButton: false });
+                swal?.fire({ icon: 'error', title: ui("m_c228558cf257fc49"), toast: true, position: 'top-end', timer: 2500, showConfirmButton: false });
                 return;
             }
             await refreshRulesTable(container, relatedTo);
@@ -283,8 +234,8 @@ function installBulkCategoryTagUI(opts: { onTagsChanged?: () => void } = {}): {
         if (!BULK_CAT_TAG_RE.test(cleanTag)) {
             window.Swal?.fire({
                 icon: 'warning',
-                title: '不支持特殊字符',
-                text: '특수문자를 제외한 카테고리 이름을 입력해 주세요.',
+                title: ui("m_63d43c7f9b539745"),
+                text: ui("m_19823ed7547a358d"),
                 toast: true,
                 position: 'top-end',
                 timer: 2000,
@@ -477,7 +428,7 @@ function renderSubpagesTable(items: SubpageItem[], prefix: string): { rows: RowS
     if (items.length === 0) {
         return {
             rows: [],
-            panelHtml: window.uiEmptyState({ icon: 'bi bi-inbox', title: '선택 가능한 하위 暂无页面', compact: true }),
+            panelHtml: window.uiEmptyState({ icon: 'bi bi-inbox', title: ui("m_8fad38bd78865ed0"), compact: true }),
         };
     }
     // DOM 생성은 호출자가 수행 — 여기서는 마크업만 만들고 rows 는 별도 객체로 채운다.
@@ -485,7 +436,7 @@ function renderSubpagesTable(items: SubpageItem[], prefix: string): { rows: RowS
     const tbodyRows = items.map((item) => {
         const display = item.slug.startsWith(prefixWithSlash) ? item.slug.slice(prefixWithSlash.length) : item.slug;
         const catsHtml = item.categories.length === 0
-            ? '<span class="bulkcat-row-categories bulkcat-row-categories-empty">카테고리 없음</span>'
+            ? ui("m_132826fa46e65b5f")
             : `<span class="bulkcat-row-categories">${item.categories.map((c) => `<span class="bulkcat-cat-chip">${escapeHtml(c)}</span>`).join('')}</span>`;
         return `
             <tr data-page-id="${item.id}" style="--bulkcat-depth: ${item.depth};">
@@ -501,24 +452,12 @@ function renderSubpagesTable(items: SubpageItem[], prefix: string): { rows: RowS
     }).join('');
 
     const warning = items.length > 500
-        ? `<div class="bulkcat-warning">총 ${items.length}개 — 많을 경우 브라우저가 느려질 수 있습니다.</div>`
+        ? ui("m_22d4a168003098be", [items.length])
         : '';
 
     return {
         rows: [],
-        panelHtml: `
-            ${warning}
-            <div class="bulkcat-master-row">
-                <label class="bulkcat-master-label">
-                    <input type="checkbox" class="form-check-input bulkcat-master-checkbox" id="bulkCatMasterCheckbox">
-                    <span class="bulkcat-master-text">全部</span>
-                </label>
-                <span class="bulkcat-master-count">${items.length}개</span>
-            </div>
-            <table class="bulkcat-subpages-table">
-                <tbody>${tbodyRows}</tbody>
-            </table>
-        `,
+        panelHtml: ui("m_61e2fbeb63b40304", [warning, items.length, tbodyRows]),
     };
 }
 
@@ -549,7 +488,7 @@ function updateCounter(state: BulkCatModalState): void {
     const counter = document.getElementById('bulkCatCounter');
     if (counter) {
         if (state.rows.length === 0) {
-            counter.textContent = '하위 문서 없음';
+            counter.textContent = ui("m_15f2c0b076847d0c");
         } else {
             const checked = state.rows.filter((r) => r.currentlyChecked).length;
             const tags = state.getTags();
@@ -562,7 +501,7 @@ function updateCounter(state: BulkCatModalState): void {
                 // 부분 매칭만 되는 행을 "전체 해제" 등으로 우연히 해제해도 카테고리가 제거되지 않도록 한다.
                 if (!r.currentlyChecked && r.userTouched && pageHasAll) removeCount++;
             }
-            counter.textContent = `체크 ${checked} / ${state.rows.length} (적용 +${addCount} / 제거 -${removeCount})`;
+            counter.textContent = ui("m_88e05cab0c0583b9", [checked, state.rows.length, addCount, removeCount]);
         }
     }
     updateMasterCheckbox(state);
@@ -587,7 +526,7 @@ async function loadAndRenderTree(state: BulkCatModalState): Promise<void> {
     if ('error' in res) {
         panel.innerHTML = `<div class="bulkcat-warning">${escapeHtml(res.error)}</div>`;
         const counter = document.getElementById('bulkCatCounter');
-        if (counter) counter.textContent = '불러오기 실패';
+        if (counter) counter.textContent = ui("m_ebaf4022cf1aed6d");
         return;
     }
 
@@ -650,8 +589,8 @@ async function openBulkCategoryModal() {
     if (!currentSlug) {
         await swal.fire({
             icon: 'warning',
-            title: '대상 문서 없음',
-            text: '현재 편집 중인 문서의 제목을 확인할 수 없습니다.',
+            title: ui("m_b64a912c7cdc706f"),
+            text: ui("m_0f8085b7bde2b753"),
         });
         return;
     }
@@ -671,12 +610,12 @@ async function openBulkCategoryModal() {
     };
 
     const result = await swal.fire({
-        title: '하위 문서 카테고리 관리',
+        title: ui("m_92e1fdf8beae6d63"),
         html: buildModalHtml(currentSlug, rules),
         width: 760,
         showCancelButton: true,
-        confirmButtonText: '실행',
-        cancelButtonText: '关闭',
+        confirmButtonText: ui("m_ac2a58826d92e6ae"),
+        cancelButtonText: ui("m_3fd47edce45b3603"),
         focusConfirm: false,
         didOpen: () => {
             const tableEl = document.getElementById('bulkCatRulesTable');
@@ -710,15 +649,15 @@ async function openBulkCategoryModal() {
 
             const willApply = addIds.length > 0 || removeIds.length > 0;
             if (willApply && tags.length === 0) {
-                swal.showValidationMessage('카테고리를 1개 이상 입력해주세요.');
+                swal.showValidationMessage(ui("m_b4b1f2a564d854b5"));
                 return false;
             }
             if (!willApply && !persist) {
-                swal.showValidationMessage('적용할 문서를 선택하거나 "자동 규칙으로 저장"을 선택해주세요.');
+                swal.showValidationMessage(ui("m_343252396d4d401c"));
                 return false;
             }
             if (persist && tags.length === 0) {
-                swal.showValidationMessage('자동 규칙을 저장하려면 카테고리를 입력해주세요.');
+                swal.showValidationMessage(ui("m_ca3e5733b920c6d7"));
                 return false;
             }
 
@@ -752,7 +691,7 @@ async function openBulkCategoryModal() {
             });
             if (!res.ok) {
                 const err = (await res.json().catch(() => ({}))) as { error?: string };
-                await swal.fire({ icon: 'error', title: '실패', text: err.error || `오류 (${res.status})` });
+                await swal.fire({ icon: 'error', title: ui("m_2743911f83e1da69"), text: err.error || ui("m_f887c5441fa72e31", [res.status]) });
                 return;
             }
             const data = (await res.json()) as {
@@ -763,8 +702,8 @@ async function openBulkCategoryModal() {
             };
             await swal.fire({
                 icon: 'success',
-                title: '적용 완료',
-                html: `대상 ${escapeHtml(String(data.scanned))}개 중 추가 <b>${escapeHtml(String(data.added))}개</b>, 제거 <b>${escapeHtml(String(data.removed))}개</b> 적용되었습니다.${data.ruleSaved ? '<br>자동 규칙도 함께 已保存。' : ''}`,
+                title: ui("m_4f2ed8c604fc2f30"),
+                html: ui("m_4f42e9c473808f1e", [escapeHtml(String(data.scanned)), escapeHtml(String(data.added)), escapeHtml(String(data.removed)), data.ruleSaved ? ui("m_060465fa16bfecec") : '']),
             });
         } else if (persist) {
             const res = await fetch('/api/admin/category-prefix-rules', {
@@ -774,18 +713,18 @@ async function openBulkCategoryModal() {
             });
             if (!res.ok) {
                 const err = (await res.json().catch(() => ({}))) as { error?: string };
-                await swal.fire({ icon: 'error', title: '실패', text: err.error || `오류 (${res.status})` });
+                await swal.fire({ icon: 'error', title: ui("m_2743911f83e1da69"), text: err.error || ui("m_f887c5441fa72e31", [res.status]) });
                 return;
             }
             await swal.fire({
                 icon: 'success',
-                title: '자동 규칙 저장',
-                text: '이후 이 접두사로 새로 만들어지거나 이동되는 문서에 자동으로 카테고리가 적용됩니다.',
+                title: ui("m_95d3fea17c6818a9"),
+                text: ui("m_f3b31700b077585d"),
             });
         }
     } catch (e) {
         console.error('bulk-category apply failed', e);
-        await swal.fire({ icon: 'error', title: '네트워크 오류', text: String(e) });
+        await swal.fire({ icon: 'error', title: ui("m_0dd9df5c73a87e5c"), text: String(e) });
     }
 }
 

@@ -25,6 +25,7 @@
 //   POST /api/pending-edits/:id/approve — 원 요청자 author 로 새 리비전 생성(+content 시 2-리비전)
 //   POST /api/pending-edits/:id/reject  — 요청 + 관련 알림 폐기(+reason 알림)
 
+import { ui } from '../i18n/server';
 import { Hono, type Context } from 'hono';
 import type { Env, User } from '../types';
 import { requireAuth } from '../middleware/session';
@@ -84,7 +85,7 @@ function unixToIso(sec: number | null): string | null {
 // 완화됐으므로(요청 사양), 승인 경로에서만 다시 255자로 되돌리지 않는다. 초과 시 작성자 요약만
 // 말줄임표(…)로 잘라 한도를 맞추되, 승인 접미는 항상 보존한다.
 function buildApprovalSuffix(authorSummary: string | null, reviewer: { name: string; id: number }): string {
-    const suffix = ` (요청 승인 : [${reviewer.name}|${reviewer.id}])`;
+    const suffix = ui("m_5bb43e8304b378be", [reviewer.name, reviewer.id]);
     const base = (authorSummary ?? '').trim();
     if (!base) return suffix.trimStart();
     const combined = `${base}${suffix}`;
@@ -179,11 +180,11 @@ async function reviewerAclFailResponse(
     return {
         status: 403,
         body: {
-            error: 'forbidden',
+            error: "forbidden",
             reason: isAdminOnlyFail ? 'admin_only' : 'edit_acl',
             message: isAdminOnlyFail
-                ? '이 문서는 관리자만 검토할 수 있습니다.'
-                : '이 문서를 검토할 권한이 부족합니다.',
+                ? ui("m_5eebf5ac5d01b73b")
+                : ui("m_d69a86f59913aeab"),
             edit_acl: acl,
             min_age_days: minAge,
         },
@@ -472,16 +473,16 @@ pendingEditsRoutes.get('/pending-edits/:id', requireAuth, async (c) => {
     const user = c.get('user')!;
     const rbac = c.get('rbac') as RBAC;
     // 기능 비활성(배포 kill switch) 시 잔여 row 도 다루지 못하게 차단 — list/count 와 동일 정책.
-    if (!isEditRequestEnabled(c.env)) return c.json({ error: 'not found' }, 404);
+    if (!isEditRequestEnabled(c.env)) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
     const cap = await computeReviewerCapability(c.env.DB, user, rbac);
     const id = Number(c.req.param('id'));
-    if (!Number.isFinite(id) || id <= 0) return c.json({ error: 'invalid id' }, 400);
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: ui("m_b5121d5901351eee") }, 400);
     const pe = await loadReviewablePendingEdit(c.env.DB, user, id, cap);
-    if (!pe) return c.json({ error: 'not found' }, 404);
+    if (!pe) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
     // 문서 ACL 미통과 검토자에게는 본문(proposed/current/base) 노출을 막는다 — 승인/반려 게이트와 동일.
     // 존재 누설을 피하기 위해 403 대신 404 로 위장(loadReviewablePendingEdit 정책과 일관).
     if (!(await reviewerCanActOnPending(c, user, cap, pe))) {
-        return c.json({ error: 'not found' }, 404);
+        return c.json({ error: ui("m_907ba78b4545338d") }, 404);
     }
 
     const page = await c.env.DB.prepare(
@@ -615,21 +616,21 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
     const user = c.get('user')!; // 검토자
     const rbac = c.get('rbac') as RBAC;
     // 기능 비활성(배포 kill switch) 시 잔여 row 의 승인·게시도 차단.
-    if (!isEditRequestEnabled(c.env)) return c.json({ error: 'not found' }, 404);
+    if (!isEditRequestEnabled(c.env)) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
     if (!rbac.can(user.role, 'wiki:edit')) {
-        return c.json({ error: 'forbidden', message: 'wiki:edit 권한이 필요합니다.' }, 403);
+        return c.json({ error: "forbidden", message: ui("m_1ca486cacad6b85c") }, 403);
     }
     const cap = await computeReviewerCapability(c.env.DB, user, rbac);
     const isAdmin = cap.isAdmin;
     const id = Number(c.req.param('id'));
-    if (!Number.isFinite(id) || id <= 0) return c.json({ error: 'invalid id' }, 400);
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: ui("m_b5121d5901351eee") }, 400);
     const pe = await loadReviewablePendingEdit(c.env.DB, user, id, cap);
-    if (!pe) return c.json({ error: 'not found' }, 404);
+    if (!pe) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
 
     // 원 편집자 User 로드 — applyExistingPageUpdate/applyNewPageInsert 의 author 인자로 전달.
     const author = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
         .bind(pe.author_id).first<User>();
-    if (!author) return c.json({ error: 'author_missing', message: '원 편집자 계정을 찾을 수 없습니다.' }, 409);
+    if (!author) return c.json({ error: "author_missing", message: ui("m_bffb6dc50a4f0cc5") }, 409);
 
     // 검토자가 모달에서 요약을 수정해 보낸 경우 그 값을 사용하고, 키가 없으면 제출 시점 요약(pe.summary)으로 폴백.
     // (mcp-submissions approve 와 동일 정책: 명시적 빈 문자열은 빈 요약 의사로 보존.)
@@ -690,7 +691,7 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
         const page = await c.env.DB.prepare(
             'SELECT id, version, content, category, last_revision_id, title, edit_acl, redirect_to, is_private FROM pages WHERE slug = ? AND deleted_at IS NULL'
         ).bind(slug).first<{ id: number; version: number; content: string; category: string | null; last_revision_id: number | null; title: string | null; edit_acl: string | null; redirect_to: string | null; is_private: number }>();
-        if (!page) return c.json({ error: 'conflict', reason: 'page_missing' }, 409);
+        if (!page) return c.json({ error: "conflict", reason: "page_missing" }, 409);
         // 충돌 사전체크:
         //  - 단일 승인(no content): 제출 시점 base 와 현재가 동일해야 한다(pe.base_version).
         //  - 에디터 승인(content): 승인자가 **로드/머지한 버전**(expected_version)과 현재가 동일해야 한다.
@@ -704,8 +705,8 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
             : (page.last_revision_id !== pe.base_revision_id || page.version !== pe.base_version);
         if (conflictDetected) {
             return c.json({
-                error: 'conflict',
-                reason: 'concurrent_modification',
+                error: "conflict",
+                reason: "concurrent_modification",
                 base_revision_id: pe.base_revision_id,
                 base_version: pe.base_version,
                 expected_version: expectedVersion,
@@ -726,11 +727,11 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
             const titleConflict = await findConflictingPage(c.env.DB, finalTitleForCheck, page.id);
             if (titleConflict) {
                 return c.json({
-                    error: 'conflict',
+                    error: "conflict",
                     reason: titleConflict.matchedColumn === 'slug' ? 'title_collides_with_slug' : 'title_taken',
                     message: titleConflict.matchedColumn === 'slug'
-                        ? `'${finalTitleForCheck}' 는 이미 다른 문서의 제목입니다.`
-                        : `'${finalTitleForCheck}' 는 이미 다른 문서의 대체 제목입니다.`,
+                        ? ui("m_f504b0f8c23b04cd", [finalTitleForCheck])
+                        : ui("m_11d121b9c8d723da", [finalTitleForCheck]),
                 }, 409);
             }
         }
@@ -795,7 +796,7 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
                 // 단일 리비전 — 기존 동작.
                 await cleanupPendingEdit(c, pe, user, 'pending_edit_approve',
                     `[pending-edit] approved #${pe.id}: ${slug} (v${rev1.new_version}) author=${pe.author_id} reviewer=${user.id}`);
-                notifyApproved(`"${slug}" 편집 요청이 승인되어 반영되었습니다.`);
+                notifyApproved(ui("m_9ac80908b87081cb", [slug]));
                 return c.json({
                     approved: true,
                     slug,
@@ -849,7 +850,7 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
                                 slug,
                                 content: preApproval.content,
                                 page: { id: page.id, version: rev1.new_version, category: preApproval.category, title: preApproval.title },
-                                summary: `편집 요청 승인 롤백: 추가 편집 반영 실패 (검토:${user.name}#${user.id})`,
+                                summary: ui("m_bda36aa7fb0cee8c", [user.name, user.id]),
                                 summaryRaw: true,
                                 category: preApproval.category,
                                 redirectTo: preApproval.redirectTo,
@@ -869,16 +870,16 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
                     }
                     // 요청은 cleanup 하지 않고 유지 → 검토자가 최신 본문 기준으로 다시 머지/승인할 수 있다.
                     return c.json({
-                        error: 'conflict',
-                        reason: 'rev2_failed',
+                        error: "conflict",
+                        reason: "rev2_failed",
                         rolled_back: rolledBack,
                         message: rolledBack
-                            ? '추가 편집 반영에 실패해 문서를 승인 직전 상태로 되돌렸습니다. 다시 시도해 주세요.'
-                            : '그 사이 다른 편집이 반영되어 승인을 완료하지 못했습니다. 최신 본문 기준으로 다시 시도해 주세요.',
+                            ? ui("m_f43e9df8183c842d")
+                            : ui("m_89aacb50123361b8"),
                     }, 409);
                 }
                 // 비충돌(clean) 머지: rev1 = 요청 본문(base==current, 유실 없음) → 부분 승인으로 정리(요청 stuck 방지).
-                const reasonNote = (e2?.code === 'CONCURRENT_MODIFICATION') ? '동시 수정 충돌' : '오류';
+                const reasonNote = (e2?.code === 'CONCURRENT_MODIFICATION') ? ui("m_c883a0c289da7f60") : ui("m_b49f20d86148ddfd");
                 await cleanupPendingEdit(c, pe, user, 'pending_edit_approve',
                     `[pending-edit] approved(partial) #${pe.id}: ${slug} rev1=${rev1.revision_id} rev2_failed=${e2?.code || e2?.message || 'unknown'} author=${pe.author_id} reviewer=${user.id}`);
                 // rev1 은 부분 승인으로 **최종 공개 리비전**이 된다(rev2 미반영). 2-리비전 경로에서
@@ -895,7 +896,7 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
                     summary: requesterSummary,
                     rbac,
                 });
-                notifyApproved(`"${slug}" 편집 요청이 승인되었습니다. (승인자 추가 편집은 ${reasonNote}로 미반영)`);
+                notifyApproved(ui("m_17622610c3abcee6", [slug, reasonNote]));
                 return c.json({
                     approved: true,
                     partial: true,
@@ -907,7 +908,7 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
             }
             await cleanupPendingEdit(c, pe, user, 'pending_edit_approve',
                 `[pending-edit] approved(2-rev) #${pe.id}: ${slug} rev1=${rev1.revision_id}(author=${pe.author_id}) rev2=${rev2.revision_id}(reviewer=${user.id})`);
-            notifyApproved(`"${slug}" 편집 요청이 승인·반영되었습니다. (승인자 추가 편집 포함)`);
+            notifyApproved(ui("m_260c5c8b3587be3b", [slug]));
             return c.json({
                 approved: true,
                 two_revisions: true,
@@ -921,33 +922,33 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
         } catch (e: any) {
             if (e?.code === 'CONCURRENT_MODIFICATION') {
                 return c.json({
-                    error: 'conflict',
-                    reason: 'concurrent_modification',
+                    error: "conflict",
+                    reason: "concurrent_modification",
                     base_revision_id: pe.base_revision_id,
                     base_version: pe.base_version,
                 }, 409);
             }
-            return c.json({ error: 'apply_failed', message: e?.message || String(e) }, 500);
+            return c.json({ error: "apply_failed", message: e?.message || String(e) }, 500);
         }
     }
 
     if (pe.action === 'create') {
         const livePage = await c.env.DB.prepare('SELECT id FROM pages WHERE slug = ? AND deleted_at IS NULL').bind(slug).first();
-        if (livePage) return c.json({ error: 'conflict', reason: 'slug_taken' }, 409);
+        if (livePage) return c.json({ error: "conflict", reason: "slug_taken" }, 409);
         const deletedConflict = await c.env.DB.prepare('SELECT id FROM pages WHERE slug = ? AND deleted_at IS NOT NULL').bind(slug).first();
         if (deletedConflict) {
             return c.json({
-                error: 'conflict',
-                reason: 'slug_soft_deleted',
-                message: '동일 제목의 소프트 삭제된 문서가 존재합니다. 관리자가 먼저 복원/영구삭제 처리해야 합니다.',
+                error: "conflict",
+                reason: "slug_soft_deleted",
+                message: ui("m_ae96a9eefa60c215"),
             }, 409);
         }
         const slugTitleConflict = await findConflictingPage(c.env.DB, slug, null);
         if (slugTitleConflict && slugTitleConflict.matchedColumn === 'title') {
             return c.json({
-                error: 'conflict',
-                reason: 'slug_collides_with_title',
-                message: `'${slug}' 는 다른 문서의 대체 제목과 충돌해 제목으로 사용할 수 없습니다.`,
+                error: "conflict",
+                reason: "slug_collides_with_title",
+                message: ui("m_725e09fd82e3d485", [slug]),
             }, 409);
         }
         // 충돌 검사는 **최종 반영될** 대체 제목 기준(2-리비전이면 rev2 승인자 제목, 단일이면 요청 제목).
@@ -958,11 +959,11 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
             const titleConflict = await findConflictingPage(c.env.DB, createFinalTitle, null);
             if (titleConflict) {
                 return c.json({
-                    error: 'conflict',
+                    error: "conflict",
                     reason: titleConflict.matchedColumn === 'slug' ? 'title_collides_with_slug' : 'title_taken',
                     message: titleConflict.matchedColumn === 'slug'
-                        ? `'${createFinalTitle}' 는 이미 다른 문서의 제목입니다.`
-                        : `'${createFinalTitle}' 는 이미 다른 문서의 대체 제목입니다.`,
+                        ? ui("m_f504b0f8c23b04cd", [createFinalTitle])
+                        : ui("m_11d121b9c8d723da", [createFinalTitle]),
                 }, 409);
             }
         }
@@ -1014,7 +1015,7 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
             if (!hasApproverContent) {
                 await cleanupPendingEdit(c, pe, user, 'pending_edit_approve',
                     `[pending-edit] approved #${pe.id} (create): ${slug} (v1) author=${pe.author_id} reviewer=${user.id}`);
-                notifyApproved(`"${slug}" 새 문서 편집 요청이 승인되어 게시되었습니다.`);
+                notifyApproved(ui("m_12f55b01aee28df3", [slug]));
                 return c.json({
                     approved: true,
                     slug,
@@ -1058,10 +1059,10 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
             } catch (e2: any) {
                 // rev1(신규 문서)은 이미 생성·공개됨. 사유 무관하게 요청을 정리하고 부분 승인으로 알린다
                 // (정리하지 않으면 slug 가 점거된 채 재시도가 slug_taken 으로 막혀 요청이 stuck 된다).
-                const reasonNote = (e2?.code === 'CONCURRENT_MODIFICATION') ? '동시 수정 충돌' : '오류';
+                const reasonNote = (e2?.code === 'CONCURRENT_MODIFICATION') ? ui("m_c883a0c289da7f60") : ui("m_b49f20d86148ddfd");
                 await cleanupPendingEdit(c, pe, user, 'pending_edit_approve',
                     `[pending-edit] approved(partial create) #${pe.id}: ${slug} rev1=${rev1.revision_id} rev2_failed=${e2?.code || e2?.message || 'unknown'} author=${pe.author_id} reviewer=${user.id}`);
-                notifyApproved(`"${slug}" 새 문서 편집 요청이 승인되어 게시되었습니다. (승인자 추가 편집은 ${reasonNote}로 미반영)`);
+                notifyApproved(ui("m_3d8c34037f5efbb7", [slug, reasonNote]));
                 return c.json({
                     approved: true,
                     partial: true,
@@ -1074,7 +1075,7 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
             }
             await cleanupPendingEdit(c, pe, user, 'pending_edit_approve',
                 `[pending-edit] approved(2-rev create) #${pe.id}: ${slug} rev1=${rev1.revision_id}(author=${pe.author_id}) rev2=${rev2.revision_id}(reviewer=${user.id})`);
-            notifyApproved(`"${slug}" 새 문서 편집 요청이 승인·게시되었습니다. (승인자 추가 편집 포함)`);
+            notifyApproved(ui("m_8dc152a57b4f61de", [slug]));
             return c.json({
                 approved: true,
                 two_revisions: true,
@@ -1087,13 +1088,13 @@ pendingEditsRoutes.post('/pending-edits/:id/approve', requireAuth, async (c) => 
                 created: true,
             });
         } catch (e: any) {
-            if (e?.code === 'SLUG_TAKEN') return c.json({ error: 'conflict', reason: 'slug_taken' }, 409);
-            if (e?.code === 'TITLE_TAKEN') return c.json({ error: 'conflict', reason: 'title_taken' }, 409);
-            return c.json({ error: 'apply_failed', message: e?.message || String(e) }, 500);
+            if (e?.code === 'SLUG_TAKEN') return c.json({ error: "conflict", reason: "slug_taken" }, 409);
+            if (e?.code === 'TITLE_TAKEN') return c.json({ error: "conflict", reason: "title_taken" }, 409);
+            return c.json({ error: "apply_failed", message: e?.message || String(e) }, 500);
         }
     }
 
-    return c.json({ error: 'unknown_action', action: pe.action }, 400);
+    return c.json({ error: "unknown_action", action: pe.action }, 400);
 });
 
 /**
@@ -1104,15 +1105,15 @@ pendingEditsRoutes.post('/pending-edits/:id/reject', requireAuth, async (c) => {
     const user = c.get('user')!;
     const rbac = c.get('rbac') as RBAC;
     // 기능 비활성(배포 kill switch) 시 잔여 row 의 반려 처리도 차단 — 토글 off 면 워크플로우 전체 정지.
-    if (!isEditRequestEnabled(c.env)) return c.json({ error: 'not found' }, 404);
+    if (!isEditRequestEnabled(c.env)) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
     if (!rbac.can(user.role, 'wiki:edit')) {
-        return c.json({ error: 'forbidden', message: 'wiki:edit 권한이 필요합니다.' }, 403);
+        return c.json({ error: "forbidden", message: ui("m_1ca486cacad6b85c") }, 403);
     }
     const cap = await computeReviewerCapability(c.env.DB, user, rbac);
     const id = Number(c.req.param('id'));
-    if (!Number.isFinite(id) || id <= 0) return c.json({ error: 'invalid id' }, 400);
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: ui("m_b5121d5901351eee") }, 400);
     const pe = await loadReviewablePendingEdit(c.env.DB, user, id, cap);
-    if (!pe) return c.json({ error: 'not found' }, 404);
+    if (!pe) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
 
     // 승인과 동일한 edit_acl 게이트를 반려에도 적용 — admin_only/aged 등으로 보호된 문서의 보류본을,
     // 그 문서를 편집할 수 없는 검토자가 임의로 폐기하지 못하게 한다(승인 경로와 권한 판정 일치).
@@ -1134,7 +1135,7 @@ pendingEditsRoutes.post('/pending-edits/:id/reject', requireAuth, async (c) => {
     c.executionCtx.waitUntil(createNotification(c.env, c.executionCtx, {
         userId: pe.author_id,
         type: 'pending_edit_result',
-        content: `"${pe.slug}" 편집 요청이 반려되었습니다.${reason}`,
+        content: ui("m_e8c03a15d11d8a05", [pe.slug, reason]),
         link: `/w/${encodeURIComponent(pe.slug)}`,
     }).catch(() => {}));
     return c.json({ rejected: true, id: pe.id, slug: pe.slug });

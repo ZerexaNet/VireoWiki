@@ -22,6 +22,7 @@
 //             cursor, total, processed, startedAt, updatedAt, finishedAt,
 //             error, result }
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 interface BulkDoc {
   id: number;
   slug: string;
@@ -57,8 +58,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 최고 관리자 전용 — 서버 라우트도 강제하지만 UI 차원에서도 차단.
     if (window.currentUser.role !== "super_admin") {
       Swal.fire(
-        "접근 제한",
-        "超级管理员만 접근할 수 있습니다.",
+        ui("m_d6f5e3691cc6008b"),
+        ui("m_81c940c801e0ec7f"),
         "error",
       ).then(() => {
         window.location.href = "/";
@@ -113,7 +114,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           const reindexStatusEl = document.getElementById("reindexStatus");
           if (reindexStatusEl) {
             reindexStatusEl.innerHTML +=
-              ' <span class="text-muted small">(페이지 이탈 후에도 서버에서 계속 실행됩니다)</span>';
+              ui("m_0e196333719d862c");
           }
           pollJobUntilDone(renderReindexState).then((finalState) => {
             renderReindexState(finalState);
@@ -123,12 +124,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           const result = document.getElementById("bulkActionResult");
           if (result) {
             result.innerHTML =
-              `<span class="text-muted">삭제 작업 진행 중... (${state.processed}/${state.total > 0 ? state.total : "?"})` +
-              ' <span class="text-muted small">(페이지 이탈 후에도 서버에서 계속 실행됩니다)</span></span>';
+              ui("m_b4adc72395479a89", [state.processed, state.total > 0 ? state.total : "?"]) +
+              ui("m_a0ef6c9fa2bd275d");
           }
           pollJobUntilDone((s) => {
             if (result) {
-              result.innerHTML = `<span class="text-muted">삭제 중... (${s.processed}/${s.total > 0 ? s.total : "?"})</span>`;
+              result.innerHTML = ui("m_faf001b7100460ec", [s.processed, s.total > 0 ? s.total : "?"]);
             }
           }).then((finalState) => {
             setJobButtonsDisabled(false);
@@ -139,12 +140,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           const result = document.getElementById("bulkMoveResult");
           if (result) {
             result.innerHTML =
-              `<span class="text-muted">이동 작업 진행 중... (${state.processed}/${state.total > 0 ? state.total : "?"})` +
-              ' <span class="text-muted small">(페이지 이탈 후에도 서버에서 계속 실행됩니다)</span></span>';
+              ui("m_e591663c20e8b8b7", [state.processed, state.total > 0 ? state.total : "?"]) +
+              ui("m_a0ef6c9fa2bd275d");
           }
           pollJobUntilDone((s) => {
             if (result) {
-              result.innerHTML = `<span class="text-muted">이동 중... (${s.processed}/${s.total > 0 ? s.total : "?"})</span>`;
+              result.innerHTML = ui("m_2d3c90871a22aed2", [s.processed, s.total > 0 ? s.total : "?"]);
             }
           }).then((finalState) => {
             setJobButtonsDisabled(false);
@@ -156,7 +157,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           const ragStatusEl = document.getElementById("ragBackfillStatus");
           if (ragStatusEl) {
             ragStatusEl.innerHTML +=
-              ' <span class="text-muted small">(페이지 이탈 후에도 서버에서 계속 실행됩니다)</span>';
+              ui("m_0e196333719d862c");
           }
           pollJobUntilDone(renderRagBackfillState).then((finalState) => {
             renderRagBackfillState(finalState);
@@ -188,14 +189,14 @@ async function submitJob(body: object): Promise<JobState | null> {
   if (res.status === 409) {
     // 이미 실행 중인 잡 있음 — 사용자에게 안내
     Swal.fire({
-      title: "잡 이미 실행 중",
-      html: "현재 다른 대량 작업이 실행 중입니다.<br>완료되거나 중지될 때까지 새 작업을 시작할 수 없습니다.",
+      title: ui("m_222e45adc7dbf99f"),
+      html: ui("m_7574c10174114a52"),
       icon: "warning",
     });
     return null;
   }
   if (!res.ok) {
-    throw new Error(data.error || "잡 제출 실패");
+    throw new Error(data.error || ui("m_17347648a5c751ee"));
   }
   return data.state as JobState;
 }
@@ -219,7 +220,7 @@ async function pollJobUntilDone(onTick: (state: JobState) => void): Promise<JobS
       }
       try {
         const res = await fetch("/api/admin/bulk-manage/jobs/status");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(ui("m_5a956bebe2ca288c", [res.status]));
         const state: JobState = await res.json();
         lastKnown = state;
         failCount = 0;
@@ -233,8 +234,8 @@ async function pollJobUntilDone(onTick: (state: JobState) => void): Promise<JobS
         failCount++;
         if (failCount >= 5) {
           Swal.fire({
-            title: "상태 조회 실패",
-            text: "잡 상태를 조회할 수 없습니다. 네트워크를 확인하고 페이지를 새로고침해 주세요.",
+            title: ui("m_2f7c5b2dedf710e2"),
+            text: ui("m_05ad218b2ac1779d"),
             icon: "error",
           });
           resolve(lastKnown);
@@ -261,11 +262,11 @@ async function stopJob(): Promise<JobState | null> {
       body: JSON.stringify({}),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "중지 실패");
+    if (!res.ok) throw new Error(data.error || ui("m_79c234a547f281f2"));
     stopPolling();
     return data.state as JobState;
   } catch (err: any) {
-    Swal.fire("중지 실패", err.message || "알 수 없는 오류", "error");
+    Swal.fire(ui("m_79c234a547f281f2"), err.message || ui("m_6a72b554a7c28caf"), "error");
     return null;
   }
 }
@@ -297,26 +298,26 @@ function setJobButtonsDisabled(disabled: boolean) {
 async function runBulkDelete(mode: "soft" | "hard") {
   const ids = getSelectedIds();
   if (ids.length === 0) {
-    Swal.fire("선택 없음", "삭제할 문서를 선택하세요.", "info");
+    Swal.fire(ui("m_da9295df13296758"), ui("m_154745f0cb57b53e"), "info");
     return;
   }
 
   const hard = mode === "hard";
   const confirmRes = await Swal.fire({
-    title: hard ? "永久删除 확인" : "删除页面 확인",
+    title: hard ? ui("m_8ad4371e3ea4adf5") : ui("m_65d6068e556b1cac"),
     html: hard
-      ? `선택한 <strong>${ids.length}개</strong> 문서를 <strong class="text-danger">永久删除</strong>합니다.<br>토론·리비전·주시 설정까지 모두 제거되며 <strong>되돌릴 수 없습니다.</strong>`
-      : `선택한 <strong>${ids.length}개</strong> 문서를 삭제합니다. (나중에 복원할 수 있습니다.)`,
+      ? ui("m_7544d023fa852dbd", [ids.length])
+      : ui("m_e92dbc8971ca237a", [ids.length]),
     icon: "warning",
     showCancelButton: true,
-    confirmButtonText: hard ? "永久删除" : "删除",
-    cancelButtonText: "取消",
+    confirmButtonText: hard ? ui("m_4e01a4d26a03423b") : ui("m_2f9daa828907b93f"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c"),
     confirmButtonColor: hard ? "#dc3545" : undefined,
   });
   if (!confirmRes.isConfirmed) return;
 
   const result = document.getElementById("bulkActionResult");
-  if (result) result.innerHTML = '<span class="text-muted">잡 제출 중...</span>';
+  if (result) result.innerHTML = ui("m_73c02260be022109");
 
   setJobButtonsDisabled(true);
 
@@ -329,12 +330,12 @@ async function runBulkDelete(mode: "soft" | "hard") {
     }
 
     if (result) {
-      result.innerHTML = `<span class="text-muted">삭제 중... (0/${ids.length})</span>`;
+      result.innerHTML = ui("m_27ab0c6f71896fa2", [ids.length]);
     }
 
     const finalState = await pollJobUntilDone((state) => {
       if (result) {
-        result.innerHTML = `<span class="text-muted">삭제 중... (${state.processed}/${state.total > 0 ? state.total : ids.length})</span>`;
+        result.innerHTML = ui("m_faf001b7100460ec", [state.processed, state.total > 0 ? state.total : ids.length]);
       }
     });
 
@@ -342,7 +343,7 @@ async function runBulkDelete(mode: "soft" | "hard") {
     await searchDocs();
   } catch (err: any) {
     if (result) {
-      result.innerHTML = `<div class="alert alert-danger py-2 mb-0">오류: ${err.message || err}</div>`;
+      result.innerHTML = ui("m_e4f69e236d51ed95", [err.message || err]);
     }
   } finally {
     setJobButtonsDisabled(false);
@@ -354,13 +355,13 @@ function renderDeleteResult(state: JobState, container: HTMLElement | null) {
   const r = state.result || {};
   const hard = r.mode === "hard";
   if (state.status === "error") {
-    container.innerHTML = `<div class="alert alert-danger py-2 mb-0">잡 오류: ${window.escapeHtml(state.error || "알 수 없는 오류")}</div>`;
+    container.innerHTML = ui("m_891598d221db1571", [window.escapeHtml(state.error || ui("m_6a72b554a7c28caf"))]);
     return;
   }
   const deleted = r.deleted ?? 0;
   const failed = r.failed ?? 0;
   container.innerHTML =
-    `<div class="alert alert-success py-2 mb-0">${deleted}개 문서가 ${hard ? "영구 " : ""}삭제되었습니다.${failed ? ` (${failed}개 건너뜀)` : ""}</div>`;
+    ui("m_83dc9a22a33d0895", [deleted, hard ? ui("m_a5e69871d2934498") : "", failed ? ui("m_e3a2ddb8e52349a1", [failed]) : ""]);
 }
 
 function bulkSoftDelete() {
@@ -384,11 +385,11 @@ function readMoveInputs(): { find: string; replace: string; updateBacklinks: boo
   const replace = (document.getElementById("bulkMoveReplace") as HTMLInputElement)?.value || "";
   const updateBacklinks = (document.getElementById("bulkMoveBacklinks") as HTMLInputElement)?.checked;
   if (!find) {
-    Swal.fire("입력 필요", "'찾을 내용'을 입력하세요.", "info");
+    Swal.fire(ui("m_547c96cbe08c4ad6"), ui("m_61560166d5d4eabd"), "info");
     return null;
   }
   if (find === replace) {
-    Swal.fire("확인", "'찾을 내용'과 '바꿀 내용'이 동일합니다.", "info");
+    Swal.fire(ui("m_1aacb54c49924296"), ui("m_327563a465cf538b"), "info");
     return null;
   }
   return { find, replace, updateBacklinks: !!updateBacklinks };
@@ -400,7 +401,7 @@ function bulkMovePreview() {
   const preview = document.getElementById("bulkMovePreview");
   if (!preview) return;
   if (docs.length === 0) {
-    Swal.fire("선택 없음", "이동할 문서를 선택하세요.", "info");
+    Swal.fire(ui("m_da9295df13296758"), ui("m_bd77cc3b242f9d7b"), "info");
     return;
   }
   const inputs = readMoveInputs();
@@ -415,21 +416,17 @@ function bulkMovePreview() {
     if (isChange) changed++;
     const arrow = isChange
       ? `<i class="mdi mdi-arrow-right text-muted mx-1"></i><span class="bulk-move-newslug">${esc(newSlug)}</span>`
-      : '<span class="text-muted ms-2">(변경 없음)</span>';
+      : ui("m_5e14d1c058efae1e");
     return `<li class="${isChange ? "" : "text-muted"}"><code>${esc(d.slug)}</code>${arrow}</li>`;
   }).join("");
 
-  preview.innerHTML = `
-    <div class="bulk-move-preview-box">
-      <div class="small mb-2">미리보기 — 변경 대상 <strong>${changed}</strong>개 / 선택 ${docs.length}개</div>
-      <ul class="bulk-move-preview-list">${rows}</ul>
-    </div>`;
+  preview.innerHTML = ui("m_0bdc92c1b6798d08", [changed, docs.length, rows]);
 }
 
 async function bulkMoveRun() {
   const docs = getSelectedDocs();
   if (docs.length === 0) {
-    Swal.fire("선택 없음", "이동할 문서를 선택하세요.", "info");
+    Swal.fire(ui("m_da9295df13296758"), ui("m_bd77cc3b242f9d7b"), "info");
     return;
   }
   const inputs = readMoveInputs();
@@ -440,24 +437,24 @@ async function bulkMoveRun() {
   const changingDocs = docs.filter((d) => computeNewSlug(d.slug, find, replace) !== d.slug);
   const changed = changingDocs.length;
   if (changed === 0) {
-    Swal.fire("변경 없음", "선택한 문서 중 '찾을 내용'을 포함한 暂无页面.", "info");
+    Swal.fire(ui("m_827597193b7f7d53"), ui("m_66daf03ffc0fac65"), "info");
     return;
   }
   const changingIds = changingDocs.map((d) => d.id);
 
   const confirmRes = await Swal.fire({
-    title: "문서 대량 이동 확인",
+    title: ui("m_c8e0d126500c7350"),
     html:
-      `선택한 문서 중 <strong>${changed}개</strong>의 주소(slug)에서 ` +
-      `<code>${window.escapeHtml(find)}</code> → <code>${window.escapeHtml(replace)}</code> 로 치환해 이동합니다.` +
+      ui("m_1022c9304cc114df", [changed]) +
+      ui("m_8cc99a47224784a9", [window.escapeHtml(find), window.escapeHtml(replace)]) +
       (updateBacklinks
-        ? "<br>각 문서를 가리키는 <strong>참조 링크 본문도 함께 갱신</strong>합니다."
-        : "<br>참조 링크 본문은 갱신하지 않습니다.") +
-      "<br><span class='text-muted small'>이동은 되돌릴 수 없습니다(다시 이동으로 복구 가능).</span>",
+        ? ui("m_e636bda8ebcf0cc1")
+        : ui("m_1aa576d666714a04")) +
+      ui("m_73b2738ac4b74fd2"),
     icon: "warning",
     showCancelButton: true,
-    confirmButtonText: "이동 실행",
-    cancelButtonText: "取消",
+    confirmButtonText: ui("m_e33ef078b7cf5037"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c"),
   });
   if (!confirmRes.isConfirmed) return;
 
@@ -466,7 +463,7 @@ async function bulkMoveRun() {
   const result = document.getElementById("bulkMoveResult");
 
   setJobButtonsDisabled(true);
-  if (result) result.innerHTML = '<span class="text-muted">잡 제출 중...</span>';
+  if (result) result.innerHTML = ui("m_73c02260be022109");
 
   try {
     const initState = await submitJob({
@@ -482,12 +479,12 @@ async function bulkMoveRun() {
     }
 
     if (result) {
-      result.innerHTML = `<span class="text-muted">이동 중... (0/${changed})</span>`;
+      result.innerHTML = ui("m_24566fe78189441f", [changed]);
     }
 
     const finalState = await pollJobUntilDone((state) => {
       if (result) {
-        result.innerHTML = `<span class="text-muted">이동 중... (${state.processed}/${state.total > 0 ? state.total : changed})</span>`;
+        result.innerHTML = ui("m_2d3c90871a22aed2", [state.processed, state.total > 0 ? state.total : changed]);
       }
     });
 
@@ -499,7 +496,7 @@ async function bulkMoveRun() {
     await searchDocs();
   } catch (err: any) {
     if (result) {
-      result.innerHTML = `<div class="alert alert-danger py-2 mb-0">오류: ${err.message || err}</div>`;
+      result.innerHTML = ui("m_e4f69e236d51ed95", [err.message || err]);
     }
   } finally {
     setJobButtonsDisabled(false);
@@ -512,7 +509,7 @@ function renderMoveResult(state: JobState, container: HTMLElement | null) {
   const r = state.result || {};
 
   if (state.status === "error") {
-    container.innerHTML = `<div class="alert alert-danger py-2 mb-0">잡 오류: ${esc(state.error || "알 수 없는 오류")}</div>`;
+    container.innerHTML = ui("m_891598d221db1571", [esc(state.error || ui("m_6a72b554a7c28caf"))]);
     return;
   }
 
@@ -527,37 +524,37 @@ function renderMoveResult(state: JobState, container: HTMLElement | null) {
   let html = "";
   const cls = state.status === "completed" ? "alert-success" : "alert-warning";
   html += `<div class="alert ${cls} py-2 mb-0">`;
-  html += `${totalMoved}개 문서가 이동되었습니다.`;
-  if (totalBacklinks > 0) html += ` (참조 링크 ${totalBacklinks}건 갱신)`;
+  html += ui("m_3a16ff06f051eb49", [totalMoved]);
+  if (totalBacklinks > 0) html += ui("m_b1be2efca8e7b129", [totalBacklinks]);
   const displaySkips = allSkips.length + skippedOverflow;
-  if (displaySkips > 0) html += ` · ${allSkips.length}개 건너뜀${skippedOverflow > 0 ? ` (외 ${skippedOverflow}건)` : ""}`;
-  if (allBacklinkErrors.length > 0) html += ` · 역링크 갱신 실패 ${allBacklinkErrors.length}건`;
-  if (totalBacklinkUngupdated > 0) html += ` · 역링크 일부 미갱신 ${totalBacklinkUngupdated}건`;
+  if (displaySkips > 0) html += ui("m_f80dec7cd41af1b0", [allSkips.length, skippedOverflow > 0 ? ui("m_b663ddf9f8baa973", [skippedOverflow]) : ""]);
+  if (allBacklinkErrors.length > 0) html += ui("m_22a363c2bacabe70", [allBacklinkErrors.length]);
+  if (totalBacklinkUngupdated > 0) html += ui("m_8dcac6e9c804b4aa", [totalBacklinkUngupdated]);
   html += `</div>`;
 
   if (allBacklinkErrors.length > 0) {
     const items = allBacklinkErrors
       .map((e) => `<li><code>${esc(e.slug)}</code> — ${esc(e.error)}</li>`)
       .join("");
-    html += `<div class="bulk-move-skip-box mt-2"><div class="small mb-1">이동은 성공했지만 참조 링크 갱신에 실패한 문서 (참조가 옛 주소로 남아 있을 수 있음)</div><ul class="mb-0 small">${items}</ul></div>`;
+    html += ui("m_142aa09bb01a7e39", [items]);
   }
   if (allBacklinkPartials.length > 0) {
     const items = allBacklinkPartials
       .map((p) => {
         const parts = [];
-        if (p.conflicts > 0) parts.push(`충돌 ${p.conflicts}`);
-        if (p.skipped > 0) parts.push(`건너뜀 ${p.skipped}`);
-        return `<li><code>${esc(p.slug)}</code> — 참조 링크 ${parts.join(", ")}건 미갱신</li>`;
+        if (p.conflicts > 0) parts.push(ui("m_19201c5bcc6bd7d5", [p.conflicts]));
+        if (p.skipped > 0) parts.push(ui("m_2a245cdc2401ba0a", [p.skipped]));
+        return ui("m_ac2fba8377d87700", [esc(p.slug), parts.join(", ")]);
       })
       .join("");
-    html += `<div class="bulk-move-skip-box mt-2"><div class="small mb-1">참조 링크 일부가 갱신되지 않은 문서 (200개 초과·동시 편집 충돌·읽기 실패 등 — 해당 참조는 옛 주소로 남아 있을 수 있음)</div><ul class="mb-0 small">${items}</ul></div>`;
+    html += ui("m_22c4247c02491409", [items]);
   }
   if (allSkips.length > 0) {
     const items = allSkips
       .map((s) => `<li><code>${esc(s.slug)}</code> — ${esc(s.reason)}</li>`)
       .join("");
-    const overflowNote = skippedOverflow > 0 ? `<div class="small mt-1 text-muted">외 ${skippedOverflow}건 (결과 캡 초과로 상세 생략)</div>` : "";
-    html += `<div class="bulk-move-skip-box mt-2"><div class="small mb-1">건너뛴 문서</div><ul class="mb-0 small">${items}</ul>${overflowNote}</div>`;
+    const overflowNote = skippedOverflow > 0 ? ui("m_0615ca8b3271a36b", [skippedOverflow]) : "";
+    html += ui("m_3dba0f2f82d951de", [items, overflowNote]);
   }
 
   container.innerHTML = html;
@@ -600,7 +597,7 @@ function renderReindexState(state: JobState) {
       const written = r.linksWritten ?? 0;
       const skipped = r.skipped ?? 0;
       const mismatched = r.mismatched ?? 0;
-      statusEl.innerHTML = `<span class="text-muted">재인덱싱 중... (${state.processed}/${state.total > 0 ? state.total : "?"}) — 불일치 ${mismatched}개 문서 수정, 링크 ${written}건 기록${skipped ? `, ${skipped}건 건너뜀` : ""}</span>`;
+      statusEl.innerHTML = ui("m_dc1e1c170a6005d0", [state.processed, state.total > 0 ? state.total : "?", mismatched, written, skipped ? ui("m_b1168cb5088e809e", [skipped]) : ""]);
     } else if (isCompleted) {
       const r = state.result || {};
       const written = r.linksWritten ?? 0;
@@ -613,13 +610,13 @@ function renderReindexState(state: JobState) {
         r.mismatchedDocs || [];
       const esc = window.escapeHtml;
 
-      let html = `<span class="text-success">✓ 완료 — 총 ${state.processed}개 문서 처리${skipped ? `, ${skipped}건 건너뜀` : ""}</span>`;
+      let html = ui("m_4e79d5330305f2b9", [state.processed, skipped ? ui("m_b1168cb5088e809e", [skipped]) : ""]);
 
       if (mismatched > 0) {
         // 몇 개 문서를 교정했고 링크 몇 건을 채웠/제거했는지 요약.
         html +=
-          `<div class="mt-1">인덱스 불일치 <strong>${mismatched}</strong>개 문서 수정 —` +
-          ` 누락 링크 ${linksAdded}건 추가 · 잔여 링크 ${linksRemoved}건 제거 (전체 ${written}건 재기록)</div>`;
+          ui("m_d9525c44539fb8c4", [mismatched]) +
+          ui("m_54578b0fc2f6382a", [linksAdded, linksRemoved, written]);
         // 어느 문서가 어긋나 있었는지 목록으로 표시(+추가/−제거).
         if (mismatchedDocs.length > 0) {
           const items = mismatchedDocs
@@ -632,26 +629,26 @@ function renderReindexState(state: JobState) {
             .join("");
           const overflow =
             mismatched > mismatchedDocs.length
-              ? `<div class="text-muted small mt-1">…외 ${mismatched - mismatchedDocs.length}개 문서 생략</div>`
+              ? ui("m_864f9e90a54aef3f", [mismatched - mismatchedDocs.length])
               : "";
-          html += `<div class="bulk-move-skip-box mt-2"><div class="small mb-1">수정된 문서 (누락/잔여 링크)</div><ul class="mb-0 small">${items}</ul>${overflow}</div>`;
+          html += ui("m_544d1a470b641ce0", [items, overflow]);
         }
       } else if (skipped > 0) {
         // 건너뛴 문서는 비교·교정 대상이 아니므로 "전체 일치" 로 단정하지 않는다.
-        html += `<div class="mt-1 text-muted">처리한 문서는 모두 인덱스가 본문과 일치했습니다 (건너뛴 문서는 미검증 — 아래 목록).</div>`;
+        html += ui("m_0c90c9c7adbe4fe3");
       } else {
-        html += `<div class="mt-1 text-muted">모든 문서의 백링크 인덱스가 본문과 일치합니다 (수정 없음).</div>`;
+        html += ui("m_446e3defe7106496");
       }
 
       if (skippedIds.length > 0) {
-        html += `<div class="bulk-move-skip-box mt-2 small"><div class="mb-1">건너뛴 문서 ID (오류 또는 최소 크기 미달)</div><div class="text-muted">${esc(skippedIds.join(", "))}</div></div>`;
+        html += ui("m_cffe2423b754b83e", [esc(skippedIds.join(", "))]);
       }
       statusEl.innerHTML = html;
     } else if (isError) {
-      statusEl.innerHTML = `<span class="text-danger">오류: ${window.escapeHtml(state.error || "알 수 없는 오류")}</span>`;
+      statusEl.innerHTML = ui("m_05bd56619e5960f8", [window.escapeHtml(state.error || ui("m_6a72b554a7c28caf"))]);
     } else if (isIdle && state.processed > 0) {
       // 일시정지 상태 (processed > 0 이면 중단된 것)
-      statusEl.innerHTML = `<span class="text-muted">일시정지됨 — ${state.processed}개 처리 완료 (재개 가능)</span>`;
+      statusEl.innerHTML = ui("m_e8a4dbe174cfde00", [state.processed]);
     } else {
       statusEl.innerHTML = "";
     }
@@ -674,7 +671,7 @@ function renderReindexState(state: JobState) {
 async function reindexStart() {
   setJobButtonsDisabled(true);
   const statusEl = document.getElementById("reindexStatus");
-  if (statusEl) statusEl.innerHTML = '<span class="text-muted">잡 제출 중...</span>';
+  if (statusEl) statusEl.innerHTML = ui("m_73c02260be022109");
 
   try {
     const initState = await submitJob({ type: "reindex-backlinks" });
@@ -687,7 +684,7 @@ async function reindexStart() {
     const finalState = await pollJobUntilDone(renderReindexState);
     renderReindexState(finalState);
   } catch (err: any) {
-    if (statusEl) statusEl.innerHTML = `<span class="text-danger">오류: ${window.escapeHtml(err.message || String(err))}</span>`;
+    if (statusEl) statusEl.innerHTML = ui("m_05bd56619e5960f8", [window.escapeHtml(err.message || String(err))]);
   } finally {
     setJobButtonsDisabled(false);
   }
@@ -706,7 +703,7 @@ async function reindexStop() {
 async function reindexResume() {
   setJobButtonsDisabled(true);
   const statusEl = document.getElementById("reindexStatus");
-  if (statusEl) statusEl.innerHTML = '<span class="text-muted">잡 재개 중...</span>';
+  if (statusEl) statusEl.innerHTML = ui("m_4f9a5073a0fd9162");
 
   try {
     const initState = await submitJob({ type: "reindex-backlinks", resume: true });
@@ -719,7 +716,7 @@ async function reindexResume() {
     const finalState = await pollJobUntilDone(renderReindexState);
     renderReindexState(finalState);
   } catch (err: any) {
-    if (statusEl) statusEl.innerHTML = `<span class="text-danger">오류: ${window.escapeHtml(err.message || String(err))}</span>`;
+    if (statusEl) statusEl.innerHTML = ui("m_05bd56619e5960f8", [window.escapeHtml(err.message || String(err))]);
   } finally {
     setJobButtonsDisabled(false);
   }
@@ -759,13 +756,13 @@ function renderRagBackfillState(state: JobState) {
     const mirrored = r.mirrored ?? 0;
     const skipped = r.skipped ?? 0;
     if (isRunning) {
-      statusEl.innerHTML = `<span class="text-muted">백필 중... (${state.processed}/${state.total > 0 ? state.total : "?"}) — 미러 ${mirrored}건, ${skipped}건 건너뜀</span>`;
+      statusEl.innerHTML = ui("m_8b6afd54317c5d9c", [state.processed, state.total > 0 ? state.total : "?", mirrored, skipped]);
     } else if (isCompleted) {
-      statusEl.innerHTML = `<span class="text-success">✓ 완료 — 미러 ${mirrored}건, ${skipped}건 건너뜀 (총 ${state.processed}개 문서 처리)</span>`;
+      statusEl.innerHTML = ui("m_388f1f1d9874393b", [mirrored, skipped, state.processed]);
     } else if (isError) {
-      statusEl.innerHTML = `<span class="text-danger">오류: ${window.escapeHtml(state.error || "알 수 없는 오류")}</span>`;
+      statusEl.innerHTML = ui("m_05bd56619e5960f8", [window.escapeHtml(state.error || ui("m_6a72b554a7c28caf"))]);
     } else if (isIdle && state.processed > 0) {
-      statusEl.innerHTML = `<span class="text-muted">일시정지됨 — ${state.processed}개 처리 완료 (재개 가능)</span>`;
+      statusEl.innerHTML = ui("m_e8a4dbe174cfde00", [state.processed]);
     } else {
       statusEl.innerHTML = "";
     }
@@ -779,7 +776,7 @@ function renderRagBackfillState(state: JobState) {
 async function ragBackfillStart() {
   setJobButtonsDisabled(true);
   const statusEl = document.getElementById("ragBackfillStatus");
-  if (statusEl) statusEl.innerHTML = '<span class="text-muted">잡 제출 중...</span>';
+  if (statusEl) statusEl.innerHTML = ui("m_73c02260be022109");
   try {
     const initState = await submitJob({ type: "rag-backfill" });
     if (!initState) {
@@ -791,7 +788,7 @@ async function ragBackfillStart() {
     const finalState = await pollJobUntilDone(renderRagBackfillState);
     renderRagBackfillState(finalState);
   } catch (err: any) {
-    if (statusEl) statusEl.innerHTML = `<span class="text-danger">오류: ${window.escapeHtml(err.message || String(err))}</span>`;
+    if (statusEl) statusEl.innerHTML = ui("m_05bd56619e5960f8", [window.escapeHtml(err.message || String(err))]);
   } finally {
     setJobButtonsDisabled(false);
   }
@@ -808,7 +805,7 @@ async function ragBackfillStop() {
 async function ragBackfillResume() {
   setJobButtonsDisabled(true);
   const statusEl = document.getElementById("ragBackfillStatus");
-  if (statusEl) statusEl.innerHTML = '<span class="text-muted">잡 재개 중...</span>';
+  if (statusEl) statusEl.innerHTML = ui("m_4f9a5073a0fd9162");
   try {
     const initState = await submitJob({ type: "rag-backfill", resume: true });
     if (!initState) {
@@ -820,7 +817,7 @@ async function ragBackfillResume() {
     const finalState = await pollJobUntilDone(renderRagBackfillState);
     renderRagBackfillState(finalState);
   } catch (err: any) {
-    if (statusEl) statusEl.innerHTML = `<span class="text-danger">오류: ${window.escapeHtml(err.message || String(err))}</span>`;
+    if (statusEl) statusEl.innerHTML = ui("m_05bd56619e5960f8", [window.escapeHtml(err.message || String(err))]);
   } finally {
     setJobButtonsDisabled(false);
   }
@@ -834,26 +831,26 @@ async function searchDocs() {
   const info = document.getElementById("bulkSearchInfo");
   const card = document.getElementById("bulkResultCard");
   if (!q) {
-    if (info) info.textContent = "검색어를 입력하세요.";
+    if (info) info.textContent = ui("m_3d6b38494e727a56");
     return;
   }
   const includeTitle = (document.getElementById("bulkTitleToggle") as HTMLInputElement)?.checked;
-  if (info) info.textContent = "正在搜索...";
+  if (info) info.textContent = ui("m_47a1fa6f0e1a0d32");
 
   try {
     const url = `/api/admin/bulk-manage/search?q=${encodeURIComponent(q)}${includeTitle ? "&title=1" : ""}`;
     const res = await fetch(url);
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "搜索失败");
+    if (!res.ok) throw new Error(data.error || ui("m_6b5dde6e3a599a71"));
 
     lastDocs = data.documents || [];
     if (lastDocs.length === 0) {
-      if (info) info.textContent = "일치하는 暂无页面.";
+      if (info) info.textContent = ui("m_6e588599c725e484");
       if (card) card.style.display = "none";
       return;
     }
     if (info) {
-      info.textContent = `${lastDocs.length}개 搜索页面됨${data.capped ? ` (최대 ${lastDocs.length}개까지만 표시됩니다. 검색어를 더 좁혀주세요.)` : ""}`;
+      info.textContent = ui("m_1e17ef3b52568348", [lastDocs.length, data.capped ? ui("m_8877a6381e48058a", [lastDocs.length]) : ""]);
     }
     renderList(lastDocs);
     if (card) card.style.display = "";
@@ -865,7 +862,7 @@ async function searchDocs() {
     const moveResult = document.getElementById("bulkMoveResult");
     if (moveResult) moveResult.innerHTML = "";
   } catch (err: any) {
-    if (info) info.textContent = `오류: ${err.message || err}`;
+    if (info) info.textContent = ui("m_71ff102ea89b4e6e", [err.message || err]);
   }
 }
 
@@ -900,7 +897,7 @@ function renderList(docs: BulkDoc[]) {
     const display = ancestor ? d.slug.slice(ancestor.slug.length + 1) : d.slug;
 
     const deletedBadge = d.deleted
-      ? '<span class="bulkcat-cat-chip is-danger">已删除</span>'
+      ? ui("m_7bbf8a6c8a63d18b")
       : "";
     const titleHint = d.title
       ? `<span class="bulkcat-cat-chip">${esc(d.title)}</span>`
@@ -923,16 +920,7 @@ function renderList(docs: BulkDoc[]) {
       </tr>`;
   }).join("");
 
-  panel.innerHTML = `
-    <div class="bulkcat-master-row">
-      <label class="bulkcat-master-label">
-        <input type="checkbox" class="form-check-input bulkcat-master-checkbox" id="bulkMasterCheck" />
-        <span class="bulkcat-master-text">全选</span>
-      </label>
-      <span class="bulkcat-master-count">${docs.length}개</span>
-    </div>
-    <table class="bulkcat-subpages-table"><tbody>${rows}</tbody></table>
-  `;
+  panel.innerHTML = ui("m_d0386e67dd1f4a6f", [docs.length, rows]);
   updateCount();
   syncMaster();
 }
@@ -980,7 +968,7 @@ function getSelectedDocs(): { id: number; slug: string }[] {
 
 function updateCount() {
   const el = document.getElementById("bulkSelectedCount");
-  if (el) el.textContent = `${getSelectedIds().length}개 선택됨`;
+  if (el) el.textContent = ui("m_3ade1fed4df03c54", [getSelectedIds().length]);
 }
 
 // ── window 노출 ──

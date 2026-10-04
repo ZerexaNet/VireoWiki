@@ -2,6 +2,7 @@
  * R2 Hybrid Storage Utils
  */
 
+import { ui } from '../i18n/server';
 import { ensureRevisionsVirtualMigration } from './revisionsVirtualMigration';
 
 /**
@@ -80,7 +81,7 @@ export async function fetchRevisionFromR2(
     if (cached) return cached.text();
 
     const obj = await bucket.get(r2Key);
-    if (!obj) throw new Error(`R2 revision not found: ${r2Key}`);
+    if (!obj) throw new Error(ui("m_d9563d9a89a9d444", [r2Key]));
     const content = await obj.text();
 
     // 비동기로 캐시 저장 (응답을 블로킹하지 않음)

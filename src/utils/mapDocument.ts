@@ -13,6 +13,7 @@
  * 반환값에 `hasPrivateChildren` 을 포함해 호출 측이 공유 캐시 가능 여부를 판단하도록 한다.
  */
 
+import { ui } from '../i18n/server';
 import { parseEditAcl, type EditAclFlag } from './editAcl';
 import { stripCollapseToken } from './headingTokens';
 import { subtreeSlugRange } from './slug';
@@ -50,10 +51,10 @@ interface BuildMapDocumentOptions {
  * 서버 측 단순 복제 (라벨이 바뀔 일이 드물고 클라이언트와 분리 모듈).
  */
 const ACL_FLAG_LABELS: Record<EditAclFlag, string> = {
-    aged: '가입 N일 이상',
-    page_editor: '본 문서 편집 이력',
-    any_editor: '임의 문서 편집 이력',
-    admin_only: '관리자 전용',
+    aged: ui("m_bf8508933cb57822"),
+    page_editor: ui("m_6e8b991fd801742e"),
+    any_editor: ui("m_33a7ab7ce21a4ef0"),
+    admin_only: ui("m_593efa9a64e89c3f"),
 };
 
 export interface MapDocumentResult {
@@ -226,7 +227,7 @@ async function buildTreeNodes(opts: BuildMapDocumentOptions): Promise<BuildTreeN
     const hasPrivateChildren = children.some(r => r.is_private === 1) || (baseRow?.is_private === 1);
 
     const root: TreeNode = {
-        name: baseSlug || '(루트)',
+        name: baseSlug || ui("m_e9703a579f6c5c8a"),
         slug: baseSlug,
         row: baseRow ?? null,
         children: new Map(),
@@ -284,7 +285,7 @@ function buildPermTags(row: PageRow | null, showPerms: boolean): string {
     if (!showPerms || !row) return '';
     const parts: string[] = [];
     if (row.is_private === 1) {
-        parts.push('{palette:danger}{bi:eye-slash-fill}{tag:비공개}');
+        parts.push(ui("m_9d4fd22b0ba7de07"));
     }
     const acl = parseEditAcl(row.edit_acl);
     if (acl && acl.flags.length > 0) {
@@ -315,8 +316,8 @@ export async function buildMapDocument(opts: BuildMapDocumentOptions): Promise<M
 
     function nodeLineLabel(node: TreeNode): { label: string; meta: string; perms: string } {
         const meta = node.row
-            ? `(${node.row.rows ?? 0}줄, ${node.row.characters ?? 0}자)`
-            : '(문서 없음)';
+            ? ui("m_c91d28281a05b57c", [node.row.rows ?? 0, node.row.characters ?? 0])
+            : ui("m_9586b90d1ce240a7");
         const label = node.row
             ? `[[${node.slug}|${node.name}]]`
             : node.name;
@@ -329,13 +330,13 @@ export async function buildMapDocument(opts: BuildMapDocumentOptions): Promise<M
     // 헤더: base 슬러그 (있다면 wikilink). 페이지가 없어도 `[[…]]` 로 두면 클릭 시 "문서 없음" 안내가 보임.
     {
         const headerMeta = root.row
-            ? `(${root.row.rows ?? 0}줄, ${root.row.characters ?? 0}자)`
-            : '(문서 없음)';
+            ? ui("m_c91d28281a05b57c", [root.row.rows ?? 0, root.row.characters ?? 0])
+            : ui("m_9586b90d1ce240a7");
         const headerPerms = buildPermTags(root.row, showPerms);
         if (baseSlug) {
             lines.push(`[[${baseSlug}]] ${headerMeta}${headerPerms}`);
         } else {
-            lines.push(`(루트) ${headerMeta}${headerPerms}`);
+            lines.push(ui("m_fd0e3f3f3a64131f", [headerMeta, headerPerms]));
         }
     }
 
@@ -363,7 +364,7 @@ export async function buildMapDocument(opts: BuildMapDocumentOptions): Promise<M
 
     if (truncated) {
         lines.push('');
-        lines.push(`... (하위 문서 ${MAP_TREE_LIMIT}개 초과, 일부 생략됨)`);
+        lines.push(ui("m_957d05ddf3e36ede", [MAP_TREE_LIMIT]));
     }
 
     return { markdown: lines.join('\n'), hasPrivateChildren };

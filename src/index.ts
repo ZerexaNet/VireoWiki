@@ -1,3 +1,4 @@
+import { ui, getLocale, localeMiddleware } from './i18n/server';
 import { Hono, Context } from 'hono';
 import robotsTxtBase from './robots-txt';
 import { csrf } from 'hono/csrf';
@@ -39,6 +40,7 @@ import { ensureMcpDraftsMigration } from './utils/mcpDraftsMigration';
 import { ensureNotificationsMigration } from './utils/notificationsMigration';
 
 const app = new Hono<Env>();
+app.use('*', localeMiddleware);
 
 //
 // ── 미들웨어 ──
@@ -141,7 +143,7 @@ app.use('*', async (c, next) => {
     if (isBannedAllowedRequest(c)) return next();
 
     if (c.req.path.startsWith('/api/')) {
-        return c.json({ error: '차단된 계정은 이 리소스에 접근할 수 없습니다.' }, 403);
+        return c.json({ error: ui("m_ee82e0133f22362e") }, 403);
     }
     return c.redirect('/');
 });
@@ -295,27 +297,7 @@ function buildCrawlerPage(c: Context<Env>, opts: CrawlerPageOpts): Response {
     const title = opts.title || wikiName;
     const description = opts.description || wikiName;
 
-    const html = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="index, follow">
-<title>${escapeHtml(title)}</title>
-<meta name="description" content="${escapeHtml(description)}">
-<meta property="og:title" content="${escapeHtml(title)}">
-<meta property="og:description" content="${escapeHtml(description)}">
-<meta property="og:site_name" content="${escapeHtml(wikiName)}">
-<meta property="og:type" content="article">
-${opts.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(opts.canonicalUrl)}">\n` : ''}<link rel="icon" href="${escapeHtml(wikiFavicon)}">
-</head>
-<body>
-<header><a href="/">${escapeHtml(wikiName)}</a></header>
-<main>
-${opts.bodyHtml}
-</main>
-</body>
-</html>`;
+    const html = ui("m_2fe63954c7e53a1f", [escapeHtml(title), escapeHtml(description), escapeHtml(title), escapeHtml(description), escapeHtml(wikiName), opts.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(opts.canonicalUrl)}">\n` : '', escapeHtml(wikiFavicon), escapeHtml(wikiName), opts.bodyHtml]);
 
     return new Response(html, {
         status,
@@ -331,7 +313,7 @@ ${opts.bodyHtml}
 // ── 헬퍼: ASSETS에서 HTML 가져오기 ──
 async function fetchAssetHtml(c: any, htmlPath: string): Promise<Response> {
     const url = new URL(c.req.url);
-    url.pathname = htmlPath;
+    url.pathname = `/_i18n/${getLocale()}${htmlPath}`;
 
     if (c.env?.ASSETS) {
         const assetResponse = await c.env.ASSETS.fetch(new Request(url));
@@ -536,7 +518,7 @@ app.get('/w/*', async (c) => {
         const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
         const mapResult = await buildMapDocument({ db, baseSlug, canSeePrivate, showPerms });
         const titleStr = `${slug} - ${wikiName}`;
-        const description = `${baseSlug || '(루트)'} 의 하위 문서 구조`;
+        const description = ui("m_c29f0b4587dbd455", [baseSlug || ui("m_e9703a579f6c5c8a")]);
         const ssrData: Record<string, any> = {
             _ssrSlug: slug,
             _ssrNotFound: false,
@@ -586,13 +568,13 @@ app.get('/w/*', async (c) => {
 
             const description = mediaRow.content
                 ? extractMetaDescription(mediaRow.content) || mediaRow.content.slice(0, 160)
-                : `${mediaRow.filename} - 이미지 문서`;
+                : ui("m_4a950e6b1646cff5", [mediaRow.filename]);
             const titleStr = `${slug} - ${wikiName}`;
 
             if (isCrawler) {
                 const mediaUrl = `/media/${mediaRow.r2_key}`;
                 const tagListHtml = (tags && tags.length)
-                    ? `<p><strong>태그:</strong> ${tags.map(t => escapeHtml(String(t))).join(', ')}</p>`
+                    ? ui("m_7989c08e00f0b922", [tags.map(t => escapeHtml(String(t))).join(', ')])
                     : '';
                 const aiText = mediaRow.content ? await renderForAI(mediaRow.content, db, 0, slug) : '';
                 const contentBlock = aiText ? `<pre>${escapeHtml(aiText)}</pre>` : '';
@@ -661,14 +643,11 @@ ${contentBlock}
     // (삭제 분기보다 먼저 평가해 "비공개·삭제" 동시 상태에서 비공개 사실이 우선 노출되도록 함)
     if (page && page.is_private === 1 && !canSeePrivate) {
         if (isCrawler) {
-            const title = `비공개 문서 - ${wikiName}`;
-            const body = `<article>
-<h1>${escapeHtml(slug)}</h1>
-<p>이 문서는 비공개 상태입니다.</p>
-</article>`;
+            const title = ui("m_dc9fd0bad4a7d8cd", [wikiName]);
+            const body = ui("m_efc7fd6310f63f50", [escapeHtml(slug)]);
             return buildCrawlerPage(c, {
                 title,
-                description: `${slug} 문서는 비공개 상태입니다.`,
+                description: ui("m_a74a21bde371f2f4", [slug]),
                 bodyHtml: body,
                 canonicalUrl,
                 status: 403,
@@ -679,7 +658,7 @@ ${contentBlock}
             _ssrSlug: slug,
             _ssrNotFound: true,
             _ssrPrivate: true,
-            _ssrTitle: `비공개 문서 - ${wikiName}`,
+            _ssrTitle: ui("m_dc9fd0bad4a7d8cd", [wikiName]),
         };
         const response = await renderHtml(c, '/', privateSsrData);
         const forbiddenResponse = new Response(response.body, { status: 403, headers: response.headers });
@@ -690,14 +669,11 @@ ${contentBlock}
 
     if (page && page.deleted_at && !isAdmin) {
         if (isCrawler) {
-            const title = `삭제된 문서 - ${wikiName}`;
-            const body = `<article>
-<h1>${escapeHtml(slug)}</h1>
-<p>이 문서는 삭제되었습니다.</p>
-</article>`;
+            const title = ui("m_12010170855732ae", [wikiName]);
+            const body = ui("m_3bd5e09f1ab5982e", [escapeHtml(slug)]);
             return buildCrawlerPage(c, {
                 title,
-                description: `${slug} 문서는 삭제되었습니다.`,
+                description: ui("m_02e62ff866abfe12", [slug]),
                 bodyHtml: body,
                 canonicalUrl,
                 status: 410,
@@ -709,7 +685,7 @@ ${contentBlock}
             _ssrSlug: slug,
             _ssrNotFound: true,
             _ssrDeleted: true,
-            _ssrTitle: `삭제된 문서 - ${wikiName}`
+            _ssrTitle: ui("m_12010170855732ae", [wikiName])
         };
         // 삭제된 문서는 리다이렉트나 본문 조회를 하지 않도록 처리
         const response = await renderHtml(c, '/', deletedSsrData);
@@ -763,14 +739,11 @@ ${contentBlock}
     if (!page) {
         // 크롤러: 문서 없음을 404로 응답
         if (isCrawler) {
-            const title = `문서 없음 - ${wikiName}`;
-            const body = `<article>
-<h1>${escapeHtml(slug)}</h1>
-<p>요청하신 문서가 존재하지 않습니다.</p>
-</article>`;
+            const title = ui("m_7c2e54f55fcd9508", [wikiName]);
+            const body = ui("m_5ead5c155e8ba57a", [escapeHtml(slug)]);
             return buildCrawlerPage(c, {
                 title,
-                description: `${slug} 문서를 찾을 수 없습니다.`,
+                description: ui("m_cbe47a2bb2290296", [slug]),
                 bodyHtml: body,
                 canonicalUrl,
                 status: 404,
@@ -778,7 +751,7 @@ ${contentBlock}
             });
         }
         ssrData._ssrNotFound = true;
-        ssrData._ssrTitle = `문서 없음 - ${wikiName}`;
+        ssrData._ssrTitle = ui("m_7c2e54f55fcd9508", [wikiName]);
         shouldCache = false; // 미존재 문서는 캐싱하지 않음
     } else {
         // R2-only 네임스페이스인 경우, 본문이 비어있다면 최신 리비전에서 본문을 가져옵니다.
@@ -815,14 +788,14 @@ ${contentBlock}
             const title = `${displayName} - ${wikiName}`;
             const aiText = page.content ? await renderForAI(page.content, db, 0, page.slug) : '';
             const redirectedNote = redirectedFrom
-                ? `<p><em>${escapeHtml(redirectedFrom)} 에서 자동으로 넘어왔습니다.</em></p>`
+                ? ui("m_e2890670069386c9", [escapeHtml(redirectedFrom)])
                 : '';
             const slugLine = page.title
-                ? `<p><small>제목: <code>${escapeHtml(page.slug)}</code></small></p>`
+                ? ui("m_1f5f895990dac9d7", [escapeHtml(page.slug)])
                 : '';
             const contentBlock = aiText
                 ? `<pre>${escapeHtml(aiText)}</pre>`
-                : '<p><em>본문이 비어있습니다.</em></p>';
+                : ui("m_84653322e3417259");
             const body = `<article>
 <h1>${escapeHtml(displayName)}</h1>
 ${slugLine}
@@ -913,8 +886,8 @@ app.get('/login', async (c) => {
         ppSlug ? db.prepare('SELECT content FROM pages WHERE slug = ? AND deleted_at IS NULL LIMIT 1').bind(ppSlug).first<{ content: string }>() : Promise.resolve(null),
     ]);
     return renderHtml(c, '/login.html', {
-        _ssrTitle: '로그인 - ' + (c.env.WIKI_NAME || 'Cloudwiki'),
-        loginMessage: c.env.LOGIN_MESSAGE || '비공개 위키입니다. 로그인 후 이용해주세요.',
+        _ssrTitle: ui("m_e838fb0ab17bfa72") + (c.env.WIKI_NAME || 'Cloudwiki'),
+        loginMessage: c.env.LOGIN_MESSAGE || ui("m_04a65b6a61a9796c"),
         termsOfService: tosPage?.content || '',
         privacyPolicy: ppPage?.content || '',
     });
@@ -1070,9 +1043,9 @@ app.get('/setup-profile', async (c) => {
 
 // /error 접근 시 error.html 서빙 (SSR 브랜딩 + reason 쿼리 파라미터 주입)
 app.get('/error', async (c) => {
-    const reason = c.req.query('reason') || '알 수 없는 오류가 발생했습니다.';
+    const reason = c.req.query('reason') || ui("m_7079d853cfb9f20e");
     const res = await renderHtml(c, '/error.html', {
-        _ssrTitle: '오류가 발생했습니다 - ' + (c.env.WIKI_NAME || 'CloudWiki'),
+        _ssrTitle: ui("m_7eb1fefb7784f741") + (c.env.WIKI_NAME || 'CloudWiki'),
         _ssrReason: reason,
     });
     return new Response(res.body, { status: 400, headers: res.headers });
@@ -1111,35 +1084,35 @@ app.get('/sitemap.xml', async (c) => {
     // 메인 페이지
     xml += '  <url>\n';
     xml += `    <loc>${baseUrl}/</loc>\n`;
-    xml += '    <changefreq>daily</changefreq>\n';
+    xml += ui("m_6518ddaaddaaf1ac");
     xml += '    <priority>1.0</priority>\n';
-    xml += '  </url>\n';
+    xml += ui("m_28b76f58ad108f42");
 
     for (const page of pages || []) {
         const lastmod = new Date(page.updated_at * 1000).toISOString().split('T')[0];
         xml += '  <url>\n';
         xml += `    <loc>${baseUrl}/w/${encodeURIComponent(page.slug)}</loc>\n`;
         xml += `    <lastmod>${lastmod}</lastmod>\n`;
-        xml += '    <changefreq>weekly</changefreq>\n';
+        xml += ui("m_86c491782b0043ca");
         xml += '    <priority>0.8</priority>\n';
-        xml += '  </url>\n';
+        xml += ui("m_28b76f58ad108f42");
     }
 
     // 블로그 목록 페이지
     xml += '  <url>\n';
-    xml += `    <loc>${baseUrl}/blog</loc>\n`;
-    xml += '    <changefreq>daily</changefreq>\n';
+    xml += ui("m_a2aca12bc7570ba7", [baseUrl]);
+    xml += ui("m_6518ddaaddaaf1ac");
     xml += '    <priority>0.8</priority>\n';
-    xml += '  </url>\n';
+    xml += ui("m_28b76f58ad108f42");
 
     for (const post of blogPosts || []) {
         const lastmod = new Date(post.updated_at * 1000).toISOString().split('T')[0];
         xml += '  <url>\n';
-        xml += `    <loc>${baseUrl}/blog/${post.id}</loc>\n`;
+        xml += ui("m_d190756ad4548f50", [baseUrl, post.id]);
         xml += `    <lastmod>${lastmod}</lastmod>\n`;
-        xml += '    <changefreq>weekly</changefreq>\n';
+        xml += ui("m_86c491782b0043ca");
         xml += '    <priority>0.7</priority>\n';
-        xml += '  </url>\n';
+        xml += ui("m_28b76f58ad108f42");
     }
 
     xml += '</urlset>';
@@ -1170,11 +1143,11 @@ app.get('/robots.txt', (c) => {
 // ── MCP / API Discovery 대응 ──
 // Claude 등이 .well-known 을 조회할 때 HTML 대신 JSON 404를 반환하도록 함
 app.get('/.well-known/*', (c) => {
-    return c.json({ error: 'Discovery not implemented' }, 404);
+    return c.json({ error: ui("m_65543806151d7d94") }, 404);
 });
 
 app.post('/register', (c) => {
-    return c.json({ error: 'Dynamic registration not supported' }, 404);
+    return c.json({ error: ui("m_e9357bc267260587") }, 404);
 });
 
 // ── 알 수 없는 경로 → 위키 슬러그 리다이렉트 ──
@@ -1182,7 +1155,7 @@ app.post('/register', (c) => {
 app.get('*', (c) => {
     const path = c.req.path;
     if (path.startsWith('/api/') || path.startsWith('/assets/')) {
-        return c.json({ error: 'Not Found' }, 404);
+        return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
     }
     const slug = path.slice(1); // 앞의 / 제거
     const searchParams = new URL(c.req.url).search;
@@ -1192,11 +1165,11 @@ app.get('*', (c) => {
 // ── 404 핸들러 ──
 app.notFound(async (c) => {
     if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/assets/')) {
-        return c.json({ error: 'Not Found' }, 404);
+        return c.json({ error: ui("m_0019dfc4b32d63c1") }, 404);
     }
     const res = await renderHtml(c, '/error.html', {
-        _ssrTitle: '페이지를 찾을 수 없습니다 - ' + (c.env?.WIKI_NAME || 'CloudWiki'),
-        _ssrReason: '요청하신 페이지를 찾을 수 없습니다 (404 Not Found)'
+        _ssrTitle: ui("m_f462be0e990eb8f7") + (c.env?.WIKI_NAME || 'CloudWiki'),
+        _ssrReason: ui("m_59e63825df4dc0f7")
     });
     return new Response(res.body, { status: 404, headers: res.headers });
 });
@@ -1206,11 +1179,11 @@ app.onError(async (err, c) => {
     console.error('Unhandled error:', err);
     trackError(c, c.req.path, 500, err.message || 'Internal Server Error');
     if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/assets/')) {
-        return c.json({ error: 'Internal Server Error' }, 500);
+        return c.json({ error: ui("m_e41656eb2ba6c629") }, 500);
     }
     const res = await renderHtml(c, '/error.html', {
-        _ssrTitle: '오류가 발생했습니다 - ' + (c.env?.WIKI_NAME || 'CloudWiki'),
-        _ssrReason: '서버 내부 오류가 발생했습니다 (500 Internal Server Error)'
+        _ssrTitle: ui("m_7eb1fefb7784f741") + (c.env?.WIKI_NAME || 'CloudWiki'),
+        _ssrReason: ui("m_2c8f25af0a2db3fa")
     });
     return new Response(res.body, { status: 500, headers: res.headers });
 });

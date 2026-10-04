@@ -57,7 +57,7 @@
                 timezone: 'Asia/Seoul',
                 theme: colorTheme,
                 style: '1',
-                locale: 'kr',
+                locale: window.VireoI18n?.getLocale() === 'zh-CN' ? 'zh_CN' : 'en',
                 allow_symbol_change: false,
                 calendar: false,
                 support_host: 'https://www.tradingview.com',
@@ -71,7 +71,7 @@
                 width: '100%',
                 colorTheme,
                 isTransparent: false,
-                locale: 'kr',
+                locale: window.VireoI18n?.getLocale() === 'zh-CN' ? 'zh_CN' : 'en',
             });
 
         } else {
@@ -82,7 +82,7 @@
                 chartOnly: false,
                 width: '100%',
                 height: 300,
-                locale: 'kr',
+                locale: window.VireoI18n?.getLocale() === 'zh-CN' ? 'zh_CN' : 'en',
                 colorTheme,
                 autosize: false,
                 showVolume: false,

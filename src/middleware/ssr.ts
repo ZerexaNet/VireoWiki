@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { escapeHtml } from '../utils/html';
 import { BundleName, renderHeadTags, renderBodyScripts } from '../shared/cdn';
 
@@ -132,7 +133,7 @@ export function applyPageSSR(response: Response, pageData: Record<string, any>, 
         .on('.wiki-logo-container', {
             element(element) {
                 if (wikiLogoUrl) {
-                    element.setInnerContent(`<img src="${escapeHtml(wikiLogoUrl)}" alt="Logo" class="brand-logo" style="height: 32px; vertical-align: middle; margin-right: 8px;">`, { html: true });
+                    element.setInnerContent(ui("m_a5ea4bcf95180105", [escapeHtml(wikiLogoUrl)]), { html: true });
                 }
             }
         })

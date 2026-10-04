@@ -11,6 +11,7 @@
 // SW 는 vite 가 format:'es' 로 빌드하므로 register 시 반드시 type:'module' 을 명시한다.
 // 미명시 시 classic 로더가 ESM 문법(import / export)을 거부할 수 있다.
 
+import { ui } from '../../packages/wiki-shared/src/i18n/client';
 type PublicKeyResponse = { enabled: boolean; public_key: string | null };
 
 export type PushBootstrap =
@@ -54,7 +55,7 @@ async function fetchPublicKey(): Promise<PublicKeyResponse | null> {
  * UI 가 토글 표시 여부를 결정할 때 사용.
  */
 export async function checkPushAvailability(): Promise<PushBootstrap> {
-    if (!isPushSupported()) return { kind: 'unsupported', reason: '브라우저가 푸시를 지원하지 않습니다.' };
+    if (!isPushSupported()) return { kind: 'unsupported', reason: ui("m_8f09d45f580a7dc8") };
 
     const info = await fetchPublicKey();
     if (!info || !info.enabled || !info.public_key) return { kind: 'disabled' };
@@ -131,7 +132,7 @@ export async function subscribeForUser(): Promise<{ success: boolean; reason?: s
     const status = await checkPushAvailability();
     if (status.kind !== 'ready') return { success: false, reason: status.kind };
 
-    if (!(await ensurePermission())) return { success: false, reason: 'denied' };
+    if (!(await ensurePermission())) return { success: false, reason: "denied" };
 
     try {
         const reg = await getOrCreateRegistration();
@@ -145,12 +146,12 @@ export async function subscribeForUser(): Promise<{ success: boolean; reason?: s
             body: JSON.stringify(payload),
         });
         if (!res.ok) {
-            return { success: false, reason: 'server' };
+            return { success: false, reason: "server" };
         }
         return { success: true };
     } catch (e) {
         console.error('[push] subscribe failed', e);
-        return { success: false, reason: 'error' };
+        return { success: false, reason: "error" };
     }
 }
 
@@ -169,7 +170,7 @@ export async function prepareSignupPushSubscription(): Promise<
     const status = await checkPushAvailability();
     if (status.kind !== 'ready') return { ok: false, reason: status.kind };
 
-    if (!(await ensurePermission())) return { ok: false, reason: 'denied' };
+    if (!(await ensurePermission())) return { ok: false, reason: "denied" };
 
     try {
         const reg = await getOrCreateRegistration();
@@ -177,7 +178,7 @@ export async function prepareSignupPushSubscription(): Promise<
         return { ok: true, payload: subscriptionToJson(sub) };
     } catch (e) {
         console.error('[push] prepareSignupPushSubscription failed', e);
-        return { ok: false, reason: 'error' };
+        return { ok: false, reason: "error" };
     }
 }
 
@@ -196,11 +197,11 @@ export async function registerSignupPushSubscription(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...payload, push_token: pushToken }),
         });
-        if (!res.ok) return { success: false, reason: 'server' };
+        if (!res.ok) return { success: false, reason: "server" };
         return { success: true };
     } catch (e) {
         console.error('[push] registerSignupPushSubscription failed', e);
-        return { success: false, reason: 'error' };
+        return { success: false, reason: "error" };
     }
 }
 

@@ -1,6 +1,7 @@
 // 신규 토론 Discord 이벤트 빌더 (community 채널).
 // 비공개/잠금 페이지의 토론은 호출부에서 필터링되어야 한다.
 
+import { ui } from '../../../i18n/server';
 import type { Env } from '../../../types';
 import type { WebhookEvent } from '../discord';
 import { absoluteUrl, escapeMd, nowIso, truncate } from '../format';
@@ -16,15 +17,15 @@ export function discussionCreate(args: {
     const { page, discussion, actor, env } = args;
     const pageUrl = absoluteUrl(env, `/w/${encodeURIComponent(page.slug)}`);
     const description = pageUrl
-        ? `[${escapeMd(page.title)}](${pageUrl}) 에 새 토론이 열렸습니다.\n\n> ${truncate(escapeMd(discussion.title), 200)}`
-        : `**${escapeMd(page.title)}** 에 새 토론이 열렸습니다.\n\n> ${truncate(escapeMd(discussion.title), 200)}`;
+        ? ui("m_74b380ce1d5f53bf", [escapeMd(page.title), pageUrl, truncate(escapeMd(discussion.title), 200)])
+        : ui("m_b329efb40b330ac6", [escapeMd(page.title), truncate(escapeMd(discussion.title), 200)]);
 
     return {
         channel: 'community',
         type: 'discussion_create',
         embed: {
             color: COLOR_DISCUSSION,
-            title: '💬 새 토론',
+            title: ui("m_06feb699074d9c32"),
             description,
             author: {
                 name: actor.name,

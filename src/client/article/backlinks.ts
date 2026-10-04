@@ -4,6 +4,7 @@
 // 응답에만 존재하므로(워크스페이스는 {slug,title} 만) 워크스페이스에서는 자연히 일반
 // 문서 분기만 탄다. 동작은 과거 index.ts 의 loadBacklinks 와 동일.
 
+import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 import type { ArticleContext } from './context';
 
 /**
@@ -25,42 +26,20 @@ export async function renderBacklinks(ctx: ArticleContext, opts: { slug?: string
     const data = await res.json();
     if (data.backlinks && data.backlinks.length > 0) {
       list.innerHTML = data.backlinks.map((bl) => {
-        const date = bl.updated_at ? new Date(bl.updated_at * 1000).toLocaleString('zh-CN') : '';
-        const deletedBadge = bl.is_deleted ? ' <span class="badge bg-secondary ms-1">已删除</span>' : '';
+        const date = bl.updated_at ? new Date(bl.updated_at * 1000).toLocaleString(getLocale()) : '';
+        const deletedBadge = bl.is_deleted ? ui("m_d2e05037626d501d") : '';
         if (bl.type === 'blog') {
           const blogTitle = bl.title || `#${bl.id}`;
-          return `
-            <a href="/blog/${encodeURIComponent(bl.id)}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="badge bg-info me-2">블로그</span>
-                    <span class="fw-bold">${window.escapeHtml(blogTitle)}</span>${deletedBadge}
-                </div>
-                <small class="text-muted">${date}</small>
-            </a>`;
+          return ui("m_c98b990e5d9b8b91", [encodeURIComponent(bl.id), window.escapeHtml(blogTitle), deletedBadge, date]);
         }
         if (bl.type === 'discussion_comment') {
           const dTitle = bl.discussion_title || `#${bl.discussion_id}`;
           const href = `/w/${encodeURIComponent(bl.page_slug)}?mode=discussions&id=${encodeURIComponent(bl.discussion_id)}`;
-          return `
-            <a href="${href}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="badge bg-warning text-dark me-2">讨论</span>
-                    <span class="fw-bold">${window.escapeHtml(dTitle)}</span>
-                    <small class="text-muted ms-2">${window.escapeHtml(bl.page_slug)}</small>${deletedBadge}
-                </div>
-                <small class="text-muted">${date}</small>
-            </a>`;
+          return ui("m_7eb48ab9b79e6ee6", [href, window.escapeHtml(dTitle), window.escapeHtml(bl.page_slug), deletedBadge, date]);
         }
         if (bl.type === 'ticket_comment') {
           const tTitle = bl.ticket_title || `#${bl.ticket_id}`;
-          return `
-            <a href="/tickets/${encodeURIComponent(bl.ticket_id)}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="badge bg-success me-2">티켓</span>
-                    <span class="fw-bold">${window.escapeHtml(tTitle)}</span>${deletedBadge}
-                </div>
-                <small class="text-muted">${date}</small>
-            </a>`;
+          return ui("m_a0ed21219d08052a", [encodeURIComponent(bl.ticket_id), window.escapeHtml(tTitle), deletedBadge, date]);
         }
         // 일반 문서 역링크 — 전역·워크스페이스 공용. title 이 있으면 표시(워크스페이스),
         // 없으면 slug(전역 위키)로 폴백. 클릭은 article-backlink-link 핸들러가 처리.
@@ -83,7 +62,7 @@ export async function renderBacklinks(ctx: ArticleContext, opts: { slug?: string
       section.classList.remove('d-none');
       return true;
     }
-    list.innerHTML = '<div class="text-muted text-center py-3">链入页面가 없습니다.</div>';
+    list.innerHTML = ui("m_37eba2bfd2ba98ed");
     section.classList.add('d-none');
     return false;
   } catch (e) {

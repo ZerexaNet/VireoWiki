@@ -16,6 +16,7 @@
 //    (원본 classic 스크립트에서도 모듈 함수라 false 로 평가되어 fallback 이 돌던 동작 보존).
 //  - HTML 의 on* 속성에서 호출되는, 이 블록이 정의한 함수들은 파일 끝에서 window.* 로 노출한다.
 
+import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 import { createBreadcrumbNav } from '../article/breadcrumb';
 import { createStructureModal } from '../article/structure';
 import { createShareActions } from '../article/share';
@@ -66,11 +67,11 @@ import { createTocController } from '../article/toc';
       const infoParam = urlParams.get('info');
       if (errorParam || infoParam) {
         const messages = {
-          'deleted_account': { icon: 'error', title: '无法访问', text: '账号已注销。' },
-          'signup_pending': { icon: 'info', title: '等待注册审核', text: '注册申请等待审核，请耐心等候。' },
-          'signup_blocked': { icon: 'error', title: '注册受限', text: '账号已被禁止注册，请联系管理员。' },
-          'email_domain_not_allowed': { icon: 'error', title: '无法注册', text: '该邮箱域名不允许注册。' },
-          'signup_submitted': { icon: 'success', title: '已提交注册申请', text: '申请已提交，管理员审核后即可使用。' },
+          'deleted_account': { icon: 'error', title: ui("m_44cc944cd32d0c20"), text: ui("m_e67a58f956a86383") },
+          'signup_pending': { icon: 'info', title: ui("m_d6db123c7db18e1b"), text: ui("m_aeffceafa26a5176") },
+          'signup_blocked': { icon: 'error', title: ui("m_299da3c9a6d5fadc"), text: ui("m_0efb11a90e69d743") },
+          'email_domain_not_allowed': { icon: 'error', title: ui("m_568a256d59d700ad"), text: ui("m_801e9d830adbc27d") },
+          'signup_submitted': { icon: 'success', title: ui("m_fdf55bfdc69ff31d"), text: ui("m_c21632531523344c") },
         };
         const key = errorParam || infoParam;
         const msg = messages[key];
@@ -292,7 +293,7 @@ import { createTocController } from '../article/toc';
 
       const linkHtml = (doc: { slug: string; name: string }, dir: 'prev' | 'next') => {
         const isPrev = dir === 'prev';
-        const dirLabel = isPrev ? '上一页' : '下一页';
+        const dirLabel = isPrev ? ui("m_c9b9ae7a61444ab7") : ui("m_8a8542f6964852dc");
         const icon = isPrev
           ? '<i class="bi bi-chevron-left"></i>'
           : '<i class="bi bi-chevron-right"></i>';
@@ -326,9 +327,9 @@ import { createTocController } from '../article/toc';
         return;
       }
       const groupLabel = document.getElementById('wikiNavSidebarGroup');
-      if (groupLabel) groupLabel.textContent = groupRoot || '页面';
+      if (groupLabel) groupLabel.textContent = groupRoot || ui("m_452c7b10d57a86a7");
       let html = '<ul>' + renderGroupTreeNode(root, currentSlug) + '</ul>';
-      if (truncated) html += `<div class="nav-truncated">... (하위 문서가 많아 일부 생략됨)</div>`;
+      if (truncated) html += ui("m_51728c7d8afaa26e");
       nav.innerHTML = html;
       nav.querySelectorAll('.wiki-spa-link').forEach(link => {
         link.addEventListener('click', function (this: HTMLAnchorElement, event) {
@@ -361,7 +362,7 @@ import { createTocController } from '../article/toc';
       try {
         const res = await fetch(`/api/w/${encodeURIComponent(groupRoot)}/nav-tree`);
         if (reqId !== __groupNavReqSeq) return; // 더 최신 네비게이션이 진행 중 → 폐기
-        if (!res.ok) throw new Error('failed');
+        if (!res.ok) throw new Error("failed");
         const data = await res.json();
         if (reqId !== __groupNavReqSeq) return;
         if (!data || !data.root) {
@@ -439,8 +440,8 @@ import { createTocController } from '../article/toc';
       } else {
         Swal.fire({
           icon: 'info',
-          title: '链入页面',
-          text: '没有页面链接到这里。',
+          title: ui("m_42534303efa5e92d"),
+          text: ui("m_2d847479ffb481cd"),
           timer: 2000,
           showConfirmButton: false
         });
@@ -468,11 +469,11 @@ import { createTocController } from '../article/toc';
       const curSlug = (slug || '').trim().replace(/^\/+/, '').replace(/\/+$/, '');
       if (!curSlug) return;
       let policyLabel = '';
-      if (cfg.termsOfServiceSlug && curSlug === cfg.termsOfServiceSlug) policyLabel = '服务条款';
-      else if (cfg.privacyPolicySlug && curSlug === cfg.privacyPolicySlug) policyLabel = '개인정보처리방침';
+      if (cfg.termsOfServiceSlug && curSlug === cfg.termsOfServiceSlug) policyLabel = ui("m_9303687a9ccf1358");
+      else if (cfg.privacyPolicySlug && curSlug === cfg.privacyPolicySlug) policyLabel = ui("m_9fb41de3065c32ce");
       if (!policyLabel) return;
       const wikiName = cfg.wikiName || 'CloudWiki';
-      textEl.textContent = `이 문서는 ${wikiName}의 ${policyLabel} 문서입니다.`;
+      textEl.textContent = ui("m_e2a60cf868295c18", [wikiName, policyLabel]);
       bannerEl.classList.remove('d-none');
     }
 
@@ -527,8 +528,8 @@ import { createTocController } from '../article/toc';
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn btn-sm btn-link text-muted p-0 ms-1 wiki-slug-copy-btn';
-      btn.title = '复制标题';
-      btn.setAttribute('aria-label', '复制标题');
+      btn.title = ui("m_6d0b032bc4d31ea2");
+      btn.setAttribute('aria-label', ui("m_6d0b032bc4d31ea2"));
       btn.innerHTML = '<i class="bi bi-clipboard" aria-hidden="true"></i>';
       btn.addEventListener('click', async () => {
         try {
@@ -540,7 +541,7 @@ import { createTocController } from '../article/toc';
           }
           Swal.fire({
             icon: 'success',
-            title: '标题已复制',
+            title: ui("m_55bd49f630b15c51"),
             toast: true,
             position: 'top-end',
             timer: 2000,
@@ -584,9 +585,9 @@ import { createTocController } from '../article/toc';
             renderDocBanner('staleVersionBanner', {
               variant: 'warning',
               icon: 'bi bi-exclamation-triangle-fill',
-              message: '正在查看旧版本。',
+              message: ui("m_924705c0090332c0"),
               action: {
-                label: '查看最新版本',
+                label: ui("m_f62c2c02077abc70"),
                 iconClass: 'bi bi-arrow-clockwise',
                 onClick: () => showArticle(renderedSlug, { fresh: true }),
               },
@@ -637,8 +638,8 @@ import { createTocController } from '../article/toc';
             if (ssrData._ssrPrivate) {
               hideAllPages();
               document.getElementById('privatePage').classList.remove('d-none');
-              document.getElementById('privateSlug').textContent = `"${decodeURIComponent(slug)}" 문서는 비공개 상태입니다.`;
-              document.title = `私有页面 - ${window.appConfig.wikiName}`;
+              document.getElementById('privateSlug').textContent = ui("m_f00c38b0029bdb78", [decodeURIComponent(slug)]);
+              document.title = ui("m_6ccd1bbe3a380728", [window.appConfig.wikiName]);
 
               if (typeof window.__sidebarLayoutUpdate === 'function') window.__sidebarLayoutUpdate();
               return;
@@ -646,8 +647,8 @@ import { createTocController } from '../article/toc';
             if (ssrData._ssrDeleted) {
               hideAllPages();
               document.getElementById('deletedPage').classList.remove('d-none');
-              document.getElementById('deletedSlug').textContent = `"${decodeURIComponent(slug)}" 문서는 삭제되었습니다.`;
-              document.title = `삭제된 문서 - ${window.appConfig.wikiName}`;
+              document.getElementById('deletedSlug').textContent = ui("m_d98c29f4f49a6a54", [decodeURIComponent(slug)]);
+              document.title = ui("m_12010170855732ae", [window.appConfig.wikiName]);
 
               // 삭제된 문서 화면이 보이도록 렌더링 강제 업데이트
               if (typeof window.__sidebarLayoutUpdate === 'function') window.__sidebarLayoutUpdate();
@@ -680,8 +681,8 @@ import { createTocController } from '../article/toc';
           if (res.status === 410) {
             hideAllPages();
             document.getElementById('deletedPage').classList.remove('d-none');
-            document.getElementById('deletedSlug').textContent = `"${decodeURIComponent(slug)}" 문서는 삭제되었습니다.`;
-            document.title = `삭제된 문서 - ${window.appConfig.wikiName}`;
+            document.getElementById('deletedSlug').textContent = ui("m_d98c29f4f49a6a54", [decodeURIComponent(slug)]);
+            document.title = ui("m_12010170855732ae", [window.appConfig.wikiName]);
 
             // 삭제된 문서 화면이 보이도록 렌더링 강제 업데이트
             if (typeof window.__sidebarLayoutUpdate === 'function') window.__sidebarLayoutUpdate();
@@ -704,14 +705,14 @@ import { createTocController } from '../article/toc';
           if (res.status === 403) {
             hideAllPages();
             document.getElementById('privatePage').classList.remove('d-none');
-            document.getElementById('privateSlug').textContent = `"${decodeURIComponent(slug)}" 문서는 비공개 상태입니다.`;
-            document.title = `私有页面 - ${window.appConfig.wikiName}`;
+            document.getElementById('privateSlug').textContent = ui("m_f00c38b0029bdb78", [decodeURIComponent(slug)]);
+            document.title = ui("m_6ccd1bbe3a380728", [window.appConfig.wikiName]);
 
             if (typeof window.__sidebarLayoutUpdate === 'function') window.__sidebarLayoutUpdate();
             return;
           }
 
-          if (!res.ok) throw new Error('页面加载失败');
+          if (!res.ok) throw new Error(ui("m_cfa50627748d611e"));
           page = await res.json();
         }
 
@@ -748,17 +749,11 @@ import { createTocController } from '../article/toc';
         const redirectMsgEl = document.getElementById('redirectMessage');
         redirectMsgEl.innerHTML = '';
         if (page.redirected_from) {
-          redirectMsgEl.innerHTML = `
-            <div class="alert alert-info py-1 px-2 mb-2 d-inline-block small">
-            <i class="bi bi-arrow-return-right"></i>
-            "${window.escapeHtml(page.redirected_from)}" 문서에서 넘어옴
-            (<a href="/w/${encodeURIComponent(page.redirected_from)}?redirect=no" class="alert-link" onclick="navigateTo(this.getAttribute('href')); return false;">编辑</a>)
-            </div>
-          `;
+          redirectMsgEl.innerHTML = ui("m_e58d520ca5ba10a0", [window.escapeHtml(page.redirected_from), encodeURIComponent(page.redirected_from)]);
         }
 
         // 메타 정보
-        const updatedDate = new Date(page.updated_at * 1000).toLocaleString('zh-CN');
+        const updatedDate = new Date(page.updated_at * 1000).toLocaleString(getLocale());
 
         let badgesHtml = '';
         if (page.category) {
@@ -775,10 +770,10 @@ import { createTocController } from '../article/toc';
           if (_acl && Array.isArray(_acl.flags)) _aclFlags = _acl.flags;
         } catch { /* ignore */ }
         const _ACL_FLAG_LABELS = {
-          aged: '가입 N일 이상',
-          page_editor: '本页编辑历史',
-          any_editor: '任意页面编辑历史',
-          admin_only: '仅管理员',
+          aged: ui("m_bf8508933cb57822"),
+          page_editor: ui("m_1067d4563021de5a"),
+          any_editor: ui("m_16e8ef1a632a2464"),
+          admin_only: ui("m_7f0dd12bee0266d4"),
         };
         const _ACL_FLAG_ORDER = ['aged', 'page_editor', 'any_editor', 'admin_only'];
         const _validAclFlags = _ACL_FLAG_ORDER.filter(f => _aclFlags.includes(f));
@@ -786,13 +781,13 @@ import { createTocController } from '../article/toc';
           const _popoverContent = '<ul class="mb-0 ps-3">'
             + _validAclFlags.map(f => `<li>${window.escapeHtml(_ACL_FLAG_LABELS[f])}</li>`).join('')
             + '</ul>';
-          badgesHtml += `<span class="badge bg-danger ms-2 edit-lock-badge" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top" data-bs-html="true" data-bs-content="${window.escapeHtml(_popoverContent)}" style="cursor:help;"><i class="bi bi-lock-fill"></i> 编辑受限</span>`;
+          badgesHtml += ui("m_0ec435a2dc1da20b", [window.escapeHtml(_popoverContent)]);
         }
         if (page.is_private) {
-          badgesHtml += `<span class="badge bg-danger ms-2"><i class="bi bi-eye-slash-fill"></i> 私有页面</span>`;
+          badgesHtml += ui("m_a9dd6a47b5cf911c");
         }
         if (page.deleted_at) {
-          badgesHtml += `<span class="badge bg-danger ms-2"><i class="bi bi-trash"></i> 已删除</span>`;
+          badgesHtml += ui("m_b50763b54d6e0edc");
         }
 
         // SPA 네비게이션으로 articleMeta 가 통째로 갈리기 전, 직전 렌더에서 띄운
@@ -811,22 +806,10 @@ import { createTocController } from '../article/toc';
         const isAdmin = window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin');
         let viewCountBtnHtml = '';
         if (!page.is_private && isAdmin) {
-          viewCountBtnHtml = `
-            <button type="button" class="view-count-toggle" data-slug="${window.escapeHtml(page.slug)}" onclick="loadPageViewCount(this)" title="조회수 확인" aria-label="조회수 확인">
-              <i class="bi bi-eye" aria-hidden="true"></i><span class="view-count-label"> 조회수</span>
-            </button>
-          `;
+          viewCountBtnHtml = ui("m_94309560093a9d1e", [window.escapeHtml(page.slug)]);
         }
 
-        document.getElementById('articleMeta').innerHTML = `
-      <span class="meta-item">마지막 수정 : ${updatedDate}</span>
-      <span class="meta-item">v${page.version}</span>
-      ${badgesHtml}
-      ${viewCountBtnHtml}
-      <button type="button" class="reading-mode-toggle" onclick="toggleReadingMode()" title="읽기 모드" aria-label="읽기 모드">
-        <i class="bi bi-book" aria-hidden="true"></i><span class="reading-mode-toggle-label d-none d-sm-inline"> 읽기 모드</span>
-      </button>
-    `;
+        document.getElementById('articleMeta').innerHTML = ui("m_15d996a558b12057", [updatedDate, page.version, badgesHtml, viewCountBtnHtml]);
 
         // 편집 잠금 배지 popover 초기화 — 마우스 오버/포커스 시 요구 권한 표시.
         if (typeof bootstrap !== 'undefined') {
@@ -857,8 +840,8 @@ import { createTocController } from '../article/toc';
               renderDocBanner(_mcpBanner, {
                 variant: 'warning',
                 icon: 'bi bi-plug',
-                message: '有通过 MCP 提交的待审核编辑。',
-                action: { label: '审核', iconClass: 'bi bi-eye', href: '/mypage#mcp-submissions' },
+                message: ui("m_51c6a0f3e80195c7"),
+                action: { label: ui("m_948c5c16d8fec64d"), iconClass: 'bi bi-eye', href: '/mypage#mcp-submissions' },
               });
             })
             .catch(() => { });
@@ -885,21 +868,7 @@ import { createTocController } from '../article/toc';
         window.currentArticleEdit = canEdit ? { slug: actionSlug } : null;
 
         // 메인 액션 (편집, 이력, 토론)
-        const mainActionsHtml = `
-          <a id="articleEditBtn" href="/edit?slug=${encodeURIComponent(actionSlug)}"
-             class="btn btn-outline-secondary ${canEdit ? '' : 'disabled'}"
-             ${canEdit ? '' : 'tabindex="-1" aria-disabled="true"'}
-             title="${canEdit ? '编辑本页' : '此页面仅管理员可编辑'}"
-             aria-label="${canEdit ? '编辑' : '编辑（已锁定）'}">
-            <i class="bi bi-pencil" aria-hidden="true"></i><span class="d-none d-sm-inline"> 编辑</span>
-          </a>
-          <a href="/w/${encodeURIComponent(actionSlug)}?mode=revisions" class="btn btn-outline-secondary" aria-label="历史">
-            <i class="bi bi-clock-history" aria-hidden="true"></i><span class="d-none d-sm-inline"> 历史</span>
-          </a>
-          <a href="/w/${encodeURIComponent(actionSlug)}?mode=discussions" class="btn btn-outline-secondary" aria-label="讨论">
-            <i class="bi bi-chat-dots" aria-hidden="true"></i><span class="d-none d-sm-inline"> 讨论</span>
-          </a>
-        `;
+        const mainActionsHtml = ui("m_06f282495fe35ed1", [encodeURIComponent(actionSlug), canEdit ? '' : 'disabled', canEdit ? '' : 'tabindex="-1" aria-disabled="true"', canEdit ? ui("m_cc7f6f8711d3fb7f") : ui("m_1942f102f4952cfd"), canEdit ? ui("m_051836569928a9f9") : ui("m_3c28e080cf62f37d"), encodeURIComponent(actionSlug), encodeURIComponent(actionSlug)]);
         document.getElementById('articleMainActions').innerHTML = mainActionsHtml;
 
         // 편집 요청 배지/드롭다운 — articleEditBtn 이 렌더된 뒤 실행해야 교체 대상이 존재한다.
@@ -918,8 +887,8 @@ import { createTocController } from '../article/toc';
                 renderDocBanner(_pendingBanner, {
                   variant: 'sky',
                   icon: 'bi bi-hourglass-split',
-                  message: `검토 대기 중인 편집 요청이 ${data.count}건 있습니다.`,
-                  action: { label: '审核', iconClass: 'bi bi-eye', onClick: () => reviewEditRequests(_pendingSlug) },
+                  message: ui("m_49f0ce90f2d5814f", [data.count]),
+                  action: { label: ui("m_948c5c16d8fec64d"), iconClass: 'bi bi-eye', onClick: () => reviewEditRequests(_pendingSlug) },
                 });
               }
               // 편집 버튼 → 드롭다운(문서 편집하기 / 편집 요청 확인하기 N건). 하늘색 배지.
@@ -928,16 +897,7 @@ import { createTocController } from '../article/toc';
                 const group = document.createElement('div');
                 group.className = 'btn-group';
                 group.id = 'articleEditGroup';
-                group.innerHTML = `
-                  <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="编辑" aria-label="编辑">
-                    <i class="bi bi-pencil" aria-hidden="true"></i><span class="d-none d-sm-inline"> 编辑</span>
-                    <span class="badge rounded-pill ms-1" style="background:#38BDF8;color:#06283d;">${data.count}</span>
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="/edit?slug=${encodeURIComponent(_editSlug)}"><i class="bi bi-pencil-square"></i> 编辑页面</a></li>
-                    <li><button class="dropdown-item" type="button" id="reviewEditRequestsItem"><i class="bi bi-list-check"></i> 查看编辑申请 (${data.count}건)</button></li>
-                  </ul>
-                `;
+                group.innerHTML = ui("m_ed51c6e6ac13fb50", [data.count, encodeURIComponent(_editSlug), data.count]);
                 editBtn.replaceWith(group);
                 const reviewItem = group.querySelector('#reviewEditRequestsItem');
                 if (reviewItem) reviewItem.addEventListener('click', () => reviewEditRequests(_pendingSlug));
@@ -947,74 +907,30 @@ import { createTocController } from '../article/toc';
         }
 
         // 더보기 액션
-        let moreActionsHtml = `
-          <li><button class="dropdown-item" type="button" onclick="scrollToBacklinks(); return false;">
-            <i class="bi bi-link-45deg"></i> 链入页面
-          </button></li>
-          <li><button class="dropdown-item" type="button" onclick="toggleRawMode(); return false;">
-            <i class="bi bi-code-slash"></i> Raw 보기
-          </button></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><button class="dropdown-item${_hasColon ? ' disabled' : ''}" ${_hasColon ? 'disabled' : `data-slug="${window.escapeHtml(actionSlug)}" onclick="showSubdocs(this.dataset.slug); return false;"`}>
-            <i class="bi bi-diagram-3"></i> 문서 구조 보기
-          </button></li>
-        `;
+        let moreActionsHtml = ui("m_806118f709cbe8e2", [_hasColon ? ' disabled' : '', _hasColon ? 'disabled' : `data-slug="${window.escapeHtml(actionSlug)}" onclick="showSubdocs(this.dataset.slug); return false;"`]);
 
         if (window.currentUser) {
-          moreActionsHtml += `
-          <li>
-            <button class="dropdown-item" id="watchToggleBtn" data-slug="${window.escapeHtml(actionSlug)}" onclick="openWatchMenu(this.dataset.slug); return false;">
-              <i class="bi bi-eye"></i> <span id="watchToggleText">주시하기</span>
-            </button>
-          </li>
-          `;
+          moreActionsHtml += ui("m_4a926e80faa91d9a", [window.escapeHtml(actionSlug)]);
 
           // 카테고리 문서('카테고리:xxx') 인 경우 — 해당 카테고리에 속한 모든 문서의 편집을
           // 구독할 수 있는 별도 항목을 노출한다.
           const _decodedActionSlug = decodeURIComponent(actionSlug);
           if (_decodedActionSlug.startsWith('카테고리:')) {
             const _catName = _decodedActionSlug.slice('카테고리:'.length);
-            moreActionsHtml += `
-            <li>
-              <button class="dropdown-item" id="catWatchBtn" data-category="${window.escapeHtml(_catName)}" onclick="toggleCategoryWatch(this.dataset.category); return false;">
-                <i class="bi bi-folder"></i> <span id="catWatchText">카테고리 주시</span>
-              </button>
-            </li>
-            `;
+            moreActionsHtml += ui("m_6d209ac8e2b23236", [window.escapeHtml(_catName)]);
           }
 
           if (canEdit) {
             if (page.deleted_at && isAdmin) {
-              moreActionsHtml += `
-              <li><hr class="dropdown-divider"></li>
-              <li><button class="dropdown-item text-success" data-slug="${window.escapeHtml(actionSlug)}" onclick="restorePage(this.dataset.slug); return false;">
-                <i class="bi bi-arrow-counterclockwise"></i> 문서 복원
-              </button></li>
-              <li><button class="dropdown-item text-danger" data-slug="${window.escapeHtml(actionSlug)}" onclick="confirmHardDelete(this.dataset.slug); return false;">
-                <i class="bi bi-trash-fill"></i> 永久删除 (超级管理员)
-              </button></li>
-              `;
+              moreActionsHtml += ui("m_36c060161233f9b5", [window.escapeHtml(actionSlug), window.escapeHtml(actionSlug)]);
             } else if (!page.deleted_at) {
               if (isAdmin) {
                 const _isCategoryPage = _decodedActionSlug.startsWith('카테고리:');
                 const _categoryName = _isCategoryPage ? _decodedActionSlug.slice('카테고리:'.length) : '';
                 const _permButton = _isCategoryPage
-                  ? `<li><button class="dropdown-item" data-category="${window.escapeHtml(_categoryName)}" onclick="window.openCategoryAclModal && window.openCategoryAclModal(this.dataset.category); return false;">
-                <i class="bi bi-shield-lock"></i> 권한 관리
-              </button></li>`
-                  : `<li><button class="dropdown-item" data-slug="${window.escapeHtml(actionSlug)}" onclick="window.openPermissionsModal && window.openPermissionsModal(this.dataset.slug); return false;">
-                <i class="bi bi-shield-lock"></i> 권한 관리
-              </button></li>`;
-                moreActionsHtml += `
-              <li><hr class="dropdown-divider"></li>
-              ${_permButton}
-              <li><button class="dropdown-item" data-slug="${window.escapeHtml(actionSlug)}" onclick="promptMove(this.dataset.slug); return false;">
-                <i class="bi bi-arrows-move"></i> 문서 주소 변경
-              </button></li>
-              <li><button class="dropdown-item text-danger" data-slug="${window.escapeHtml(actionSlug)}" onclick="confirmDelete(this.dataset.slug); return false;">
-                <i class="bi bi-trash"></i> 删除
-              </button></li>
-                `;
+                  ? ui("m_05838fba19cd3545", [window.escapeHtml(_categoryName)])
+                  : ui("m_8fe5b03b9e5c164c", [window.escapeHtml(actionSlug)]);
+                moreActionsHtml += ui("m_1eee44365beb0add", [_permButton, window.escapeHtml(actionSlug), window.escapeHtml(actionSlug)]);
               }
             }
           }
@@ -1063,22 +979,7 @@ import { createTocController } from '../article/toc';
           // 직전 문서(일반/익스텐션)의 익스텐션 정리 훅을 먼저 실행(Chart/위젯 누수 방지) 후 교체.
           if (typeof window._teardownExtensions === 'function') window._teardownExtensions(contentEl);
           const rawId = `ext-raw-collapse-${Date.now()}`;
-          contentEl.innerHTML = `
-            <div class="wiki-ext-doc-view">
-              <div class="wiki-ext-doc-rendered" id="ext-doc-rendered"></div>
-              <div class="wiki-ext-doc-raw-toggle mt-3">
-                <button class="btn btn-sm btn-outline-secondary wiki-ext-raw-toggle-btn" type="button"
-                  data-bs-toggle="collapse" data-bs-target="#${rawId}" aria-expanded="false" aria-controls="${rawId}">
-                  <i class="bi bi-database"></i> Raw 데이터 보기
-                </button>
-              </div>
-              <div class="collapse mt-2" id="${rawId}">
-                <div class="wiki-ext-raw-data">
-                  <div class="wiki-ext-raw-badge"><i class="bi bi-database"></i> ${window.escapeHtml(extPrefix)} raw 데이터</div>
-                  <pre class="wiki-ext-raw-pre" id="ext-raw-pre"></pre>
-                </div>
-              </div>
-            </div>`;
+          contentEl.innerHTML = ui("m_076e141db0fd7016", [rawId, rawId, rawId, window.escapeHtml(extPrefix)]);
 
           // raw 데이터는 버튼 클릭 시에만 삽입 (지연 로드)
           const rawToggleBtn = contentEl.querySelector('.wiki-ext-raw-toggle-btn');
@@ -1120,7 +1021,7 @@ import { createTocController } from '../article/toc';
             } else if (retries > 0 && renderedEl.isConnected) {
               setTimeout(() => _tryRenderExtDoc(retries - 1), 200);
             } else if (renderedEl.isConnected) {
-              renderedEl.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> ${window.escapeHtml(extPrefix)} 렌더러를 찾을 수 없습니다.</div>`;
+              renderedEl.innerHTML = ui("m_730bb30b5f8342ee", [window.escapeHtml(extPrefix)]);
             }
           }
           _tryRenderExtDoc(15);
@@ -1147,10 +1048,10 @@ import { createTocController } from '../article/toc';
         const trackableTemplatePrefixes = ['틀:', 'template:'];
         const isTemplate = trackableTemplatePrefixes.some(p => decodedSlug.toLowerCase().startsWith(p.toLowerCase()));
         if (isTemplate) {
-          document.querySelector('#backlinksSection h5').innerHTML = '<i class="bi bi-link-45deg"></i> 이 틀을 사용하는 문서';
+          document.querySelector('#backlinksSection h5').innerHTML = ui("m_7d58d168c433f9dc");
           await loadBacklinks(slug);
         } else {
-          document.querySelector('#backlinksSection h5').innerHTML = '<i class="bi bi-link-45deg"></i> 链入页面';
+          document.querySelector('#backlinksSection h5').innerHTML = ui("m_5442d2ab364a3559");
           document.getElementById('backlinksSection').classList.add('d-none');
           document.getElementById('backlinksList').innerHTML = '';
         }
@@ -1202,7 +1103,7 @@ import { createTocController } from '../article/toc';
 
       } catch (err) {
         console.error(err);
-        Swal.fire('错误', '문서를 불러오는 데 실패했습니다.', 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_d4d43d5aa05023fe"), 'error');
         hideAllPages();
       }
     }
@@ -1210,26 +1111,26 @@ import { createTocController } from '../article/toc';
     // ── 하위 문서 생성 (문서 구조 네비게이션의 펜 버튼) ──
     async function createSubdoc(parentSlug) {
       if (!window.currentUser) {
-        Swal.fire('提示', '로그인 후 하위 문서를 만들 수 있습니다.', 'info');
+        Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_63f8fd344484659e"), 'info');
         return;
       }
       if (!(window.currentUser.permissions && window.currentUser.permissions['wiki:edit'])) {
-        Swal.fire('没有权限', '하위 문서를 만들 권한이 없습니다.', 'error');
+        Swal.fire(ui("m_e32c8a6ddd7bcef3"), ui("m_8f827503b320e3e5"), 'error');
         return;
       }
       const { value: subTitle } = await Swal.fire({
-        title: '하위 문서 생성',
+        title: ui("m_25a5a6e083da0d47"),
         input: 'text',
-        inputLabel: `"${parentSlug}" 아래에 만들 하위 문서 이름`,
-        inputPlaceholder: '하위 문서 이름',
+        inputLabel: ui("m_847bcbbdd43760cd", [parentSlug]),
+        inputPlaceholder: ui("m_cbe88111c1219b42"),
         showCancelButton: true,
-        confirmButtonText: '创建',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_cde2cd071d25bbab"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         inputValidator: (value) => {
           const trimmed = value ? value.trim() : '';
-          if (!trimmed) return '이름을 입력해주세요.';
-          if (trimmed.includes('/')) return '슬래시(/)는 포함할 수 없습니다.';
-          if (trimmed.includes(':')) return '콜론(:)은 포함할 수 없습니다.';
+          if (!trimmed) return ui("m_b6c1c96c52ea9de7");
+          if (trimmed.includes('/')) return ui("m_fe7697de128f0799");
+          if (trimmed.includes(':')) return ui("m_9721987d8acc1d00");
         }
       });
       const trimmed = subTitle ? subTitle.trim() : '';
@@ -1264,35 +1165,21 @@ import { createTocController } from '../article/toc';
         : media.size < 1024 * 1024 ? `${(media.size / 1024).toFixed(1)} KB`
           : `${(media.size / (1024 * 1024)).toFixed(1)} MB`;
       const uploadDate = page.created_at
-        ? new Date(page.created_at * 1000).toLocaleString('zh-CN')
+        ? new Date(page.created_at * 1000).toLocaleString(getLocale())
         : '';
-      const uploaderName = media.uploader_name ? window.escapeHtml(media.uploader_name) : '未知用户';
+      const uploaderName = media.uploader_name ? window.escapeHtml(media.uploader_name) : ui("m_1ac13841ba2ea68b");
 
-      document.getElementById('articleMeta').innerHTML = `
-        <span class="meta-item">업로드: ${window.escapeHtml(uploadDate)}</span>
-        <span class="meta-item">${window.escapeHtml(sizeStr)}</span>
-        <span class="meta-item">업로더: ${uploaderName}</span>
-        <span class="meta-item"><code>${window.escapeHtml(media.mime_type || '')}</code></span>
-      `;
+      document.getElementById('articleMeta').innerHTML = ui("m_c80db245ef4e8553", [window.escapeHtml(uploadDate), window.escapeHtml(sizeStr), uploaderName, window.escapeHtml(media.mime_type || '')]);
 
       // 액션 버튼: 편집/원본 열기
       // 편집 권한은 서버 RBAC가 부여한 wiki:edit 플래그를 그대로 따른다.
       // /api/me 가 permissions를 내려주므로 그 값을 사용하고, 비로그인은 currentUser가 null이다.
       const canEditImage = !!(window.currentUser && window.currentUser.permissions && window.currentUser.permissions['wiki:edit']);
       const editTitle = !window.currentUser
-        ? '登录后可编辑'
-        : (canEditImage ? '编辑说明' : '没有编辑权限');
+        ? ui("m_bd5f59c21308340d")
+        : (canEditImage ? ui("m_ed222ef443a962f8") : ui("m_d81753fb3236ed05"));
       const filename = media.filename || page.slug.replace(/^이미지:/, '');
-      document.getElementById('articleMainActions').innerHTML = `
-        <button type="button" class="btn btn-outline-secondary ${canEditImage ? '' : 'disabled'}"
-                ${canEditImage ? '' : 'disabled aria-disabled="true"'} onclick="editImageDocContent(); return false;"
-                title="${editTitle}">
-          <i class="bi bi-pencil"></i><span class="d-none d-sm-inline"> 编辑</span>
-        </button>
-        <a href="${window.escapeHtml(media.url || '')}" target="_blank" rel="noopener" class="btn btn-outline-secondary">
-          <i class="bi bi-box-arrow-up-right"></i><span class="d-none d-sm-inline"> 원본 열기</span>
-        </a>
-      `;
+      document.getElementById('articleMainActions').innerHTML = ui("m_7041761bd79aa63f", [canEditImage ? '' : 'disabled', canEditImage ? '' : 'disabled aria-disabled="true"', editTitle, window.escapeHtml(media.url || '')]);
       document.getElementById('articleMoreActions').innerHTML = '';
 
       // 목차 / 부모 문서 영역 숨김 (이미지 문서는 목차/부모 문서 개념 없음)
@@ -1303,7 +1190,7 @@ import { createTocController } from '../article/toc';
       closeParentDocsSiblings();
       document.getElementById('parentDocsNavDivider').classList.add('d-none');
       // 역링크 섹션: 일반 문서와 달리 이미지 문서는 열람 즉시 자동 로드
-      document.querySelector('#backlinksSection h5').innerHTML = '<i class="bi bi-link-45deg"></i> 이 이미지를 사용하는 문서';
+      document.querySelector('#backlinksSection h5').innerHTML = ui("m_c13e02032495bf82");
       document.getElementById('backlinksSection').classList.add('d-none');
       document.getElementById('backlinksList').innerHTML = '';
 
@@ -1318,7 +1205,7 @@ import { createTocController } from '../article/toc';
         : `<img src="${window.escapeHtml(media.url || '')}" alt="${window.escapeHtml(filename)}" class="img-fluid">`;
       const contentHtml = page.content
         ? `<pre class="wiki-image-doc-content">${window.escapeHtml(page.content)}</pre>`
-        : '<p class="text-muted">아직 설명이 작성되지 않았습니다.</p>';
+        : ui("m_8728c0c07e1f3170");
       const tagsHtml = renderImageDocTagsHtml(media.tags);
 
       const contentEl = document.getElementById('articleContent');
@@ -1379,16 +1266,9 @@ import { createTocController } from '../article/toc';
         } catch (_) { /* localStorage 비활성 환경 등 — 무시 */ }
       }
       const _permsToggleHtml = _mapIsAdmin
-        ? `<label class="meta-item" style="cursor:pointer; user-select:none;">
-             <input type="checkbox" id="mapPermsToggle"${_mapPermsActive ? ' checked' : ''} style="vertical-align:middle; margin-right:4px;">
-             <i class="bi bi-shield-lock"></i> 권한 표시
-           </label>`
+        ? ui("m_42d267f35954a241", [_mapPermsActive ? ' checked' : ''])
         : '';
-      document.getElementById('articleMeta').innerHTML = `
-        <span class="meta-item"><i class="bi bi-diagram-3"></i> 지도 뷰</span>
-        <span class="meta-item">루트: ${window.escapeHtml(baseSlug || '(전체)')}</span>
-        ${_permsToggleHtml}
-      `;
+      document.getElementById('articleMeta').innerHTML = ui("m_91132a14045d17bb", [window.escapeHtml(baseSlug || ui("m_abab3a81ecbf84ed")), _permsToggleHtml]);
       if (_mapIsAdmin) {
         const _toggleEl = document.getElementById('mapPermsToggle');
         if (_toggleEl) {
@@ -1406,9 +1286,7 @@ import { createTocController } from '../article/toc';
       // 액션 버튼: 편집/이력 등은 모두 비활성화. 루트 문서로 이동하는 바로가기만 노출한다.
       const rootHref = baseSlug ? `/w/${encodeURIComponent(baseSlug)}` : '/';
       document.getElementById('articleMainActions').innerHTML = baseSlug
-        ? `<a href="${window.escapeHtml(rootHref)}" class="btn btn-outline-secondary" onclick="navigateTo(this.getAttribute('href')); return false;">
-             <i class="bi bi-box-arrow-up-right"></i><span class="d-none d-sm-inline"> 루트 문서로 이동</span>
-           </a>`
+        ? ui("m_65a29206226cfb7a", [window.escapeHtml(rootHref)])
         : '';
       document.getElementById('articleMoreActions').innerHTML = '';
 
@@ -1442,22 +1320,22 @@ import { createTocController } from '../article/toc';
     // 이미지 문서 본문 하단 태그 뱃지 HTML 생성
     function renderImageDocTagsHtml(tags) {
       if (!Array.isArray(tags) || tags.length === 0) {
-        return '<span class="wiki-image-doc-tags-empty text-muted">태그 없음</span>';
+        return ui("m_20f80c8397e892b7");
       }
       const items = tags.map(t =>
         `<span class="category-tag"><span>${window.escapeHtml(t)}</span></span>`
       ).join('');
-      return `<span class="wiki-image-doc-tags-label text-muted"><i class="mdi mdi-tag-multiple-outline"></i> 태그</span>${items}`;
+      return ui("m_80ee662ea06de6eb", [items]);
     }
 
     // 이미지 문서 설명 편집 (모달)
     async function editImageDocContent() {
       if (!window.currentUser) {
-        Swal.fire('提示', '登录后才能编辑。', 'info');
+        Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_4bb7f3e186ba0c8e"), 'info');
         return;
       }
       if (!(window.currentUser.permissions && window.currentUser.permissions['wiki:edit'])) {
-        Swal.fire('没有权限', '이 작업을 수행할 권한이 없습니다.', 'error');
+        Swal.fire(ui("m_e32c8a6ddd7bcef3"), ui("m_00bbefb0317222b2"), 'error');
         return;
       }
       if (!currentPage || !currentPage.is_image_doc) return;
@@ -1469,23 +1347,13 @@ import { createTocController } from '../article/toc';
 
       let tagWidget = null;
       const { value: formResult, isConfirmed } = await Swal.fire({
-        title: '이미지 编辑页面',
+        title: ui("m_fcfc6676d4778b53"),
         width: 600,
         showCancelButton: true,
-        confirmButtonText: '保存',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_a3030bf8f16dc63c"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         focusConfirm: false,
-        html: `
-          <div style="text-align:left;">
-            <label class="form-label fw-bold" style="display:block; margin-bottom:4px;">설명</label>
-            <textarea id="imageDocContentInput" class="form-control" rows="6" maxlength="20000" style="width:100%;" placeholder="이미지에 대한 설명을 입력하세요 (일반 텍스트, 위키 문법은 사용되지 않습니다)">${window.escapeHtml(currentPage.content || '')}</textarea>
-            <label class="form-label fw-bold" style="display:block; margin:14px 0 4px 0;">태그</label>
-            <div class="category-tag-container" id="imageDocTagContainer" style="max-width:100%;">
-              <input type="text" id="imageDocTagInput" class="category-tag-input" placeholder="태그 입력 후 엔터나 쉼표">
-            </div>
-            <div class="form-text text-muted" style="margin-top:4px; font-size:0.82rem;">한글/영문/숫자/공백/_/./- 만 사용 가능 · 최대 20개</div>
-          </div>
-        `,
+        html: ui("m_cbadc087b51a5373", [window.escapeHtml(currentPage.content || '')]),
         didOpen: () => {
           tagWidget = window.mountMediaTagInput({
             container: document.getElementById('imageDocTagContainer'),
@@ -1512,7 +1380,7 @@ import { createTocController } from '../article/toc';
           body: JSON.stringify({ content: newContent || '', tags: newTags }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '保存失败');
+        if (!res.ok) throw new Error(data.error || ui("m_6309a3bb5ba4c714"));
 
         currentPage.content = newContent || '';
         if (currentPage.media) currentPage.media.tags = Array.isArray(newTags) ? newTags.slice() : [];
@@ -1520,17 +1388,17 @@ import { createTocController } from '../article/toc';
         if (textEl) {
           textEl.innerHTML = currentPage.content
             ? `<pre class="wiki-image-doc-content">${window.escapeHtml(currentPage.content)}</pre>`
-            : '<p class="text-muted">아직 설명이 작성되지 않았습니다.</p>';
+            : ui("m_8728c0c07e1f3170");
         }
         const tagsEl = document.getElementById('wikiImageDocTags');
         if (tagsEl) tagsEl.innerHTML = renderImageDocTagsHtml(currentPage.media && currentPage.media.tags);
         const rawEl = document.getElementById('articleRawContent');
         if (rawEl) rawEl.textContent = currentPage.content;
 
-        Swal.fire({ icon: 'success', title: '已保存。', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+        Swal.fire({ icon: 'success', title: ui("m_193f229df3d99e3a"), toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
       } catch (err) {
         console.error(err);
-        Swal.fire('错误', err.message || '保存失败。', 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message || ui("m_cf1487e7aa8947c2"), 'error');
       }
     }
 
@@ -1563,21 +1431,14 @@ import { createTocController } from '../article/toc';
       hideDocBanner('pendingEditBanner');
 
       // 본문: 플레인 텍스트 한 줄
-      document.getElementById('articleContent').textContent = '존재하지 않는 문서입니다';
+      document.getElementById('articleContent').textContent = ui("m_ac66748e68a838f4");
       const _raw = document.getElementById('articleRawContent');
       if (_raw) _raw.textContent = '';
 
       // 메인 액션 없음(편집/이력/토론 — 만들기는 배너가 담당)
       document.getElementById('articleMainActions').innerHTML = '';
       // 더보기 메뉴: 역링크(온디맨드 로드) + 문서 구조 보기(slug 기반, 콜론 슬러그는 비활성)
-      document.getElementById('articleMoreActions').innerHTML = `
-        <li><button class="dropdown-item" type="button" onclick="scrollToBacklinks(); return false;">
-          <i class="bi bi-link-45deg"></i> 链入页面
-        </button></li>
-        <li><button class="dropdown-item${_hasColon ? ' disabled' : ''}" ${_hasColon ? 'disabled' : `data-slug="${window.escapeHtml(decodedSlug)}" onclick="showSubdocs(this.dataset.slug); return false;"`}>
-          <i class="bi bi-diagram-3"></i> 문서 구조 보기
-        </button></li>
-      `;
+      document.getElementById('articleMoreActions').innerHTML = ui("m_58d547bd560c8cb9", [_hasColon ? ' disabled' : '', _hasColon ? 'disabled' : `data-slug="${window.escapeHtml(decodedSlug)}" onclick="showSubdocs(this.dataset.slug); return false;"`]);
 
       // TOC/통계/백링크 숨김(문서 미존재)
       document.getElementById('wikiAccordion').classList.add('d-none');
@@ -1604,9 +1465,9 @@ import { createTocController } from '../article/toc';
       renderDocBanner('missingDocBanner', {
         variant: 'info',
         icon: 'bi bi-info-circle',
-        message: '아직 작성되지 않은 문서입니다.',
+        message: ui("m_c5ce54fdf232a539"),
         action: window.currentUser
-          ? { label: '만들기', iconClass: 'bi bi-pencil-square', href: `/edit?slug=${encodeURIComponent(slug)}` }
+          ? { label: ui("m_81b8d99b4f9bdf3c"), iconClass: 'bi bi-pencil-square', href: `/edit?slug=${encodeURIComponent(slug)}` }
           : undefined,
       });
 
@@ -1628,25 +1489,16 @@ import { createTocController } from '../article/toc';
       document.title = `${decodedSlug} - ${window.appConfig.wikiName}`;
       document.getElementById('articleTitle').textContent = decodedSlug;
       renderSlugLabel(null);
-      document.getElementById('articleMeta').innerHTML = '<span class="text-muted">아직 작성되지 않은 카테고리 문서입니다.</span>';
+      document.getElementById('articleMeta').innerHTML = ui("m_7065774b223557c7");
 
       const watchBtn = window.currentUser
-        ? `<button class="btn btn-outline-secondary" id="catWatchBtn" data-category="${window.escapeHtml(categoryName)}" onclick="toggleCategoryWatch(this.dataset.category); return false;">
-            <i class="bi bi-eye"></i> <span id="catWatchText">카테고리 주시</span>
-          </button>`
+        ? ui("m_1c94e98085ca28b6", [window.escapeHtml(categoryName)])
         : '';
-      const actions = `
-        <button class="btn btn-outline-secondary" onclick="window.location.href='/edit?slug=${encodeURIComponent(slug).replace(/'/g, "%27")}'">
-          <i class="bi bi-pencil-square"></i> 카테고리 설명 생성
-        </button>
-        ${watchBtn}
-      `;
+      const actions = ui("m_58ec18df305006af", [encodeURIComponent(slug).replace(/'/g, "%27"), watchBtn]);
       document.getElementById('articleMainActions').innerHTML = actions;
       const _catIsAdmin = window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin');
       const _catMoreActionsHtml = _catIsAdmin
-        ? `<li><button class="dropdown-item" data-category="${window.escapeHtml(categoryName)}" onclick="window.openCategoryAclModal && window.openCategoryAclModal(this.dataset.category); return false;">
-            <i class="bi bi-shield-lock"></i> 권한 관리
-          </button></li>`
+        ? ui("m_6c156a0dbc69c6cd", [window.escapeHtml(categoryName)])
         : '';
       document.getElementById('articleMoreActions').innerHTML = _catMoreActionsHtml;
       if (window.currentUser) loadCategoryWatchStatus(categoryName);
@@ -1698,19 +1550,16 @@ import { createTocController } from '../article/toc';
         const data = await res.json();
         const pages = Array.isArray(data.pages) ? data.pages : [];
         if (pages.length === 0) {
-          return '<div class="alert alert-light border text-center my-4">이 카테고리에 속한 暂无页面.</div>';
+          return ui("m_d667d18ac1b4f630");
         }
         const items = pages.map(p => {
           const slug = String(p.slug || '');
           return `<a class="category-item" href="/w/${encodeURIComponent(slug)}" onclick="navigateTo(this.href);return false;" title="${window.escapeHtml(slug)}"><span class="category-item-name">${window.escapeHtml(slug)}</span></a>`;
         }).join('');
-        return `<div class="category-list mt-4">
-          <h4><i class="bi bi-folder2-open"></i> "${window.escapeHtml(category)}" 카테고리에 속한 문서</h4>
-          <div class="category-grid">${items}</div>
-        </div>`;
+        return ui("m_dab67bcad1d7ec80", [window.escapeHtml(category), items]);
       } catch (e) {
         console.error(e);
-        return '<div class="alert alert-danger">카테고리 목록을 불러오는 데 실패했습니다.</div>';
+        return ui("m_1717ee6c7d32ee5f");
       }
     }
 
@@ -1735,17 +1584,12 @@ import { createTocController } from '../article/toc';
           `<li><a href="/w/${encodeURIComponent(b.slug)}" target="_blank" rel="noopener">${window.escapeHtml(b.slug)}</a></li>`
         ).join('');
         const ok = await Swal.fire({
-          title: '연결된 문서 경고',
-          html: `<p class="text-start">이 문서로 연결된 <b>${backlinks.length}개</b>의 문서가 있습니다.<br>아래 옵션을 해제하면 이동 후 해당 링크들은 깨지게 됩니다.</p>
-                 <ul class="text-start" style="max-height:200px;overflow:auto">${listHtml}</ul>
-                 <label class="d-flex align-items-center gap-2 mt-3 text-start" style="cursor:pointer">
-                   <input type="checkbox" id="rewriteBacklinksChk" checked />
-                   <span>链入页面 <b>${backlinks.length}개</b> 문서 본문도 자동으로 수정</span>
-                 </label>`,
+          title: ui("m_f81c22694044547f"),
+          html: ui("m_755d75210c1a8cf8", [backlinks.length, listHtml, backlinks.length]),
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonText: '계속 진행',
-          cancelButtonText: '取消',
+          confirmButtonText: ui("m_f7b0d8118bd8fcd7"),
+          cancelButtonText: ui("m_2cd0f3be8738a86c"),
           preConfirm: () => {
             const chk = document.getElementById('rewriteBacklinksChk');
             return { rewrite: chk ? chk.checked : false };
@@ -1756,22 +1600,22 @@ import { createTocController } from '../article/toc';
       }
 
       const { value: newSlug } = await Swal.fire({
-        title: '문서 이동/이름 변경',
+        title: ui("m_772d41709e0e6a5e"),
         input: 'text',
-        inputLabel: '새로운 문서 이름',
+        inputLabel: ui("m_a721f632f0cd4093"),
         inputValue: slug,
         showCancelButton: true,
-        confirmButtonText: '이동',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_83b651b85e13a225"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         inputValidator: (value) => {
           // 서버와 동일하게 앞뒤 공백/슬래시를 제거한 값을 기준으로 검증해
           // 정규화 후 의도와 다른 결과(자기 자신으로 이동, 네임스페이스 변경 등)를 차단한다.
           const trimmed = value ? value.trim().replace(/^\/+/, '').replace(/\/+$/, '') : '';
-          if (!trimmed) return '새 이름을 입력해주세요.';
-          if (trimmed === slug) return '현재 이름과 동일합니다.';
+          if (!trimmed) return ui("m_ffa1f678553ed2cd");
+          if (trimmed === slug) return ui("m_c88aed9e96e3b5c3");
           const currentNs = slug.includes(':') ? slug.split(':')[0] : '';
           const newNs = trimmed.includes(':') ? trimmed.split(':')[0] : '';
-          if (slug.includes(':') && currentNs !== newNs) return '네임스페이스가 있는 문서는 다른 네임스페이스로 이동할 수 없습니다.';
+          if (slug.includes(':') && currentNs !== newNs) return ui("m_3f6361670ddd949f");
         }
       });
 
@@ -1781,10 +1625,10 @@ import { createTocController } from '../article/toc';
       if (trimmedSlug) {
         // 이동/역링크 일괄 갱신이 끝날 때까지 화면 상호작용을 차단하는 로딩 다이얼로그
         Swal.fire({
-          title: '문서 주소 변경 중...',
+          title: ui("m_6bd81cb9034a4898"),
           html: updateBacklinks
-            ? '역링크가 있는 다른 문서들의 본문도 함께 수정하고 있습니다.<br>잠시만 기다려주세요.'
-            : '잠시만 기다려주세요.',
+            ? ui("m_663740f900b91c4a")
+            : ui("m_38372774e5415a6e"),
           allowOutsideClick: false,
           allowEscapeKey: false,
           showConfirmButton: false,
@@ -1800,34 +1644,29 @@ import { createTocController } from '../article/toc';
             body: JSON.stringify({ new_slug: trimmedSlug, update_backlinks: updateBacklinks })
           });
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error || '이동 실패');
+          if (!res.ok) throw new Error(data.error || ui("m_2ac5f029a8308b3b"));
 
-          let summaryHtml = '문서가 이동되었습니다.';
+          let summaryHtml = ui("m_c0d0cdb8aafea17f");
           let summaryIcon = 'success';
-          let summaryTitle = '成功';
+          let summaryTitle = ui("m_053461ce86d26572");
           if (data.backlinks_error) {
             // 이동은 성공했지만 역링크 갱신이 실패한 경우 — 경고로 명확히 표시
             summaryIcon = 'warning';
-            summaryTitle = '이동 완료 (역링크 갱신 실패)';
-            summaryHtml = `<p class="text-start">문서는 새 주소로 이동되었으나, <b>역링크 일괄 갱신 중 오류가 발생해 역링크 본문이 수정되지 않았습니다.</b><br>
-              <small class="text-muted">오류: ${window.escapeHtml(data.backlinks_error)}</small><br>
-              관리자 로그를 확인하고, 필요하면 역링크 문서를 수동으로 수정해주세요.</p>`;
+            summaryTitle = ui("m_436586a5e540349c");
+            summaryHtml = ui("m_24ca3ea695272e04", [window.escapeHtml(data.backlinks_error)]);
           } else if (data.backlinks && (data.backlinks.total > 0 || data.backlinks.updated > 0)) {
             // 실제로 처리 대상이 있던 경우에만 요약 표시 (자동 갱신이 no-op였으면 기본 토스트 유지)
             const b = data.backlinks;
             const skippedList = (b.skipped && b.skipped.length)
-              ? `<details class="text-start mt-2"><summary>건너뛴 문서 ${b.skipped.length}개</summary><ul style="max-height:160px;overflow:auto">${b.skipped.map(s => `<li>${window.escapeHtml(s)}</li>`).join('')}</ul></details>`
+              ? ui("m_60b1df1b7c98934b", [b.skipped.length, b.skipped.map(s => `<li>${window.escapeHtml(s)}</li>`).join('')])
               : '';
             const conflictList = (b.conflicts && b.conflicts.length)
-              ? `<details class="text-start mt-2"><summary>충돌 문서 ${b.conflicts.length}개 (수동 수정 필요)</summary><ul style="max-height:160px;overflow:auto">${b.conflicts.map(s => `<li>${window.escapeHtml(s)}</li>`).join('')}</ul></details>`
+              ? ui("m_00d2c824bff8c23e", [b.conflicts.length, b.conflicts.map(s => `<li>${window.escapeHtml(s)}</li>`).join('')])
               : '';
-            summaryHtml = `<p class="text-start">문서가 이동되었습니다.<br>
-              链入页面 <b>${b.updated}개</b> 갱신 · 건너뜀 <b>${b.skipped.length}개</b> · 충돌 <b>${b.conflicts.length}개</b>
-              ${b.total > (b.updated + b.skipped.length + b.conflicts.length) ? `<br><small class="text-muted">총 ${b.total}개 중 상한으로 일부 처리</small>` : ''}
-              </p>${skippedList}${conflictList}`;
+            summaryHtml = ui("m_9bf3df6038672698", [b.updated, b.skipped.length, b.conflicts.length, b.total > (b.updated + b.skipped.length + b.conflicts.length) ? ui("m_69a97fbb7ae7e760", [b.total]) : '', skippedList, conflictList]);
             if (b.conflicts && b.conflicts.length > 0) {
               summaryIcon = 'warning';
-              summaryTitle = '이동 완료 (일부 충돌)';
+              summaryTitle = ui("m_24f91191a73ff292");
             }
           }
 
@@ -1835,7 +1674,7 @@ import { createTocController } from '../article/toc';
             navigateTo(`/w/${encodeURIComponent(trimmedSlug)}`);
           });
         } catch (err) {
-          Swal.fire('错误', err.message, 'error');
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
         }
       }
     }
@@ -1846,23 +1685,13 @@ import { createTocController } from '../article/toc';
       const isSuperAdmin = window.currentUser && window.currentUser.role === 'super_admin';
 
       const { value: formValues } = await Swal.fire({
-        title: '删除页面',
-        html: `
-          <p>정말 "${window.escapeHtml(slug)}" 문서를 삭제하시겠습니까?</p>
-          ${isSuperAdmin ? `
-            <div class="form-check text-start d-inline-block">
-              <input class="form-check-input" type="checkbox" id="hardDeleteCheck">
-              <label class="form-check-label text-danger fw-bold" for="hardDeleteCheck">
-                永久删除（无法恢复）
-              </label>
-            </div>
-          ` : ''}
-        `,
+        title: ui("m_24a6ab1e7aaa8c16"),
+        html: ui("m_9dcc502d931602d3", [window.escapeHtml(slug), isSuperAdmin ? ui("m_d4f7b79c78df0f8b") : '']),
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_2f9daa828907b93f"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         preConfirm: () => {
           return {
             hard: isSuperAdmin ? document.getElementById('hardDeleteCheck').checked : false
@@ -1877,13 +1706,13 @@ import { createTocController } from '../article/toc';
             method: 'DELETE'
           });
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error || '删除失败');
+          if (!res.ok) throw new Error(data.error || ui("m_c228558cf257fc49"));
 
-          Swal.fire('已删除', data.message, 'success').then(() => {
+          Swal.fire(ui("m_077a6d37719a0e21"), data.message, 'success').then(() => {
             window.location.href = '/';
           });
         } catch (err) {
-          Swal.fire('错误', err.message, 'error');
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
         }
       }
     }
@@ -1892,18 +1721,18 @@ import { createTocController } from '../article/toc';
     async function confirmHardDelete(slug) {
       const isSuperAdmin = window.currentUser && window.currentUser.role === 'super_admin';
       if (!isSuperAdmin) {
-        Swal.fire('没有权限', '永久删除는 超级管理员만 가능합니다.', 'error');
+        Swal.fire(ui("m_e32c8a6ddd7bcef3"), ui("m_e73ac5fb3a7570ad"), 'error');
         return;
       }
 
       const { isConfirmed } = await Swal.fire({
-        title: '永久删除页面',
-        html: `<p>정말 "${window.escapeHtml(slug)}" 문서를 <b>永久删除</b>하시겠습니까?</p><p class="text-danger small">이 작업은 복구할 수 없습니다.</p>`,
+        title: ui("m_8dc55c94e80e88e3"),
+        html: ui("m_fdce238dcf207ded", [window.escapeHtml(slug)]),
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        confirmButtonText: '永久删除',
-        cancelButtonText: '取消'
+        confirmButtonText: ui("m_4e01a4d26a03423b"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c")
       });
 
       if (isConfirmed) {
@@ -1912,13 +1741,13 @@ import { createTocController } from '../article/toc';
             method: 'DELETE'
           });
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error || '删除失败');
+          if (!res.ok) throw new Error(data.error || ui("m_c228558cf257fc49"));
 
-          Swal.fire('永久删除됨', data.message, 'success').then(() => {
+          Swal.fire(ui("m_4d4296b84bf28502"), data.message, 'success').then(() => {
             window.location.href = '/';
           });
         } catch (err) {
-          Swal.fire('错误', err.message, 'error');
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
         }
       }
     }
@@ -1927,17 +1756,17 @@ import { createTocController } from '../article/toc';
     async function restorePage(slug) {
       const isAdmin = window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin');
       if (!isAdmin) {
-        Swal.fire('没有权限', '복구는 관리자만 가능합니다.', 'error');
+        Swal.fire(ui("m_e32c8a6ddd7bcef3"), ui("m_639865d45485dba9"), 'error');
         return;
       }
 
       const { isConfirmed } = await Swal.fire({
-        title: '문서 복원',
-        text: `"${window.escapeHtml(slug)}" 문서를 복원하시겠습니까?`,
+        title: ui("m_ab26b524e5710b3a"),
+        text: ui("m_11c42073077c6ce8", [window.escapeHtml(slug)]),
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: '복원',
-        cancelButtonText: '取消'
+        confirmButtonText: ui("m_e7274914741b7904"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c")
       });
 
       if (isConfirmed) {
@@ -1946,13 +1775,13 @@ import { createTocController } from '../article/toc';
             method: 'POST'
           });
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error || '복원 실패');
+          if (!res.ok) throw new Error(data.error || ui("m_497ef5c9494904b6"));
 
-          Swal.fire('복원됨', data.message, 'success').then(() => {
+          Swal.fire(ui("m_49d12a0080fe8007"), data.message, 'success').then(() => {
             window.location.href = `/w/${encodeURIComponent(slug)}`;
           });
         } catch (err) {
-          Swal.fire('错误', err.message, 'error');
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
         }
       }
     }
@@ -2090,9 +1919,9 @@ import { createTocController } from '../article/toc';
       if (!window.currentUser) {
         Swal.fire({
           icon: 'info',
-          title: '需要登录',
-          text: '문서를 만들려면 먼저 로그인해주세요.',
-          confirmButtonText: '登录',
+          title: ui("m_6eb1b64e260a2dd3"),
+          text: ui("m_a50032b8fc491942"),
+          confirmButtonText: ui("m_1e2df9c3075ae9e4"),
         }).then(result => {
           if (result.isConfirmed) window.location.href = '/login';
         });
@@ -2100,16 +1929,16 @@ import { createTocController } from '../article/toc';
       }
 
       Swal.fire({
-        title: '新页面 만들기',
+        title: ui("m_33dcddf15dc978d8"),
         input: 'text',
-        inputLabel: '문서 이름 (URL 경로)',
-        inputPlaceholder: '예: my-first-page',
+        inputLabel: ui("m_160424a58ddb3055"),
+        inputPlaceholder: ui("m_c9370c3f2f8dde70"),
         showCancelButton: true,
-        confirmButtonText: '만들기',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_81b8d99b4f9bdf3c"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         inputValidator: (value) => {
-          if (!value) return '문서 이름을 입력해주세요.';
-          if (!/^[a-zA-Z0-9가-힣\-_ :]+$/.test(value)) return '영문, 한글, 숫자, -, _, 공백, 콜론(:) 만 사용 가능합니다.';
+          if (!value) return ui("m_94554648086196ac");
+          if (!/^[a-zA-Z0-9가-힣\-_ :]+$/.test(value)) return ui("m_93a5ffaade8c184b");
         }
       }).then(result => {
         if (result.isConfirmed) {
@@ -2121,7 +1950,7 @@ import { createTocController } from '../article/toc';
     // ── 유틸리티 ──
 
     function formatDate(ts) {
-      return new Date(ts * 1000).toLocaleString('zh-CN');
+      return new Date(ts * 1000).toLocaleString(getLocale());
     }
 
     // ── 최근 변경 내역 로드 ──
@@ -2153,11 +1982,11 @@ import { createTocController } from '../article/toc';
       if (!btn || !text) return;
       const icon = btn.querySelector('i');
       if (state && state.watching) {
-        const scopeLabel = state.scope === 'subtree' ? '주시 중 (하위 문서 포함)' : '주시 중';
+        const scopeLabel = state.scope === 'subtree' ? ui("m_8ad9c602de119f31") : ui("m_0a8e3be3dcd53341");
         text.textContent = scopeLabel;
         if (icon) { icon.className = 'bi bi-eye-fill'; }
       } else {
-        text.textContent = '주시하기';
+        text.textContent = ui("m_06d5d13b3f2a87f3");
         if (icon) { icon.className = 'bi bi-eye'; }
       }
     }
@@ -2175,35 +2004,16 @@ import { createTocController } from '../article/toc';
       const watching = !!cur.watching;
       const scope = cur.scope || null;
 
-      const html = `
-        <div class="text-start">
-          <div class="form-check mb-2">
-            <input class="form-check-input" type="radio" name="watchScope" id="watchScopeThis" value="this"
-              ${(!watching || scope === 'this') ? 'checked' : ''}>
-            <label class="form-check-label" for="watchScopeThis">
-              <i class="bi bi-file-earmark-text"></i> 이 문서만 주시
-              <div class="small text-muted">이 문서가 편집될 때만 알림을 받습니다.</div>
-            </label>
-          </div>
-          <div class="form-check mb-2">
-            <input class="form-check-input" type="radio" name="watchScope" id="watchScopeSubtree" value="subtree"
-              ${scope === 'subtree' ? 'checked' : ''}>
-            <label class="form-check-label" for="watchScopeSubtree">
-              <i class="bi bi-diagram-3"></i> 하위 문서까지 주시
-              <div class="small text-muted">이 문서와 모든 하위 문서(<code>${window.escapeHtml(slug)}/...</code>)의 편집 알림을 받습니다.</div>
-            </label>
-          </div>
-        </div>
-      `;
+      const html = ui("m_66cc9f3cafa96710", [(!watching || scope === 'this') ? 'checked' : '', scope === 'subtree' ? 'checked' : '', window.escapeHtml(slug)]);
 
       const result = await Swal.fire({
-        title: '문서 주시 설정',
+        title: ui("m_904672341b22091d"),
         html,
         showCancelButton: true,
         showDenyButton: watching,
-        confirmButtonText: watching ? '변경 저장' : '주시 시작',
-        denyButtonText: '주시 해제',
-        cancelButtonText: '关闭',
+        confirmButtonText: watching ? ui("m_cdd63e4548b20f72") : ui("m_9d0d46a61fcdc42e"),
+        denyButtonText: ui("m_68b37d974d8121a3"),
+        cancelButtonText: ui("m_3fd47edce45b3603"),
         focusConfirm: false,
         preConfirm: () => {
           const checked = document.querySelector('input[name="watchScope"]:checked');
@@ -2227,7 +2037,7 @@ import { createTocController } from '../article/toc';
         });
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || '주시 설정 실패');
+          throw new Error(data.error || ui("m_5936edb93735be6c"));
         }
         const data = await res.json();
         // 응답 처리 도중 다른 문서로 이동했다면 UI 갱신을 생략한다.
@@ -2238,10 +2048,10 @@ import { createTocController } from '../article/toc';
         const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
         Toast.fire({
           icon: 'success',
-          title: scope === 'subtree' ? '하위 문서까지 주시합니다.' : '문서를 주시합니다.',
+          title: scope === 'subtree' ? ui("m_b789c2df269b13b5") : ui("m_71f547ec08ee3427"),
         });
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
@@ -2264,7 +2074,7 @@ import { createTocController } from '../article/toc';
         });
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || '주시 해제 실패');
+          throw new Error(data.error || ui("m_4c2efb4de008cf49"));
         }
         const data = await res.json();
         if (_currentWatchState.slug === slug) {
@@ -2272,9 +2082,9 @@ import { createTocController } from '../article/toc';
           updateWatchUI(_currentWatchState);
         }
         const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
-        Toast.fire({ icon: 'success', title: '주시를 해제했습니다.' });
+        Toast.fire({ icon: 'success', title: ui("m_a79d58f574651bbb") });
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
@@ -2300,10 +2110,10 @@ import { createTocController } from '../article/toc';
       if (btn.dataset.category !== category) return;
       const icon = btn.querySelector('i');
       if (watching) {
-        text.textContent = '카테고리 주시 해제';
+        text.textContent = ui("m_278bc25474682887");
         if (icon) icon.className = 'bi bi-folder-fill';
       } else {
-        text.textContent = '카테고리 주시';
+        text.textContent = ui("m_61a75bf2218fc90b");
         if (icon) icon.className = 'bi bi-folder';
       }
     }
@@ -2313,17 +2123,17 @@ import { createTocController } from '../article/toc';
         const res = await fetch(`/api/w/category/${encodeURIComponent(category)}/watch`, { method: 'POST' });
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || '카테고리 주시 실패');
+          throw new Error(data.error || ui("m_68c2e4d96a251160"));
         }
         const data = await res.json();
         updateCategoryWatchUIFor(category, !!data.watching);
         const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
         Toast.fire({
           icon: 'success',
-          title: data.watching ? '카테고리를 주시합니다.' : '카테고리 주시를 해제했습니다.',
+          title: data.watching ? ui("m_6eacb71c29751f25") : ui("m_c43d1adbb70e5ca2"),
         });
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
@@ -2345,18 +2155,18 @@ import { createTocController } from '../article/toc';
       const originalHtml = btn.innerHTML;
 
       // 로딩 스피너 표시 (Bootstrap 5.3 spinner-border-sm)
-      btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="width: 0.75rem; height: 0.75rem; border-width: 1.5px; margin-right: 4px;"></span>로딩...`;
+      btn.innerHTML = ui("m_898b68316d1d64f0");
 
       try {
         const r = await fetch('/api/analytics/page-views/' + encodeURIComponent(slug));
-        if (!r.ok) throw new Error('API response error');
+        if (!r.ok) throw new Error(ui("m_c9b18eeaff777b86"));
         const data = await r.json();
 
         // SPA 네비게이션 등으로 다른 페이지로 이동했는지 검증
         if (currentPage && currentPage.slug !== slug) return;
 
         const totalViews = Number(data.total || 0);
-        const total = totalViews.toLocaleString();
+        const total = totalViews.toLocaleString(getLocale());
         btn.innerHTML = `<i class="bi bi-eye" aria-hidden="true"></i> ${total}`;
         
         if (totalViews > 0) {
@@ -2400,11 +2210,11 @@ async function reviewEditRequests(slug) {
     const data = await res.json();
     list = (data && data.submissions) || [];
   } catch {
-    Swal.fire('错误', '편집 요청을 加载失败.', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_ec96a006c6d2ae0f"), 'error');
     return;
   }
   if (list.length === 0) {
-    Swal.fire('편집 요청', '검토할 편집 요청이 없습니다.', 'info');
+    Swal.fire(ui("m_7e80b056a83aac4f"), ui("m_0da9a55031f01f72"), 'info');
     return;
   }
   let chosenId = list[0].id;
@@ -2412,17 +2222,17 @@ async function reviewEditRequests(slug) {
   if (list.length > 1) {
     const options = {};
     list.forEach(s => {
-      const ts = s.updated_at ? new Date(s.updated_at).toLocaleString('zh-CN') : '';
-      options[s.id] = `${s.author_name || '익명'} · ${s.action === 'create' ? '신규' : '编辑'} · ${ts}${s.has_conflict ? ' · 충돌' : ''}`;
+      const ts = s.updated_at ? new Date(s.updated_at).toLocaleString(getLocale()) : '';
+      options[s.id] = `${s.author_name || ui("m_f1f3c971ef63729b")} · ${s.action === 'create' ? ui("m_113ce17492d363d2") : ui("m_051836569928a9f9")} · ${ts}${s.has_conflict ? ui("m_c06010c025b199cd") : ''}`;
     });
     const pick = await Swal.fire({
-      title: '편집 요청 선택',
+      title: ui("m_d285a73fb16b8376"),
       input: 'select',
       inputOptions: options,
       inputValue: String(list[0].id),
       showCancelButton: true,
-      confirmButtonText: '검토',
-      cancelButtonText: '取消',
+      confirmButtonText: ui("m_7e0e212667f735a4"),
+      cancelButtonText: ui("m_2cd0f3be8738a86c"),
     });
     if (!pick.isConfirmed) return;
     chosenId = Number(pick.value);
@@ -2453,8 +2263,8 @@ async function surfaceEditRequestsOn(boxId, slug) {
       variant: 'sky',
       flush: true,
       icon: 'bi bi-hourglass-split',
-      message: `이 제목으로 제출된 편집 요청이 ${data.count}건 있습니다.`,
-      action: { label: '查看编辑申请', iconClass: 'bi bi-list-check', onClick: () => reviewEditRequests(slug) },
+      message: ui("m_de472f947fe05807", [data.count]),
+      action: { label: ui("m_cd4b5423d9376c98"), iconClass: 'bi bi-list-check', onClick: () => reviewEditRequests(slug) },
     });
     box.classList.remove('d-none');
   } catch { /* 무시 */ }
@@ -2466,47 +2276,34 @@ async function openEditRequestDetail(id) {
     const res = await fetch('/api/pending-edits/' + encodeURIComponent(id));
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
-      Swal.fire('错误', e.error || '편집 요청을 加载失败.', 'error');
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.error || ui("m_ec96a006c6d2ae0f"), 'error');
       return;
     }
     detail = await res.json();
   } catch {
-    Swal.fire('错误', '네트워크 오류', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_0dd9df5c73a87e5c"), 'error');
     return;
   }
 
   const editorUrl = '/edit?slug=' + encodeURIComponent(detail.slug) + '&edit_request=' + encodeURIComponent(id);
   const conflictBanner = detail.has_conflict
     ? `<div class="alert alert-warning py-2 mb-2 text-start"><i class="bi bi-exclamation-triangle"></i> ${
-        detail.conflict_reason === 'slug_taken' ? '동일 제목의 다른 문서가 그 사이 생성되었습니다. 직접 승인할 수 없습니다.'
-        : detail.conflict_reason === 'slug_soft_deleted' ? '동일 제목의 소프트 삭제된 문서가 존재합니다. 먼저 복원/영구삭제 해야 합니다.'
-        : detail.conflict_reason === 'page_missing' ? '문서가 삭제되었거나 존재하지 않습니다. 직접 승인할 수 없습니다.'
-        : '제출 이후 문서가 수정되었습니다. 그대로 승인할 수 없으니 “에디터에서 편집”으로 병합하거나 반려하세요.'
+        detail.conflict_reason === 'slug_taken' ? ui("m_f50cf53fd7a1e633")
+        : detail.conflict_reason === 'slug_soft_deleted' ? ui("m_811a68c9153c6a44")
+        : detail.conflict_reason === 'page_missing' ? ui("m_ceba897370c5c6e3")
+        : ui("m_60f3b3c3d4863b07")
       }</div>`
     : '';
-  const ts = detail.submitted_at ? new Date(detail.submitted_at).toLocaleString('zh-CN') : '';
+  const ts = detail.submitted_at ? new Date(detail.submitted_at).toLocaleString(getLocale()) : '';
   const enabledExts = (window.appConfig && window.appConfig.enabledExtensions) || [];
   const isExtensionDataDiff = enabledExts.some(ext => detail.slug.startsWith(ext + ':'));
   // 동시 수정 충돌(또는 기타 충돌)이면 직접 승인 불가 — 에디터 병합 경로로 유도(2-리비전).
   const canDirectApprove = !detail.has_conflict;
 
-  const extraTopHtml = `
-    ${conflictBanner}
-    <div class="text-start small text-muted mb-2">
-      <div><b>${window.escapeHtml(detail.slug)}</b> · ${detail.action === 'create' ? '신규' : '编辑'} · ${window.escapeHtml(detail.author_name || '')}님 · 제출 ${window.escapeHtml(ts)}</div>
-      <div>+${detail.lines_added}줄 / -${detail.lines_removed}줄</div>
-    </div>
-    <div class="mb-2 text-start">
-      <a href="${editorUrl}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil-square"></i> 에디터에서 편집 (병합·추가 편집 후 승인)</a>
-    </div>
-    ${canDirectApprove ? `<div class="mt-1 mb-2 text-start">
-      <label class="form-label small mb-1">편집 요약 (승인 시 끝에 “요청 승인 : [닉네임|id]” 가 자동 부착됩니다)</label>
-      <input type="text" id="editRequestApproveSummary" class="form-control form-control-sm" maxlength="200" value="${window.escapeHtml(detail.summary || '')}">
-    </div>` : ''}
-  `;
+  const extraTopHtml = ui("m_ccb1dba7491cb89f", [conflictBanner, window.escapeHtml(detail.slug), detail.action === 'create' ? ui("m_113ce17492d363d2") : ui("m_051836569928a9f9"), window.escapeHtml(detail.author_name || ''), window.escapeHtml(ts), detail.lines_added, detail.lines_removed, editorUrl, canDirectApprove ? ui("m_197f464472fa5edf", [window.escapeHtml(detail.summary || '')]) : '']);
 
   const result = await window.showDiffModal({
-    title: '편집 요청 검토',
+    title: ui("m_596d0d532cae7391"),
     oldText: detail.current_content || '',
     newText: detail.proposed_content || '',
     slug: detail.slug,
@@ -2517,9 +2314,9 @@ async function openEditRequestDetail(id) {
       showCancelButton: true,
       showDenyButton: true,
       showConfirmButton: canDirectApprove,
-      confirmButtonText: '<i class="bi bi-check-lg"></i> 승인',
-      denyButtonText: '<i class="bi bi-x-lg"></i> 반려',
-      cancelButtonText: '关闭',
+      confirmButtonText: ui("m_e03bebb6b4516f77"),
+      denyButtonText: ui("m_5fbb7e542ed772f7"),
+      cancelButtonText: ui("m_3fd47edce45b3603"),
       confirmButtonColor: '#10B981',
       denyButtonColor: '#EF4444',
       preConfirm: () => {
@@ -2549,41 +2346,41 @@ async function approveEditRequest(id, summary, editorUrl) {
       if (data.error === 'conflict' && data.reason === 'concurrent_modification') {
         const go = await Swal.fire({
           icon: 'warning',
-          title: '동시 수정 충돌',
-          text: '제출 이후 문서가 수정되었습니다. 에디터에서 병합한 뒤 승인하시겠습니까?',
+          title: ui("m_c883a0c289da7f60"),
+          text: ui("m_8047236e88b3a63c"),
           showCancelButton: true,
-          confirmButtonText: '에디터에서 편집',
-          cancelButtonText: '取消',
+          confirmButtonText: ui("m_5cd3a268c6f43c56"),
+          cancelButtonText: ui("m_2cd0f3be8738a86c"),
         });
         if (go.isConfirmed) window.location.href = editorUrl;
         return;
       }
-      Swal.fire('승인 실패', data.message || data.error || '승인에 실패했습니다.', 'error');
+      Swal.fire(ui("m_005c43cba2f22464"), data.message || data.error || ui("m_52079e3d89b7f5ed"), 'error');
       return;
     }
     await Swal.fire({
       icon: 'success',
-      title: '승인되었습니다.',
-      text: data.two_revisions ? '요청분과 추가 편집이 각각 리비전으로 반영되었습니다.' : '요청자 명의 리비전으로 반영되었습니다.',
+      title: ui("m_0b9b1dc8130ee7de"),
+      text: data.two_revisions ? ui("m_47c387cf256f410a") : ui("m_5ee2c8bb13ee1350"),
       toast: true, position: 'top-end', showConfirmButton: false, timer: 2400,
     });
     window.location.reload();
   } catch {
-    Swal.fire('错误', '네트워크 오류', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_0dd9df5c73a87e5c"), 'error');
   }
 }
 
 async function rejectEditRequest(id, slug) {
   const confirmRes = await Swal.fire({
     icon: 'warning',
-    title: '편집 요청을 반려하시겠습니까?',
+    title: ui("m_a6beca80a935a971"),
     input: 'text',
-    inputLabel: '반려 사유 (선택, 요청자에게 전달됩니다)',
+    inputLabel: ui("m_c25703c4a42f8218"),
     inputAttributes: { maxlength: '100' },
-    text: `"${slug}" 의 편집 요청을 폐기합니다. 되돌릴 수 없습니다.`,
+    text: ui("m_5ad8449fd4427987", [slug]),
     showCancelButton: true,
-    confirmButtonText: '반려',
-    cancelButtonText: '取消',
+    confirmButtonText: ui("m_d283b7dbc864793f"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c"),
     confirmButtonColor: '#EF4444',
   });
   if (!confirmRes.isConfirmed) return;
@@ -2595,13 +2392,13 @@ async function rejectEditRequest(id, slug) {
     });
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
-      Swal.fire('반려 실패', e.error || '반려에 실패했습니다.', 'error');
+      Swal.fire(ui("m_ef57831413ac356f"), e.error || ui("m_ce41e9c306a0e2ae"), 'error');
       return;
     }
-    await Swal.fire({ icon: 'success', title: '반려되었습니다.', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+    await Swal.fire({ icon: 'success', title: ui("m_e8f4b69fab598cb7"), toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
     window.location.reload();
   } catch {
-    Swal.fire('错误', '네트워크 오류', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_0dd9df5c73a87e5c"), 'error');
   }
 }
 

@@ -18,6 +18,7 @@
  * 것이다.
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import './types';
 
 // CodeMirror6 EditorView. npm 미설치 + codemirror.d.ts shim 이라 type 만 any 로 둔다.
@@ -328,34 +329,7 @@ function buildToolbarEl(): ToolbarRefs {
     const el = document.createElement('div');
     el.className = 'cm-cell-merge-toolbar cm-table-toolbar';
     el.style.display = 'none';
-    el.innerHTML = `
-        <div class="cm-table-toolbar-group" data-group="align">
-            <button type="button" class="cm-cell-merge-btn" data-action="align-left" title="왼쪽 정렬"><i class="mdi mdi-format-align-left"></i></button>
-            <button type="button" class="cm-cell-merge-btn" data-action="align-center" title="가운데 정렬"><i class="mdi mdi-format-align-center"></i></button>
-            <button type="button" class="cm-cell-merge-btn" data-action="align-right" title="오른쪽 정렬"><i class="mdi mdi-format-align-right"></i></button>
-        </div>
-        <div class="cm-table-toolbar-sep"></div>
-        <div class="cm-table-toolbar-group" data-group="row">
-            <button type="button" class="cm-cell-merge-btn" data-action="row-above" title="위에 행 삽입"><i class="mdi mdi-table-row-plus-before"></i></button>
-            <button type="button" class="cm-cell-merge-btn" data-action="row-below" title="아래에 행 삽입"><i class="mdi mdi-table-row-plus-after"></i></button>
-            <button type="button" class="cm-cell-merge-btn cm-table-toolbar-danger" data-action="row-delete" title="현재 행 삭제"><i class="mdi mdi-table-row-remove"></i></button>
-        </div>
-        <div class="cm-table-toolbar-sep"></div>
-        <div class="cm-table-toolbar-group" data-group="col">
-            <button type="button" class="cm-cell-merge-btn" data-action="col-left" title="왼쪽에 열 추가"><i class="mdi mdi-table-column-plus-before"></i></button>
-            <button type="button" class="cm-cell-merge-btn" data-action="col-right" title="오른쪽에 열 추가"><i class="mdi mdi-table-column-plus-after"></i></button>
-            <button type="button" class="cm-cell-merge-btn cm-table-toolbar-danger" data-action="col-delete" title="현재 열 삭제"><i class="mdi mdi-table-column-remove"></i></button>
-        </div>
-        <div class="cm-table-toolbar-sep cm-table-toolbar-merge-sep"></div>
-        <div class="cm-table-toolbar-group cm-table-toolbar-merge-group" data-group="merge">
-            <button type="button" class="cm-cell-merge-btn" data-action="merge-left" title="좌측 셀과 병합 {<}"><i class="mdi mdi-arrow-left-bold-outline"></i></button>
-            <button type="button" class="cm-cell-merge-btn" data-action="merge-right" title="우측 셀과 병합 {>}"><i class="mdi mdi-arrow-right-bold-outline"></i></button>
-            <button type="button" class="cm-cell-merge-btn" data-action="merge-up" title="상단 셀과 병합 {^}"><i class="mdi mdi-arrow-up-bold-outline"></i></button>
-            <button type="button" class="cm-cell-merge-btn" data-action="merge-mid" title="가운데로 모음 {><}"><i class="mdi mdi-arrow-collapse-horizontal"></i></button>
-        </div>
-        <div class="cm-table-toolbar-sep"></div>
-        <button type="button" class="cm-cell-merge-btn cm-table-toolbar-color" data-action="color" title="색상 삽입"><i class="mdi mdi-palette-outline"></i></button>
-    `;
+    el.innerHTML = ui("m_731818359bf928c3");
     const alignBtns = {
         left: el.querySelector<HTMLButtonElement>('[data-action="align-left"]')!,
         center: el.querySelector<HTMLButtonElement>('[data-action="align-center"]')!,

@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import { requireAdmin } from '../middleware/session';
 import { queryAnalytics } from '../utils/analytics';
@@ -24,7 +25,7 @@ function credentialError(c: any) {
     if (!hasAccountId) missing.push('CF_ACCOUNT_ID');
     if (!hasApiToken) missing.push('CF_API_TOKEN');
     return c.json({
-        error: `Analytics API 자격 증명이 설정되지 않았습니다. 누락: [${missing.join(', ')}]. Cloudflare 대시보드 > Workers > Settings > Variables and Secrets에서 추가해주세요.`,
+        error: ui("m_a6d38c860b371436", [missing.join(', ')]),
     }, 503);
 }
 

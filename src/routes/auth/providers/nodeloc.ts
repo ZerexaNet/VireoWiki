@@ -1,3 +1,4 @@
+import { ui } from '../../../i18n/server';
 import type { Context } from 'hono';
 import type { Env } from '../../../types';
 import type { OAuthProvider, OAuthCallbackResult, OAuthStateData } from './base';
@@ -9,7 +10,7 @@ const USERINFO_URL = 'https://www.nodeloc.com/oauth-provider/userinfo';
 
 export const nodelocProvider: OAuthProvider = {
     name: 'nodeloc',
-    label: 'NodeLoc',
+    label: ui("m_d2b0e22ce6848f49"),
 
     async handleLogin(c: Context<Env>, stateData?: Partial<OAuthStateData>): Promise<Response> {
         if (!c.env.NODELOC_CLIENT_ID || !c.env.NODELOC_CLIENT_SECRET || !c.env.NODELOC_REDIRECT_URI) {

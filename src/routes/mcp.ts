@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono, Context } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env, User } from '../types';
@@ -58,7 +59,7 @@ mcpRoutes.use('*', async (c, next) => {
     const mcpMode = c.env.MCP_MODE || 'disabled';
 
     if (mcpMode === 'disabled') {
-        return c.json({ jsonrpc: '2.0', error: { code: -32000, message: 'MCP is disabled by administrator.' }, id: null }, 403);
+        return c.json({ jsonrpc: '2.0', error: { code: -32000, message: ui("m_9ea12fcade96d6c6") }, id: null }, 403);
     }
 
     await next();
@@ -85,7 +86,7 @@ function unauthorized(c: Context<Env>, description: string): Response {
         'WWW-Authenticate',
         `Bearer realm="mcp", error="invalid_token", error_description="${description}", resource_metadata="${resourceMetadata}"`,
     );
-    return c.json({ error: 'invalid_token', error_description: description }, 401);
+    return c.json({ error: "invalid_token", error_description: description }, 401);
 }
 
 const GUEST_AUTH: McpAuthContext = { user: null, tokenId: null, scope: null };
@@ -264,7 +265,7 @@ mcpRoutes.get('/', (c) => handleMcpGet(c));
 // 공통 JSON-RPC 처리 함수
 async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
     const { jsonrpc, method, params, id } = body;
-    if (jsonrpc !== '2.0') return { jsonrpc: '2.0', error: { code: -32600, message: 'Invalid Request' }, id: id || null };
+    if (jsonrpc !== '2.0') return { jsonrpc: '2.0', error: { code: -32600, message: ui("m_97b1d0e9352ff0e8") }, id: id || null };
 
     const db = c.env.DB;
     const rbac = c.get('rbac') as RBAC;
@@ -319,7 +320,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
         const userSuffix = canEdit ? buildUserEditInformationSuffix(userName, enabledNames) : '';
         const adminSuffix = isAdmin ? buildAdminOnlyInformationSuffix(userName, enabledNames) : '';
         const toolNames = visibleToolDefs.map(t => t.name).join(', ');
-        const informationDescription = `${intro}${userSuffix}${adminSuffix}\n\n사용 가능한 MCP 도구: ${toolNames}. 각 도구의 세부 설명은 information 도구를 호출하여 확인할 수 있습니다.`;
+        const informationDescription = ui("m_88e1ad2ef29f64aa", [intro, userSuffix, adminSuffix, toolNames]);
         return {
             jsonrpc: '2.0', id,
             result: {
@@ -344,7 +345,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
             if (toolName !== 'information' && !visibleToolNames.has(toolName)) {
                 return {
                     jsonrpc: '2.0',
-                    error: { code: -32601, message: `Tool not found: ${toolName}` },
+                    error: { code: -32601, message: ui("m_1687ca861ac0fc1a", [toolName]) },
                     id,
                 };
             }
@@ -384,7 +385,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                 let pageNum = 1;
                 let totalCount = 0;
                 const statsMap = new Map<string, { rows: number | null; characters: number | null }>();
-                const formatBatchStats = (r: number | null | undefined, ch: number | null | undefined) => ` (${r ?? 0}줄, ${ch ?? 0}자)`;
+                const formatBatchStats = (r: number | null | undefined, ch: number | null | undefined) => ui("m_1565658bee898960", [r ?? 0, ch ?? 0]);
 
                 if (Array.isArray(args.titles) && args.titles.length > 0) {
                     mode = 'titles';
@@ -392,10 +393,10 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                         .map(t => normalizeSlug(String(t || '')))
                         .filter((s: string) => s.length > 0);
                     if (normalized.length === 0) {
-                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'Error: titles 배열이 비어있습니다.' }], isError: true } };
+                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: ui("m_f8b228b84e8c7ec3") }], isError: true } };
                     }
                     if (normalized.length > BATCH_LIMIT) {
-                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: `Error: 한 번에 최대 ${BATCH_LIMIT}개까지만 읽을 수 있습니다.` }], isError: true } };
+                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: ui("m_4f55b2936a8b3083", [BATCH_LIMIT]) }], isError: true } };
                     }
                     // 중복 제거하되 입력 순서 유지
                     const seen = new Set<string>();
@@ -410,7 +411,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                     mode = 'parent';
                     parentSlug = normalizeSlug(String(args.parent_title || ''));
                     if (!parentSlug) {
-                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'Error: parent_title이 비어있습니다.' }], isError: true } };
+                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: ui("m_eb0ae25c805719e8") }], isError: true } };
                     }
                     pageNum = Math.max(1, Math.floor(Number(args.page) || 1));
                     const offset = (pageNum - 1) * BATCH_LIMIT;
@@ -424,7 +425,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                     const totalRow = await db.prepare(`SELECT COUNT(*) AS cnt FROM pages WHERE deleted_at IS NULL${privateFilter} AND slug > ? AND slug < ?`).bind(prefixLower, prefixUpper).first<{ cnt: number }>();
                     totalCount = totalRow?.cnt ?? 0;
                     if (totalCount === 0) {
-                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: `'${parentSlug}' 의 하위 문서가 없습니다.` }] } };
+                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: ui("m_1c6d5cc54aa2f804", [parentSlug]) }] } };
                     }
 
                     // 실제 읽을 페이지는 SQL LIMIT/OFFSET 으로 직접 잘라서 가져온다.
@@ -433,7 +434,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                     targetSlugs = pageRows.results.map(r => r.slug);
                     if (targetSlugs.length === 0) {
                         const totalPages = Math.ceil(totalCount / BATCH_LIMIT);
-                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: `Error: page ${pageNum} 에 해당하는 문서가 없습니다. (총 ${totalCount}개, ${totalPages}페이지)` }], isError: true } };
+                        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: ui("m_91b1d604c6a79dc1", [pageNum, totalCount, totalPages]) }], isError: true } };
                     }
 
                     // 트리 표시는 응답 크기 보호를 위해 500개로 제한한다.
@@ -450,17 +451,17 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                         allCandidateSlugs = Array.from(merged).sort();
                     }
                 } else {
-                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'Error: titles 또는 parent_title 중 하나를 지정해야 합니다.' }], isError: true } };
+                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: ui("m_bf3875a1193f72fc") }], isError: true } };
                 }
 
                 // 각 문서를 병렬로 읽는다. 핫패스에서 D1 쿼리 latency가 누적되지 않도록 Promise.all 사용.
                 const documents = await Promise.all(targetSlugs.map(async (slug) => {
                     if (!isMcpReadableSlug(slug)) {
-                        return { title: slug, error: 'raw 데이터는 읽을 수 없습니다.' };
+                        return { title: slug, error: ui("m_1ed6ec4afa33ec94") };
                     }
                     const pageRow = await db.prepare(`SELECT slug, content, last_revision_id, rows, characters FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`).bind(slug).first<{ slug: string, content: string, last_revision_id: number | null, rows: number | null, characters: number | null }>();
                     if (!pageRow) {
-                        return { title: slug, error: '문서를 찾을 수 없거나 비공개/삭제 상태입니다.' };
+                        return { title: slug, error: ui("m_860a4031f34189c8") };
                     }
                     statsMap.set(pageRow.slug, { rows: pageRow.rows, characters: pageRow.characters });
                     let actualContent = pageRow.content;
@@ -478,10 +479,10 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                             .split('\n')
                             .map(line => line.replace(/\{[^}]*\}/g, '').replace(/[ \t]+/g, ' ').trimEnd())
                             .join('\n');
-                        return { title: slug, rows: pageRow.rows, characters: pageRow.characters, toc: tocText || '목차가 존재하지 않습니다.' };
+                        return { title: slug, rows: pageRow.rows, characters: pageRow.characters, toc: tocText || ui("m_9cf50c843d60bb0c") };
                     }
                     const text = raw ? actualContent : await renderForAI(actualContent, db, 0, slug);
-                    return { title: slug, rows: pageRow.rows, characters: pageRow.characters, content: text || '문서 내용이 존재하지 않습니다.' };
+                    return { title: slug, rows: pageRow.rows, characters: pageRow.characters, content: text || ui("m_77453d7811852f91") };
                 }));
 
                 const readSet = new Set(targetSlugs);
@@ -493,7 +494,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                     // 트리 표시 시 "(문서 없음)" 과 구분하기 위함.
                     const errorBySlug = new Map<string, string>();
                     for (const doc of documents as any[]) {
-                        if (typeof doc.toc === 'string' && doc.toc !== '목차가 존재하지 않습니다.') {
+                        if (typeof doc.toc === 'string' && doc.toc !== ui("m_9cf50c843d60bb0c")) {
                             const lines = doc.toc.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
                             tocBySlug.set(doc.title, lines);
                         }
@@ -508,7 +509,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                     const confirmedAbsentSlugs = new Set<string>();
                     if (mode === 'parent' && parentSlug && !readSet.has(parentSlug)) {
                         if (!isMcpReadableSlug(parentSlug)) {
-                            errorBySlug.set(parentSlug, 'raw 데이터는 읽을 수 없습니다.');
+                            errorBySlug.set(parentSlug, ui("m_1ed6ec4afa33ec94"));
                         } else {
                             const parentRow = await db.prepare(`SELECT slug, content, last_revision_id, rows, characters FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`).bind(parentSlug).first<{ slug: string, content: string, last_revision_id: number | null, rows: number | null, characters: number | null }>();
                             if (parentRow) {
@@ -614,14 +615,14 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                         //    실제 존재 여부를 확인하지 않았으므로 어떤 단정도 하지 않는다.
                         if (stats) {
                             line += formatBatchStats(stats.rows, stats.characters);
-                            if (mode === 'parent' && !wasRead) line += ' [읽지 않음]';
+                            if (mode === 'parent' && !wasRead) line += ui("m_85e275d5ef4ec4a4");
                         } else if (readError) {
-                            line += ` (읽기 실패: ${readError})`;
+                            line += ui("m_941ff4d0ab2b99a0", [readError]);
                         } else if (
                             confirmedAbsentSlugs.has(slug) ||
                             (subtreeCoveredByQuery && slug !== parentSlug && slug.startsWith(parentSlug + '/'))
                         ) {
-                            line += ' (문서 없음)';
+                            line += ui("m_5f16df86699bf330");
                             missingDocs.push(slug);
                         }
 
@@ -653,7 +654,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
 
                     if (missingDocs.length > 0) {
                         const uniqueMissing = Array.from(new Set(missingDocs));
-                        outputText += `\n\n문서가 없는 항목 (${uniqueMissing.length}):\n${uniqueMissing.map(s => `- ${s}`).join('\n')}`;
+                        outputText += ui("m_54b4e95a62973ac7", [uniqueMissing.length, uniqueMissing.map(s => `- ${s}`).join('\n')]);
                     }
 
                     // 읽기 실패(error) 가 있는 항목도 별도로 표기한다.
@@ -661,15 +662,15 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                     // 통합 맵을 단일 정보원으로 사용한다.
                     if (errorBySlug.size > 0) {
                         const erroredEntries = Array.from(errorBySlug.entries());
-                        outputText += `\n\n읽지 못한 문서 (${erroredEntries.length}):\n` + erroredEntries.map(([slug, msg]) => `- ${slug}: ${msg}`).join('\n');
+                        outputText += ui("m_aefaf421ef468334", [erroredEntries.length]) + erroredEntries.map(([slug, msg]) => `- ${slug}: ${msg}`).join('\n');
                     }
 
                     if (mode === 'parent') {
                         const totalPages = Math.ceil(totalCount / BATCH_LIMIT);
-                        outputText += `\n\n페이지: ${pageNum}/${totalPages} (총 ${totalCount}개, 페이지 크기 ${BATCH_LIMIT})`;
-                        if (pageNum < totalPages) outputText += ` — 다음 페이지: page=${pageNum + 1}`;
+                        outputText += ui("m_7544e51d0c96b835", [pageNum, totalPages, totalCount, BATCH_LIMIT]);
+                        if (pageNum < totalPages) outputText += ui("m_5782856f6d5f2e59", [pageNum + 1]);
                         if (totalCount > TREE_DISPLAY_CAP) {
-                            outputText += `\n주의: 하위 문서가 총 ${totalCount}개로 응답 트리 표시 한도(${TREE_DISPLAY_CAP}개)를 초과합니다. 트리에는 일부만 표시되지만, page 파라미터로 모든 문서에 도달할 수 있습니다.`;
+                            outputText += ui("m_0b1d2015ee6520c8", [totalCount, TREE_DISPLAY_CAP]);
                         }
                     }
 
@@ -704,7 +705,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                             if (node._slug) {
                                 const stats = statsMap.get(node._slug);
                                 const statsText = stats ? formatBatchStats(stats.rows, stats.characters) : '';
-                                marker = (readSet.has(node._slug) ? ' [읽음]' : ' [읽지 않음]') + statsText;
+                                marker = (readSet.has(node._slug) ? ui("m_76a8d3dec65a9b1c") : ui("m_85e275d5ef4ec4a4")) + statsText;
                             }
                             text += `${parentPrefix}${connector}${key}${marker}\n`;
                             if (hasChildren) text += renderBatchTree(node._children, childPrefix);
@@ -717,7 +718,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                         .map(s => {
                             const stats = statsMap.get(s);
                             const statsText = stats ? formatBatchStats(stats.rows, stats.characters) : '';
-                            return `- ${s} ${readSet.has(s) ? '[읽음]' : '[읽지 않음]'}${statsText}`;
+                            return `- ${s} ${readSet.has(s) ? ui("m_b2c45b087fd5f353") : ui("m_ffa08a1fa0c0965f")}${statsText}`;
                         })
                         .join('\n');
                 }
@@ -741,7 +742,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                     if (totalCount > TREE_DISPLAY_CAP) {
                         output.tree_truncated = true;
                         output.tree_display_cap = TREE_DISPLAY_CAP;
-                        output.notice = `하위 문서가 총 ${totalCount}개로 응답 트리 표시 한도(${TREE_DISPLAY_CAP}개)를 초과합니다. 트리에는 일부만 표시되지만, page 파라미터로 모든 문서를 페이지네이션으로 조회할 수 있습니다.`;
+                        output.notice = ui("m_426bc375e8ffcda0", [totalCount, TREE_DISPLAY_CAP]);
                     }
                 }
                 return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(output, null, 2) }] } };
@@ -763,7 +764,7 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                 const nowSec = Math.floor(Date.now() / 1000);
 
                 if (postsRes.results.length === 0 && total > 0) {
-                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: `Error: page ${pageNum} 에 해당하는 블로그 포스트가 없습니다. (총 ${total}개, ${totalPages}페이지)` }], isError: true } };
+                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: ui("m_628e02135c1c8ea4", [pageNum, total, totalPages]) }], isError: true } };
                 }
 
                 const output: any = {
@@ -786,13 +787,13 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
             if (toolName === 'read_blog_post' || toolName === 'get_blog_toc' || toolName === 'read_blog_section') {
                 const blogId = Number(args.id);
                 if (!Number.isFinite(blogId) || !Number.isInteger(blogId) || blogId <= 0) {
-                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'Error: id 는 양의 정수여야 합니다.' }], isError: true } };
+                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: ui("m_6dcf73d828a63cfe") }], isError: true } };
                 }
                 const post = await db.prepare('SELECT id, title, content, rows, characters FROM blog_posts WHERE id = ? AND deleted_at IS NULL')
                     .bind(blogId)
                     .first<{ id: number; title: string; content: string; rows: number | null; characters: number | null }>();
                 if (!post) {
-                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'Error: 블로그 포스트를 찾을 수 없거나 삭제되었습니다.' }], isError: true } };
+                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: ui("m_2775d221b3599514") }], isError: true } };
                 }
                 const blogSlug = `blog:${post.id}`;
 
@@ -802,24 +803,24 @@ async function handleJsonRpc(c: Context<Env>, body: any, user: User | null) {
                         .split('\n')
                         .map(line => line.replace(/\{[^}]*\}/g, '').replace(/[ \t]+/g, ' ').trimEnd())
                         .join('\n');
-                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: tocText || '목차가 존재하지 않습니다.' }] } };
+                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: tocText || ui("m_9cf50c843d60bb0c") }] } };
                 }
                 if (toolName === 'read_blog_post') {
                     const text = args.raw === true ? post.content : await renderForAI(post.content, db, 0, blogSlug);
-                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: text || '포스트 내용이 존재하지 않습니다.' }] } };
+                    return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: text || ui("m_0cad64d1db2dc4d6") }] } };
                 }
                 // read_blog_section
                 const expanded = await expandTemplates(post.content, db, 0, blogSlug);
                 const sectionContent = extractSection(expanded, args.section_number || '');
                 const text = args.raw === true ? sectionContent : await renderForAI(sectionContent, db, 0, blogSlug);
-                return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: text || '해당 목차를 찾을 수 없습니다.' }] } };
+                return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: text || ui("m_8fb588328fcea157") }] } };
             }
-            return { jsonrpc: '2.0', error: { code: -32601, message: `Tool not found: ${toolName}` }, id };
+            return { jsonrpc: '2.0', error: { code: -32601, message: ui("m_1687ca861ac0fc1a", [toolName]) }, id };
         } catch (e: any) {
             return { jsonrpc: '2.0', error: { code: -32000, message: e.message }, id };
         }
     }
-    return { jsonrpc: '2.0', error: { code: -32601, message: 'Method not found' }, id };
+    return { jsonrpc: '2.0', error: { code: -32601, message: ui("m_a362d1ab7712da5f") }, id };
 }
 
 // POST /api/mcp - HTTP 방식 JSON-RPC 엔드포인트 (하이브리드 인증).

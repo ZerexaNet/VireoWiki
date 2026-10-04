@@ -15,6 +15,7 @@
  * Hex 입력. 글씨색 채널은 "자동 대비" 토글로 WCAG 대비 색상을 자동 적용.
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import { escapeHtml } from '../utils/html';
 
 declare const Swal: any;
@@ -357,11 +358,11 @@ function setNameError(msg: string | null) {
 
 function validateName(raw: string): string | null {
     const name = raw.trim();
-    if (!name) return '이름을 입력해주세요.';
+    if (!name) return ui("m_b6c1c96c52ea9de7");
     if (!PALETTE_NAME_RE.test(name))
-        return '영문/숫자/언더스코어/하이픈 1~64자만 사용할 수 있습니다.';
+        return ui("m_17fd2bab60f5fa02");
     if (RESERVED.has(name.toLowerCase()))
-        return '하드코딩 프리셋 이름과 겹칠 수 없습니다.';
+        return ui("m_32d3a1d05f377182");
     return null;
 }
 
@@ -385,7 +386,7 @@ function resetForm() {
     touchedChannels.clear();
 
     const title = $('paletteFormTitle');
-    if (title) title.textContent = '새 팔레트 추가';
+    if (title) title.textContent = ui("m_cc9f8b1e951c4b0c");
 
     const nameInput = $input('paletteNameInput');
     if (nameInput) {
@@ -415,7 +416,7 @@ function resetForm() {
     if (resetBtn) resetBtn.style.display = 'none';
 
     const submitBtn = $('paletteFormSubmit');
-    if (submitBtn) submitBtn.textContent = '저장';
+    if (submitBtn) submitBtn.textContent = ui("m_5fb926229090001c");
 
     syncAutoState('light');
     syncDarkRow();
@@ -427,7 +428,7 @@ function loadIntoForm(row: PaletteRow) {
     editingRow = row;
 
     const title = $('paletteFormTitle');
-    if (title) title.textContent = `팔레트 편집: ${name}`;
+    if (title) title.textContent = ui("m_2f8d5d46605e2cde", [name]);
 
     const nameInput = $input('paletteNameInput');
     if (nameInput) {
@@ -469,7 +470,7 @@ function loadIntoForm(row: PaletteRow) {
     if (resetBtn) resetBtn.style.display = '';
 
     const submitBtn = $('paletteFormSubmit');
-    if (submitBtn) submitBtn.textContent = '수정';
+    if (submitBtn) submitBtn.textContent = ui("m_3537f0cc3ec9fa10");
 
     syncAutoState('light');
     syncDarkRow();
@@ -487,7 +488,7 @@ function renderList() {
     const names = Object.keys(cache).sort();
     if (names.length === 0) {
         container.innerHTML =
-            '<div class="p-3 text-center text-muted small">등록된 커스텀 팔레트가 없습니다.</div>';
+            ui("m_c645164a4beb76ac");
         return;
     }
     container.innerHTML = names
@@ -501,33 +502,10 @@ function renderList() {
                 (row.dark_bg !== null && row.dark_bg !== row.light_bg) ||
                 (row.dark_color !== null && row.dark_color !== row.light_color);
             const fmt = (v: string | null, fallback: string) =>
-                v === null ? `(미지정 → ${fallback})` : v;
-            return `
-              <div class="palette-row" data-name="${escapeHtml(name)}">
-                <span class="palette-name">${escapeHtml(name)}</span>
-                <span class="palette-swatch-pair" title="Light: bg ${escapeHtml(fmt(row.light_bg, lightBgRaw))} / fg ${escapeHtml(fmt(row.light_color, lightFgRaw))}">
-                  <span class="palette-swatch" style="background:${escapeHtml(lightBgRaw)}"></span>
-                  <span class="palette-swatch" style="background:${escapeHtml(lightFgRaw)}"></span>
-                </span>
-                ${
-                    darkExplicit
-                        ? `<span class="palette-swatch-pair" title="Dark: bg ${escapeHtml(fmt(row.dark_bg, darkBgRaw))} / fg ${escapeHtml(fmt(row.dark_color, darkFgRaw))}">
-                             <span class="text-muted small">/</span>
-                             <span class="palette-swatch" style="background:${escapeHtml(darkBgRaw)}"></span>
-                             <span class="palette-swatch" style="background:${escapeHtml(darkFgRaw)}"></span>
-                           </span>`
-                        : ''
-                }
-                <span class="palette-actions">
-                  <button class="btn btn-sm btn-wiki-outline" data-action="edit" data-name="${escapeHtml(name)}">
-                    <i class="mdi mdi-pencil-outline"></i>
-                  </button>
-                  <button class="btn btn-sm btn-link text-danger p-1" data-action="delete" data-name="${escapeHtml(name)}">
-                    <i class="mdi mdi-delete-outline"></i>
-                  </button>
-                </span>
-              </div>
-            `;
+                v === null ? ui("m_4504090c6a71c3b5", [fallback]) : v;
+            return ui("m_ad423fa90e1d916c", [escapeHtml(name), escapeHtml(name), escapeHtml(fmt(row.light_bg, lightBgRaw)), escapeHtml(fmt(row.light_color, lightFgRaw)), escapeHtml(lightBgRaw), escapeHtml(lightFgRaw), darkExplicit
+                        ? ui("m_53518a1483b7f94b", [escapeHtml(fmt(row.dark_bg, darkBgRaw)), escapeHtml(fmt(row.dark_color, darkFgRaw)), escapeHtml(darkBgRaw), escapeHtml(darkFgRaw)])
+                        : '', escapeHtml(name), escapeHtml(name)]);
         })
         .join('');
 }
@@ -545,7 +523,7 @@ async function loadPaletteList() {
         renderList();
     } catch {
         container.innerHTML =
-            '<div class="p-3 text-center text-danger small">팔레트 목록을 불러오지 못했습니다.</div>';
+            ui("m_b178b2b6a6f06331");
     }
 }
 
@@ -561,7 +539,7 @@ async function submitForm() {
 
     if (hasInvalidHexInput()) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire('오류', '잘못된 색상 코드가 입력되어 있습니다. (#RRGGBB 또는 #RGB)', 'error');
+            Swal.fire(ui("m_b49f20d86148ddfd"), ui("m_289d5963498c8fac"), 'error');
         }
         return;
     }
@@ -618,14 +596,14 @@ async function submitForm() {
         });
         if (!res.ok) {
             const data = await res.json().catch(() => ({} as any));
-            throw new Error(data.error || `저장 실패 (${res.status})`);
+            throw new Error(data.error || ui("m_7e6dcbfd369a97fc", [res.status]));
         }
         await loadPaletteList();
         resetForm();
         if (typeof Swal !== 'undefined') {
             Swal.fire({
                 icon: 'success',
-                title: '저장되었습니다.',
+                title: ui("m_ba971bfea1b3477d"),
                 toast: true,
                 position: 'top-end',
                 showConfirmButton: false,
@@ -634,7 +612,7 @@ async function submitForm() {
         }
     } catch (err: any) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire('오류', err.message || String(err), 'error');
+            Swal.fire(ui("m_b49f20d86148ddfd"), err.message || String(err), 'error');
         } else {
             alert(err.message || String(err));
         }
@@ -645,14 +623,14 @@ async function deletePalette(name: string) {
     const confirmed = await (typeof Swal !== 'undefined'
         ? Swal.fire({
               icon: 'warning',
-              title: '팔레트 삭제',
-              text: `'${name}' 팔레트를 삭제하시겠습니까? 이 팔레트를 사용 중인 문서는 색상이 적용되지 않게 됩니다.`,
+              title: ui("m_e24943bb3e7cc75d"),
+              text: ui("m_ca8df919e95738a1", [name]),
               showCancelButton: true,
-              confirmButtonText: '삭제',
-              cancelButtonText: '취소',
+              confirmButtonText: ui("m_6139b6c3ed73cd4a"),
+              cancelButtonText: ui("m_be876433993ab7ba"),
               confirmButtonColor: '#d33',
           }).then((r: any) => r.isConfirmed)
-        : Promise.resolve(window.confirm(`'${name}' 을 삭제하시겠습니까?`)));
+        : Promise.resolve(window.confirm(ui("m_ca0be49e14db6168", [name]))));
     if (!confirmed) return;
     try {
         const res = await fetch(`/api/admin/palettes/${encodeURIComponent(name)}`, {
@@ -661,13 +639,13 @@ async function deletePalette(name: string) {
         });
         if (!res.ok) {
             const data = await res.json().catch(() => ({} as any));
-            throw new Error(data.error || `삭제 실패 (${res.status})`);
+            throw new Error(data.error || ui("m_5cb5981d516bbfe3", [res.status]));
         }
         if (editingName === name) resetForm();
         await loadPaletteList();
     } catch (err: any) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire('오류', err.message || String(err), 'error');
+            Swal.fire(ui("m_b49f20d86148ddfd"), err.message || String(err), 'error');
         } else {
             alert(err.message || String(err));
         }

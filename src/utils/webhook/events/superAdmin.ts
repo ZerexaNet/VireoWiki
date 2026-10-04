@@ -2,6 +2,7 @@
 // 다른 admin 이벤트(권한 변경, 차단 등) 로 잡히지 않는 super_admin 액션만 발행한다.
 // 예: 전역 설정 변경 (signup_policy, namechange_ratelimit, allow_direct_message).
 
+import { ui } from '../../../i18n/server';
 import type { WebhookEvent } from '../discord';
 import { escapeMd, nowIso, truncate } from '../format';
 
@@ -14,7 +15,7 @@ export function superAdminAction(args: {
 }): WebhookEvent {
     const { actorName, label, target } = args;
     const fields = target
-        ? [{ name: '대상', value: truncate(escapeMd(target), 500) }]
+        ? [{ name: ui("m_8c609debc12c2cd0"), value: truncate(escapeMd(target), 500) }]
         : undefined;
 
     return {
@@ -22,7 +23,7 @@ export function superAdminAction(args: {
         type: 'super_admin_action',
         embed: {
             color: COLOR_SUPER,
-            title: '🛡 Super Admin 행위',
+            title: ui("m_d2f2951a69fd7b43"),
             description: `**${escapeMd(actorName)}** : ${truncate(escapeMd(label), 200)}`,
             fields,
             timestamp: nowIso(),

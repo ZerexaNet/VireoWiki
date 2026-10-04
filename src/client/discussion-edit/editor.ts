@@ -24,6 +24,7 @@
  *   handle.destroy();     // 마운트 해제 (페이지 SPA 라우팅 시)
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 declare global {
     interface Window {
         openExistingImageSearch?: (cb: (url: string, alt: string, size: string) => void) => Promise<void>;
@@ -89,7 +90,7 @@ function makeMentionMenu(
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'mini-editor-btn';
-    btn.title = '멘션';
+    btn.title = ui("m_cc34e063fa6085b3");
     btn.innerHTML = '<i class="mdi mdi-at"></i>';
 
     // 메뉴는 wrapper 가 아니라 document.body 에 둔다(포털).
@@ -127,7 +128,7 @@ function makeMentionMenu(
         const candidates = getCandidates() || [];
         if (candidates.length === 0) {
             const empty = document.createElement('div');
-            empty.innerHTML = window.uiEmptyState({ icon: 'bi bi-people', title: '멘션할 참여자가 없습니다', compact: true });
+            empty.innerHTML = window.uiEmptyState({ icon: 'bi bi-people', title: ui("m_56e88bd031eefcae"), compact: true });
             menu.appendChild(empty);
             return;
         }
@@ -208,7 +209,7 @@ function makeToolbar(
     bar.className = 'mini-editor-toolbar';
     let mentionDestroy: () => void = () => {};
 
-    function wrap(prefix: string, suffix: string, placeholder = '텍스트'): void {
+    function wrap(prefix: string, suffix: string, placeholder = ui("m_258ad4b095a1841b")): void {
         const { main } = view.state.selection;
         const selected = view.state.sliceDoc(main.from, main.to);
         const inner = selected || placeholder;
@@ -257,9 +258,9 @@ function makeToolbar(
         return s;
     }
 
-    bar.appendChild(makeBtn('<b>B</b>', '굵게', () => wrap('**', '**')));
-    bar.appendChild(makeBtn('<i>I</i>', '기울임', () => wrap('*', '*')));
-    bar.appendChild(makeBtn('<s>S</s>', '취소선', () => wrap('~~', '~~')));
+    bar.appendChild(makeBtn('<b>B</b>', ui("m_fba83d218eea748c"), () => wrap('**', '**')));
+    bar.appendChild(makeBtn('<i>I</i>', ui("m_dd933ae8c2d8fac8"), () => wrap('*', '*')));
+    bar.appendChild(makeBtn('<s>S</s>', ui("m_a862dac745e78146"), () => wrap('~~', '~~')));
     if (getMentionCandidates) {
         bar.appendChild(makeSep());
         const mention = makeMentionMenu(getMentionCandidates, insertText);
@@ -267,16 +268,16 @@ function makeToolbar(
         mentionDestroy = mention.destroy;
     }
     bar.appendChild(makeSep());
-    bar.appendChild(makeBtn('<i class="mdi mdi-format-quote-close"></i>', '인용', () => insertLinePrefix('> ')));
-    bar.appendChild(makeBtn('<i class="mdi mdi-format-list-bulleted"></i>', '목록', () => insertLinePrefix('- ')));
+    bar.appendChild(makeBtn('<i class="mdi mdi-format-quote-close"></i>', ui("m_4a02004ab78c6f58"), () => insertLinePrefix('> ')));
+    bar.appendChild(makeBtn('<i class="mdi mdi-format-list-bulleted"></i>', ui("m_f07b32009d77b4f6"), () => insertLinePrefix('- ')));
     bar.appendChild(makeSep());
-    bar.appendChild(makeBtn('<code>&lt;/&gt;</code>', '인라인 코드', () => wrap('`', '`')));
-    bar.appendChild(makeBtn('<i class="mdi mdi-code-braces"></i>', '코드 블록', () => wrap('\n```\n', '\n```\n')));
+    bar.appendChild(makeBtn('<code>&lt;/&gt;</code>', ui("m_8d79ff34d4f67a6e"), () => wrap('`', '`')));
+    bar.appendChild(makeBtn('<i class="mdi mdi-code-braces"></i>', ui("m_af4eb87c4024e6a8"), () => wrap('\n```\n', '\n```\n')));
     bar.appendChild(makeSep());
-    bar.appendChild(makeBtn('<i class="mdi mdi-link-variant"></i>', '링크', () => wrap('[', '](url)', '텍스트')));
+    bar.appendChild(makeBtn('<i class="mdi mdi-link-variant"></i>', ui("m_3d54da9c8367da77"), () => wrap('[', '](url)', ui("m_258ad4b095a1841b"))));
 
     // 이미지 버튼: 클릭 시 두 버튼(업로드/기존검색) 메뉴 표시
-    const imgBtn = makeBtn('<i class="mdi mdi-image-plus"></i>', '이미지', () => { });
+    const imgBtn = makeBtn('<i class="mdi mdi-image-plus"></i>', ui("m_302bae1279382d2b"), () => { });
     const imgMenu = document.createElement('div');
     imgMenu.className = 'mini-editor-img-menu';
     imgMenu.style.display = 'none';
@@ -284,12 +285,12 @@ function makeToolbar(
     const uploadBtn = document.createElement('button');
     uploadBtn.type = 'button';
     uploadBtn.className = 'mini-editor-img-menu-btn';
-    uploadBtn.innerHTML = '<i class="mdi mdi-cloud-upload-outline"></i> 새 이미지 업로드';
+    uploadBtn.innerHTML = ui("m_db894ea81546a74d");
 
     const searchBtn = document.createElement('button');
     searchBtn.type = 'button';
     searchBtn.className = 'mini-editor-img-menu-btn';
-    searchBtn.innerHTML = '<i class="mdi mdi-magnify"></i> 기존 이미지 검색';
+    searchBtn.innerHTML = ui("m_1ab5c248fcaeb392");
 
     imgMenu.appendChild(uploadBtn);
     imgMenu.appendChild(searchBtn);

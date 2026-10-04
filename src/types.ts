@@ -10,6 +10,7 @@ export * from './shared/models';
 // Cloudflare Workers 바인딩 타입 (서버 전용)
 export type Env = {
     Bindings: {
+        DEFAULT_LOCALE?: string;
         DB: D1Database;
         MEDIA: R2Bucket;
         KV: KVNamespace;

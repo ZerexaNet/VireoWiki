@@ -12,6 +12,7 @@
  * 'admin_only' 가 있으면 evaluate 단계에서 isAdmin 으로 판정한다.
  */
 
+import { ui } from '../i18n/server';
 export const EDIT_ACL_FLAGS = ['aged', 'page_editor', 'any_editor', 'admin_only'] as const;
 export type EditAclFlag = typeof EDIT_ACL_FLAGS[number];
 
@@ -75,17 +76,17 @@ export function serializeEditAcl(acl: EditAcl | null | undefined): string | null
 export function normalizeEditAcl(input: unknown): { value: EditAcl | null } | { error: string } {
     if (input === null || input === undefined) return { value: null };
     if (typeof input !== 'object' || Array.isArray(input)) {
-        return { error: 'edit_acl 은 객체 또는 null 이어야 합니다.' };
+        return { error: ui("m_2590befdd9c53728") };
     }
     const obj = input as { flags?: unknown };
     if (!Array.isArray(obj.flags)) {
-        return { error: 'edit_acl.flags 는 배열이어야 합니다.' };
+        return { error: ui("m_a214f4e99cfabb73") };
     }
     const flags: EditAclFlag[] = [];
     const seen = new Set<string>();
     for (const f of obj.flags) {
         if (typeof f !== 'string' || !FLAG_SET.has(f)) {
-            return { error: `edit_acl.flags 에 알 수 없는 항목: ${String(f)}` };
+            return { error: ui("m_362bdd480752283f", [String(f)]) };
         }
         if (seen.has(f)) continue;
         seen.add(f);

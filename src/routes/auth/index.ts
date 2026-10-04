@@ -1,3 +1,4 @@
+import { ui } from '../../i18n/server';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
@@ -45,7 +46,7 @@ for (const [name, provider] of Object.entries(providerRegistry)) {
     auth.get(`/auth/${name}`, async (c) => {
         const active = parseProviders(c.env.AUTH_PROVIDERS);
         if (!active.includes(name)) {
-            return c.json({ error: 'This auth provider is not enabled' }, 404);
+            return c.json({ error: ui("m_91056188b8bd82f5") }, 404);
         }
         return provider.handleLogin(c);
     });
@@ -53,7 +54,7 @@ for (const [name, provider] of Object.entries(providerRegistry)) {
     auth.get(`/auth/${name}/callback`, async (c) => {
         const active = parseProviders(c.env.AUTH_PROVIDERS);
         if (!active.includes(name)) {
-            return c.json({ error: 'This auth provider is not enabled' }, 404);
+            return c.json({ error: ui("m_91056188b8bd82f5") }, 404);
         }
         const result = await provider.handleCallback(c);
         if (result instanceof Response) return result;
@@ -177,19 +178,19 @@ auth.post('/api/auth/signup-request', async (c) => {
     }>();
 
     if (!token) {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 400);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 400);
     }
     if (!name || name.trim().length === 0) {
-        return c.json({ error: '표시명을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_2d794ec3450db6d9") }, 400);
     }
     if (name.trim().length > 20) {
-        return c.json({ error: '표시명은 20자 이내로 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_404a4c8ee516dfa1") }, 400);
     }
 
     // 토큰 검증
     const tokenData = await c.env.KV.get(`signup_token:${token}`);
     if (!tokenData) {
-        return c.json({ error: '토큰이 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.' }, 400);
+        return c.json({ error: ui("m_7643eee1fec028c1") }, 400);
     }
 
     const userInfo = JSON.parse(tokenData) as {
@@ -206,7 +207,7 @@ auth.post('/api/auth/signup-request', async (c) => {
         .bind(name.trim())
         .first<{ cnt: number }>();
     if (dupCheck && dupCheck.cnt > 0) {
-        return c.json({ error: '이미 사용 중인 표시명입니다. 다른 이름을 입력해주세요.' }, 409);
+        return c.json({ error: ui("m_56f965926b7480df") }, 409);
     }
 
     // 이미 pending 신청이 있는지 확인
@@ -216,7 +217,7 @@ auth.post('/api/auth/signup-request', async (c) => {
         .first();
     if (existingPending) {
         await c.env.KV.delete(`signup_token:${token}`);
-        return c.json({ error: '이미 가입 신청이 대기 중입니다.' }, 409);
+        return c.json({ error: ui("m_5826cddf7a82ad72") }, 409);
     }
 
     // 차단 상태 확인
@@ -226,7 +227,7 @@ auth.post('/api/auth/signup-request', async (c) => {
         .first();
     if (blockedRequest) {
         await c.env.KV.delete(`signup_token:${token}`);
-        return c.json({ error: '가입이 차단된 계정입니다.' }, 403);
+        return c.json({ error: ui("m_327c9350ca756d45") }, 403);
     }
 
     // 가입 신청 INSERT
@@ -266,7 +267,7 @@ auth.post('/api/auth/signup-request', async (c) => {
     }
 
     // 알림 발송
-    const notifContent = `${name.trim()}님이 가입을 신청했습니다.`;
+    const notifContent = ui("m_6f19362b18609eca", [name.trim()]);
     const adminLink = '/admin#signup-requests';
     for (const userId of notifyUserIds) {
         await createNotification(c.env, c.executionCtx, {
@@ -276,7 +277,7 @@ auth.post('/api/auth/signup-request', async (c) => {
             link: adminLink,
             refId: Number(requestId),
             push: {
-                title: '새 가입 신청',
+                title: ui("m_4526bb77acb750ca"),
                 body: notifContent,
                 url: adminLink,
                 tag: `signup_request:${requestId}`,
@@ -307,7 +308,7 @@ auth.post('/api/auth/signup-request', async (c) => {
 
     return c.json({
         success: true,
-        message: '가입 신청이 접수되었습니다.',
+        message: ui("m_fb2a59509c237625"),
         request_id: Number(requestId),
         push_token: pushToken,
     });
@@ -351,7 +352,7 @@ auth.get('/auth/logout', async (c) => {
 auth.get('/api/me', (c) => {
     const user = c.get('user');
     if (!user) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const rbac = c.get('rbac') as RBAC;
     const permissionKeys = [
@@ -385,10 +386,10 @@ auth.put('/api/me/profile', requireAuth, async (c) => {
     const { name } = await c.req.json<{ name: string }>();
 
     if (!name || name.trim().length === 0) {
-        return c.json({ error: '이름을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_b6c1c96c52ea9de7") }, 400);
     }
     if (name.trim().length > 20) {
-        return c.json({ error: '이름은 20자 이내로 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_09a7d1a34a1a0499") }, 400);
     }
 
     const trimmedName = name.trim();
@@ -401,7 +402,7 @@ auth.put('/api/me/profile', requireAuth, async (c) => {
         .first<{ cnt: number }>();
 
     if (dupCheck && dupCheck.cnt > 0) {
-        return c.json({ error: '이미 사용 중인 이름입니다. 다른 이름을 입력해주세요.' }, 409);
+        return c.json({ error: ui("m_6e6081e97b258993") }, 409);
     }
 
     // 2. 쿨다운 확인
@@ -413,7 +414,7 @@ auth.put('/api/me/profile', requireAuth, async (c) => {
 
     // -1 이면 변경 완전 불허 (최초 변경인 경우에만 예외 허용)
     if (cooldownDays === -1 && user.last_namechange !== null) {
-        return c.json({ error: '표시명 변경이 비활성화되어 있습니다.' }, 403);
+        return c.json({ error: ui("m_cb3f916fc4494942") }, 403);
     }
 
     // 양수인 경우 쿨다운 적용 (단, last_namechange가 NULL이면 최초 변경이므로 면제)
@@ -424,7 +425,7 @@ auth.put('/api/me/profile', requireAuth, async (c) => {
 
         if (now < nextChangeAt) {
             const remainDays = Math.ceil((nextChangeAt - now) / 86400);
-            return c.json({ error: `표시명 변경 쿨다운 중입니다. ${remainDays}일 후에 다시 시도해주세요.` }, 429);
+            return c.json({ error: ui("m_62d177927d381e8b", [remainDays]) }, 429);
         }
     }
 
@@ -454,7 +455,7 @@ auth.put('/api/me/picture-privacy', requireAuth, async (c) => {
     // 엄격한 boolean 검증: 누락/문자열 등 잘못된 값이 마스킹된 아바타를 의도치 않게 되돌리지 않도록 한다.
     const body = await c.req.json<{ private?: unknown }>().catch(() => ({} as { private?: unknown }));
     if (typeof body.private !== 'boolean') {
-        return c.json({ error: 'private 값은 boolean 이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_38aeb838f7210142") }, 400);
     }
     const isPrivate = body.private;
     const db = c.env.DB;
@@ -486,7 +487,7 @@ auth.put('/api/me/mcp-instant-apply', requireAuth, async (c) => {
     // 엄격한 boolean 검증: 누락/문자열 등 잘못된 값이 설정을 의도치 않게 바꾸지 않도록 한다.
     const body = await c.req.json<{ enabled?: unknown }>().catch(() => ({} as { enabled?: unknown }));
     if (typeof body.enabled !== 'boolean') {
-        return c.json({ error: 'enabled 값은 boolean 이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_dde0a1dfc274b96c") }, 400);
     }
     const enabled = body.enabled;
     const db = c.env.DB;
@@ -535,15 +536,15 @@ async function loadEffectiveMcpUser(c: Context<Env>, user: User): Promise<{ effe
         .prepare('SELECT email, role, banned_until, mcp_instant_apply, mcp_disabled_tools FROM users WHERE id = ?')
         .bind(user.id)
         .first<{ email: string; role: string; banned_until: number | null; mcp_instant_apply: number | null; mcp_disabled_tools: string | null }>();
-    if (!fresh) return { error: c.json({ error: '사용자를 찾을 수 없습니다.' }, 404) };
+    if (!fresh) return { error: c.json({ error: ui("m_5e480fde00b98d8b") }, 404) };
     const now = Math.floor(Date.now() / 1000);
     // 세션 미들웨어와 동일한 유효 역할 판정 (super_admin 보정·ban 반영·만료 롤백).
     let effectiveRole = fresh.role as User['role'];
     if (isSuperAdmin(fresh.email, c.env)) effectiveRole = 'super_admin';
     else if (fresh.banned_until && fresh.banned_until > now) effectiveRole = 'banned';
     else if (fresh.role === 'banned') effectiveRole = 'user';
-    if (effectiveRole === 'deleted') return { error: c.json({ error: '탈퇴한 사용자입니다.' }, 403) };
-    if (effectiveRole === 'banned') return { error: c.json({ error: '차단된 계정입니다. 이용하실 수 없습니다.' }, 403) };
+    if (effectiveRole === 'deleted') return { error: c.json({ error: ui("m_02903fc13e99bba0") }, 403) };
+    if (effectiveRole === 'banned') return { error: c.json({ error: ui("m_6c866390a85ff79c") }, 403) };
     return {
         effectiveUser: {
             ...user,
@@ -557,16 +558,16 @@ async function loadEffectiveMcpUser(c: Context<Env>, user: User): Promise<{ effe
 /** disabled_tools 배열 원본을 엄격 검증한다 (조용한 제거·잘라냄 없이 400). */
 function validateStrictToolNameArray(raw: unknown[]): { names: string[] } | { error: string } {
     if (raw.length > MCP_DISABLED_TOOLS_MAX) {
-        return { error: `disabled_tools 는 최대 ${MCP_DISABLED_TOOLS_MAX}개까지 지정할 수 있습니다.` };
+        return { error: ui("m_20063338c854c210", [MCP_DISABLED_TOOLS_MAX]) };
     }
     const out: string[] = [];
     for (const item of raw) {
         if (typeof item !== 'string' || !item.trim()) {
-            return { error: 'disabled_tools 배열은 비어 있지 않은 문자열만 포함해야 합니다.' };
+            return { error: ui("m_dfbe4914812f5eb8") };
         }
         const name = item.trim();
         if (name.length > MCP_TOOL_NAME_MAX_LENGTH) {
-            return { error: `도구명이 너무 깁니다 (최대 ${MCP_TOOL_NAME_MAX_LENGTH}자): ${name.slice(0, 30)}` };
+            return { error: ui("m_c57d23e2227455dd", [MCP_TOOL_NAME_MAX_LENGTH, name.slice(0, 30)]) };
         }
         out.push(name);
     }
@@ -593,8 +594,8 @@ auth.put('/api/me/mcp-tools', requireAuth, async (c) => {
     const eff = loaded.effectiveUser;
     const scope = new Set(getRoleScopeToolNames(rbac, eff));
     const rejectOutOfScope = (name: string) => {
-        if (!getAllKnownMcpToolNames().includes(name)) return `알 수 없는 MCP 도구입니다: ${name}`;
-        return `내 권한에 제공되지 않는 MCP 도구입니다: ${name}`;
+        if (!getAllKnownMcpToolNames().includes(name)) return ui("m_c856fd84454cb427", [name]);
+        return ui("m_8b3ea246b148f1d8", [name]);
     };
 
     const body = await c.req.json<{ tool?: unknown; enabled?: unknown; disabled_tools?: unknown; all?: unknown }>()
@@ -604,7 +605,7 @@ auth.put('/api/me/mcp-tools', requireAuth, async (c) => {
     const hasSingle = body.tool !== undefined || body.enabled !== undefined;
     const hasBulk = body.disabled_tools !== undefined;
     if ([hasAll, hasSingle, hasBulk].filter(Boolean).length !== 1) {
-        return c.json({ error: '{ tool, enabled } / { disabled_tools } / { all } 중 정확히 하나의 형식으로 보내주세요.' }, 400);
+        return c.json({ error: ui("m_39417eb13711a600") }, 400);
     }
 
     // 세 경로 모두 (현재값) => 다음 Off 목록의 순수 계산으로 표현하고,
@@ -612,7 +613,7 @@ auth.put('/api/me/mcp-tools', requireAuth, async (c) => {
     let compute: (current: string[]) => string[];
     if (hasAll) {
         if (typeof body.all !== 'boolean') {
-            return c.json({ error: 'all 값은 boolean 이어야 합니다.' }, 400);
+            return c.json({ error: ui("m_0bef21ce8365a5b6") }, 400);
         }
         // 전체: true=모두 켜기([]), false=역할 범위 모두 끄기. DOM 스냅샷에 의존하지 않으므로
         // 화면에 안 보이는 도구(즉시반영 OFF 시 apply_edit, RAG 비활성 시 search_rag)까지 커버한다.
@@ -620,7 +621,7 @@ auth.put('/api/me/mcp-tools', requireAuth, async (c) => {
         compute = () => names;
     } else if (hasBulk) {
         if (!Array.isArray(body.disabled_tools)) {
-            return c.json({ error: 'disabled_tools 값은 문자열 배열이어야 합니다.' }, 400);
+            return c.json({ error: ui("m_94242844807e13bd") }, 400);
         }
         const strict = validateStrictToolNameArray(body.disabled_tools);
         if ('error' in strict) return c.json({ error: strict.error }, 400);
@@ -632,14 +633,14 @@ auth.put('/api/me/mcp-tools', requireAuth, async (c) => {
     } else {
         // 단건 토글 — 엄격 검증 (누락/문자열 오남용 방지).
         if (typeof body.tool !== 'string' || !body.tool.trim()) {
-            return c.json({ error: 'tool 값은 비어 있지 않은 문자열이어야 합니다.' }, 400);
+            return c.json({ error: ui("m_2f9af3198cc3cfde") }, 400);
         }
         if (typeof body.enabled !== 'boolean') {
-            return c.json({ error: 'enabled 값은 boolean 이어야 합니다.' }, 400);
+            return c.json({ error: ui("m_dde0a1dfc274b96c") }, 400);
         }
         const rawName = body.tool.trim();
         if (rawName.length > MCP_TOOL_NAME_MAX_LENGTH) {
-            return c.json({ error: `도구명이 너무 깁니다 (최대 ${MCP_TOOL_NAME_MAX_LENGTH}자).` }, 400);
+            return c.json({ error: ui("m_548d9d62ca02ac46", [MCP_TOOL_NAME_MAX_LENGTH]) }, 400);
         }
         const toolNames = expandToolNamesWithAliases([rawName]);
         for (const name of toolNames) {
@@ -661,7 +662,7 @@ auth.put('/api/me/mcp-tools', requireAuth, async (c) => {
             .prepare('SELECT mcp_disabled_tools FROM users WHERE id = ?')
             .bind(user.id)
             .first<{ mcp_disabled_tools: string | null }>();
-        if (!row) return c.json({ error: '사용자를 찾을 수 없습니다.' }, 404);
+        if (!row) return c.json({ error: ui("m_5e480fde00b98d8b") }, 404);
         const rawBefore = row.mcp_disabled_tools ?? '[]';
         const next = serializeDisabledTools(compute(parseDisabledTools(rawBefore)));
         const upd = await db
@@ -674,7 +675,7 @@ auth.put('/api/me/mcp-tools', requireAuth, async (c) => {
         }
     }
     if (finalRaw === null) {
-        return c.json({ error: '동시 변경과 충돌했습니다. 다시 시도해주세요.' }, 409);
+        return c.json({ error: ui("m_2a3589cc660fb19f") }, 409);
     }
 
     // 세션 KV 캐시 무효화 (변경된 mcp_disabled_tools 반영).
@@ -712,20 +713,20 @@ auth.get('/api/me/namechange-status', requireAuth, async (c) => {
     // -1: 변경 완전 불허
     if (cooldownDays === -1) {
         if (user.last_namechange === null) {
-            return c.json({ allowed: true, reason: 'first_change', message: '표시명은 추후 변경이 불가능합니다.' });
+            return c.json({ allowed: true, reason: "first_change", message: ui("m_77ad3d250f06060c") });
         }
-        return c.json({ allowed: false, reason: 'disabled', message: '표시명 변경이 비활성화되어 있습니다.' });
+        return c.json({ allowed: false, reason: "disabled", message: ui("m_cb3f916fc4494942") });
     }
 
     // 0: 무제한 허용
     if (cooldownDays === 0) {
-        return c.json({ allowed: true, reason: 'unlimited', message: '표시명은 추후 변경이 가능합니다.' });
+        return c.json({ allowed: true, reason: "unlimited", message: ui("m_82cfd7aded4a3df1") });
     }
 
     // 양수: 쿨다운 확인
     // last_namechange가 NULL이면 최초 변경 → 면제
     if (user.last_namechange === null) {
-        return c.json({ allowed: true, reason: 'first_change', message: '표시명은 추후 변경이 가능합니다.' });
+        return c.json({ allowed: true, reason: "first_change", message: ui("m_82cfd7aded4a3df1") });
     }
 
     const now = Math.floor(Date.now() / 1000);
@@ -733,7 +734,7 @@ auth.get('/api/me/namechange-status', requireAuth, async (c) => {
     const nextChangeAt = user.last_namechange + cooldownSeconds;
 
     if (now >= nextChangeAt) {
-        return c.json({ allowed: true, reason: 'cooldown_passed' });
+        return c.json({ allowed: true, reason: "cooldown_passed" });
     }
 
     const remainSeconds = nextChangeAt - now;
@@ -741,11 +742,11 @@ auth.get('/api/me/namechange-status', requireAuth, async (c) => {
 
     return c.json({
         allowed: false,
-        reason: 'cooldown',
+        reason: "cooldown",
         remain_seconds: remainSeconds,
         remain_days: remainDays,
         next_change_at: nextChangeAt,
-        message: `${remainDays}일 후에 표시명을 변경할 수 있습니다.`
+        message: ui("m_60e2e82e72e9ebde", [remainDays])
     });
 });
 
@@ -822,7 +823,7 @@ auth.get('/api/me/watches', requireAuth, async (c) => {
 auth.get('/api/users/:id/profile', async (c) => {
     const userId = parseInt(c.req.param('id'));
     if (isNaN(userId)) {
-        return c.json({ error: '유효하지 않은 사용자 ID입니다.' }, 400);
+        return c.json({ error: ui("m_b5d6bd814801c17d") }, 400);
     }
 
     const db = c.env.DB;
@@ -836,7 +837,7 @@ auth.get('/api/users/:id/profile', async (c) => {
             .bind(userId)
             .first<{ id: number; name: string; picture: string; role: string; banned_until: number | null; email: string; created_at: number }>();
         if (!adminUser || adminUser.role === 'deleted') {
-            return c.json({ error: '사용자를 찾을 수 없습니다.' }, 404);
+            return c.json({ error: ui("m_5e480fde00b98d8b") }, 404);
         }
         enrichRole(adminUser, 'role', 'email', c.env);
         // banned_until 만료 시 role 보정 (super_admin 보정 이후에 수행)
@@ -863,7 +864,7 @@ auth.get('/api/users/:id/profile', async (c) => {
         .first<{ id: number; name: string; picture: string; role: string; email: string; created_at: number }>();
 
     if (!user || user.role === 'deleted') {
-        return c.json({ error: '사용자를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_5e480fde00b98d8b") }, 404);
     }
 
     // 역할 자체는 공개 응답에서 숨기되, 차단 사용자가 관리자에게만 소명 쪽지를 보낼 수
@@ -885,11 +886,11 @@ auth.get('/api/users/:id/profile', async (c) => {
  */
 auth.get('/api/users/:id/contributions', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const userId = parseInt(c.req.param('id'));
     if (isNaN(userId)) {
-        return c.json({ error: '유효하지 않은 사용자 ID입니다.' }, 400);
+        return c.json({ error: ui("m_b5d6bd814801c17d") }, 400);
     }
 
     const db = c.env.DB;
@@ -909,7 +910,7 @@ auth.get('/api/users/:id/contributions', async (c) => {
         .bind(userId)
         .first();
     if (!userExists) {
-        return c.json({ error: '사용자를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_5e480fde00b98d8b") }, 404);
     }
 
     const { results } = await db.prepare(
@@ -983,7 +984,7 @@ auth.delete('/api/me/sessions/:id', requireAuthAllowBanned, async (c) => {
     const currentSessionId = getCookie(c, 'wiki_session') || null;
 
     if (sessionId === currentSessionId) {
-        return c.json({ error: '현재 세션은 로그아웃 메뉴로 종료해주세요.' }, 400);
+        return c.json({ error: ui("m_7302886fb9864551") }, 400);
     }
 
     const result = await db.prepare(
@@ -991,7 +992,7 @@ auth.delete('/api/me/sessions/:id', requireAuthAllowBanned, async (c) => {
     ).bind(sessionId, user.id).run();
 
     if (!result.meta.changes) {
-        return c.json({ error: '세션을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_74c05839d304bdfe") }, 404);
     }
 
     await c.env.KV.delete(`session:${sessionId}`);
@@ -1118,7 +1119,7 @@ auth.delete('/api/me/mcp-clients/:client_id', requireAuthAllowBanned, async (c) 
     const db = c.env.DB;
     const clientId = c.req.param('client_id');
     if (!clientId) {
-        return c.json({ error: '잘못된 client_id 입니다.' }, 400);
+        return c.json({ error: ui("m_e7ef0b5a2cfcf48a") }, 400);
     }
 
     const result = await db.prepare(
@@ -1129,7 +1130,7 @@ auth.delete('/api/me/mcp-clients/:client_id', requireAuthAllowBanned, async (c) 
     ).bind(user.id, clientId).run();
 
     if (!result.meta.changes) {
-        return c.json({ error: '연결된 활성 토큰이 없습니다.' }, 404);
+        return c.json({ error: ui("m_b41bd74a953f9f20") }, 404);
     }
     return c.json({ success: true, count: result.meta.changes });
 });
@@ -1259,9 +1260,9 @@ auth.post('/api/me/mcp-api-key', requireAuth, async (c) => {
         });
     } catch (err: any) {
         if (err?.message?.includes('no such table')) {
-            return c.json({ error: 'DB에 mcp_api_keys 테이블이 존재하지 않습니다. 마이데이터 마이그레이션을 먼저 적용해주십시오.' }, 500);
+            return c.json({ error: ui("m_b0ab1fe7e298522d") }, 500);
         }
-        return c.json({ error: err.message || 'API 키 발급 중 오류가 발생했습니다.' }, 500);
+        return c.json({ error: err.message || ui("m_e79216fda2e57c4b") }, 500);
     }
 });
 
@@ -1278,9 +1279,9 @@ auth.delete('/api/me/mcp-api-key', requireAuth, async (c) => {
         return c.json({ success: true });
     } catch (err: any) {
         if (err?.message?.includes('no such table')) {
-            return c.json({ error: 'DB에 mcp_api_keys 테이블이 존재하지 않습니다.' }, 500);
+            return c.json({ error: ui("m_72d84e45143f4230") }, 500);
         }
-        return c.json({ error: err.message || 'API 키 삭제 중 오류가 발생했습니다.' }, 500);
+        return c.json({ error: err.message || ui("m_6bd046e4ebef3a3b") }, 500);
     }
 });
 

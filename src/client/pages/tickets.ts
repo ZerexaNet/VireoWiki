@@ -13,7 +13,8 @@
 //    파일 끝에서 window.* 로 노출한다.
 
     // ── 전역 상태 ──
-    let currentTicketId = null;
+    import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
+let currentTicketId = null;
     let currentStatusFilter = '';
     let currentTypeFilter = '';
     let currentPage = 1;
@@ -52,10 +53,10 @@
     }
 
     const typeLabels = {
-      general: '普通',
-      document: '页面',
-      discussion: '讨论',
-      account: '账号'
+      general: ui("m_de907d10df98b498"),
+      document: ui("m_452c7b10d57a86a7"),
+      discussion: ui("m_3cef912ce8819fff"),
+      account: ui("m_311bb313fdeca6aa")
     };
 
     const typeBadgeClasses = {
@@ -83,7 +84,7 @@
 
       if (!window.currentUser) {
         document.getElementById('loading').classList.add('d-none');
-        Swal.fire('需要登录', '티켓 문의를 이용하려면 로그인해주세요.', 'info').then(() => {
+        Swal.fire(ui("m_6eb1b64e260a2dd3"), ui("m_dbaf3b099102c841"), 'info').then(() => {
           window.location.href = '/';
         });
         return;
@@ -92,7 +93,7 @@
       const parsed = parseUrl();
       if (!parsed) {
         document.getElementById('loading').classList.add('d-none');
-        Swal.fire('错误', '链接无效。', 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_e0a12b740b1aedad"), 'error');
         return;
       }
 
@@ -107,11 +108,11 @@
     function getRelativeTime(unixTs) {
       const now = Math.floor(Date.now() / 1000);
       const diff = now - unixTs;
-      if (diff < 60) return '刚刚';
-      if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
-      if (diff < 604800) return `${Math.floor(diff / 86400)} 天前`;
-      return new Date(unixTs * 1000).toLocaleDateString('zh-CN');
+      if (diff < 60) return ui("m_de6785d99e028971");
+      if (diff < 3600) return ui("m_2f10882d8db32301", [Math.floor(diff / 60)]);
+      if (diff < 86400) return ui("m_13d9a4afbbd1b91f", [Math.floor(diff / 3600)]);
+      if (diff < 604800) return ui("m_dd30752bcdb324d3", [Math.floor(diff / 86400)]);
+      return new Date(unixTs * 1000).toLocaleDateString(getLocale());
     }
 
     function hideAllPages() {
@@ -150,7 +151,7 @@
       hideAllPages();
       document.getElementById('newTicketForm').classList.add('d-none');
       document.getElementById('ticketListPage').classList.remove('d-none');
-      document.title = `티켓 문의 - ${window.appConfig.wikiName}`;
+      document.title = ui("m_1866992c52eb8579", [window.appConfig.wikiName]);
     }
 
     async function loadTickets(append) {
@@ -160,7 +161,7 @@
         if (currentTypeFilter) url += `&type=${currentTypeFilter}`;
 
         const res = await fetch(url);
-        if (!res.ok) throw new Error('티켓 목록 로딩 실패');
+        if (!res.ok) throw new Error(ui("m_b257f900207ec26d"));
         const data = await res.json();
 
         if (append) {
@@ -181,43 +182,26 @@
 
       } catch (err) {
         console.error(err);
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
     function renderTicketList() {
       const listEl = document.getElementById('ticketsList');
       if (!allTickets || allTickets.length === 0) {
-        listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-ticket-perforated', title: '티켓이 없습니다' });
+        listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-ticket-perforated', title: ui("m_cea9945ef5953a8d") });
         return;
       }
 
       listEl.innerHTML = allTickets.map(t => {
         const statusBadge = t.status === 'open'
-          ? '<span class="badge bg-success">开放</span>'
-          : '<span class="badge bg-secondary">已关闭</span>';
+          ? ui("m_9580dffa5369affc")
+          : ui("m_e2d4b1508e527978");
         const typeBadge = `<span class="badge ${typeBadgeClasses[t.type] || 'bg-primary'}">${typeLabels[t.type] || t.type}</span>`;
         const date = getRelativeTime(t.created_at);
-        const deletedBadge = t.deleted_at ? '<span class="badge bg-danger">已删除</span>' : '';
+        const deletedBadge = t.deleted_at ? ui("m_843692c38e7b788c") : '';
 
-        return `
-          <a href="/tickets/${t.id}" class="discussion-item">
-            <div class="d-flex justify-content-between align-items-start">
-              <div class="discussion-item-main">
-                <div class="discussion-item-title">
-                  ${statusBadge} ${typeBadge} ${deletedBadge}
-                  <span class="text-muted small">#${t.id}</span>
-                  <span>${window.escapeHtml(t.title)}</span>
-                </div>
-                <div class="discussion-item-meta">
-                  <span><i class="bi bi-person"></i> ${window.escapeHtml(t.user_name || '未知用户')}${window.renderUserRoleIcon(t.user_role)}</span>
-                  <span><i class="bi bi-clock"></i> ${date}</span>
-                  <span><i class="bi bi-chat"></i> ${t.comment_count || 0}개 댓글</span>
-                </div>
-              </div>
-            </div>
-          </a>
-        `;
+        return ui("m_89534d5a6bfce955", [t.id, statusBadge, typeBadge, deletedBadge, t.id, window.escapeHtml(t.title), window.escapeHtml(t.user_name || ui("m_1ac13841ba2ea68b")), window.renderUserRoleIcon(t.user_role), date, t.comment_count || 0]);
       }).join('');
       window.initRoleIconPopovers(listEl);
     }
@@ -248,7 +232,7 @@
     // ── 새 티켓 작성 ──
     async function showNewTicketForm() {
       if (!window.currentUser) {
-        Swal.fire('需要登录', '문의를 작성하려면 로그인해주세요.', 'info');
+        Swal.fire(ui("m_6eb1b64e260a2dd3"), ui("m_60e4d8abb7c5c4a3"), 'info');
         return;
       }
       document.getElementById('newTicketForm').classList.remove('d-none');
@@ -282,7 +266,7 @@
             const carryOver = fallback.value;
             newTicketEditor = await create(rootEl, {
               initialValue: carryOver,
-              placeholder: '문의 내용을 입력하세요 (위키 문법 지원)',
+              placeholder: ui("m_52a053ce0e3303b0"),
             });
             fallback.classList.add('d-none');
             fallback.value = '';
@@ -308,8 +292,8 @@
       const content = getNewTicketContent().trim();
       const type = document.getElementById('newTicketType').value;
 
-      if (!title) { Swal.fire('提示', '문의 제목을 입력하세요.', 'warning'); return; }
-      if (!content) { Swal.fire('提示', '문의 내용을 입력하세요.', 'warning'); return; }
+      if (!title) { Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_121ab217667e95a2"), 'warning'); return; }
+      if (!content) { Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_67645a3be732fd7d"), 'warning'); return; }
 
       try {
         const res = await fetch('/api/tickets', {
@@ -318,13 +302,13 @@
           body: JSON.stringify({ title, content, type })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '티켓 생성 실패');
+        if (!res.ok) throw new Error(data.error || ui("m_0b5f9634cd06ca6b"));
 
-        Swal.fire('成功', '문의가 접수되었습니다.', 'success').then(() => {
+        Swal.fire(ui("m_053461ce86d26572"), ui("m_ad2ccc6b1b3052a6"), 'success').then(() => {
           window.location.href = `/tickets/${data.id}`;
         });
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
@@ -338,7 +322,7 @@
         const res = await fetch(`/api/tickets/${ticketId}`);
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || '티켓을 불러올 수 없습니다.');
+          throw new Error(errData.error || ui("m_bdbd94b98af94d96"));
         }
         const data = await res.json();
         const ticket = data.ticket;
@@ -365,17 +349,13 @@
 
         // 메타 정보
         const statusBadge = ticket.status === 'open'
-          ? '<span class="badge bg-success">开放</span>'
-          : '<span class="badge bg-secondary">已关闭</span>';
+          ? ui("m_9580dffa5369affc")
+          : ui("m_e2d4b1508e527978");
         const typeBadge = `<span class="badge ${typeBadgeClasses[ticket.type] || 'bg-primary'}">${typeLabels[ticket.type] || ticket.type}</span>`;
-        const date = new Date(ticket.created_at * 1000).toLocaleString('zh-CN');
-        const deletedBadge = ticket.deleted_at ? '<span class="badge bg-danger">已删除</span>' : '';
+        const date = new Date(ticket.created_at * 1000).toLocaleString(getLocale());
+        const deletedBadge = ticket.deleted_at ? ui("m_843692c38e7b788c") : '';
 
-        document.getElementById('ticketMeta').innerHTML = `
-          ${statusBadge} ${typeBadge} ${deletedBadge}
-          <span class="text-muted small">작성자: ${window.escapeHtml(ticket.user_name || '未知用户')}${window.renderUserRoleIcon(ticket.user_role)}</span>
-          <span class="text-muted small">${date}</span>
-        `;
+        document.getElementById('ticketMeta').innerHTML = ui("m_54759ef1a345b86b", [statusBadge, typeBadge, deletedBadge, window.escapeHtml(ticket.user_name || ui("m_1ac13841ba2ea68b")), window.renderUserRoleIcon(ticket.user_role), date]);
         window.initRoleIconPopovers(document.getElementById('ticketMeta'));
 
         // 액션 버튼들
@@ -387,22 +367,18 @@
 
           if (isAuthor || userIsAdmin) {
             if (ticket.status === 'open') {
-              actionsHtml += `<button class="btn btn-outline-danger btn-sm" onclick="changeTicketStatus(${ticketId}, 'closed')">
-                <i class="bi bi-x-circle"></i> 문의 닫기</button>`;
+              actionsHtml += ui("m_dd2528a0f01ceed8", [ticketId]);
             } else {
-              actionsHtml += `<button class="btn btn-outline-success btn-sm" onclick="changeTicketStatus(${ticketId}, 'open')">
-                <i class="bi bi-arrow-counterclockwise"></i> 문의 重新开放</button>`;
+              actionsHtml += ui("m_aa71249b21df11aa", [ticketId]);
             }
           }
 
           if (userIsAdmin && !ticket.deleted_at) {
-            actionsHtml += `<button class="btn btn-outline-danger btn-sm" onclick="deleteTicket(${ticketId}, false)">
-              <i class="bi bi-trash"></i> 删除</button>`;
+            actionsHtml += ui("m_2e04391a97ad5042", [ticketId]);
           }
 
           if (isSuperAdmin) {
-            actionsHtml += `<button class="btn btn-danger btn-sm" onclick="deleteTicket(${ticketId}, true)">
-              <i class="bi bi-trash-fill"></i> 완전 삭제</button>`;
+            actionsHtml += ui("m_04ed61484dcc0f47", [ticketId]);
           }
         }
         document.getElementById('ticketActions').innerHTML = actionsHtml;
@@ -435,7 +411,7 @@
 
         hideAllPages();
         document.getElementById('ticketDetailPage').classList.remove('d-none');
-        document.title = `#${ticket.id} ${ticket.title} - 티켓 - ${window.appConfig.wikiName}`;
+        document.title = ui("m_5146d051b6b731b8", [ticket.id, ticket.title, window.appConfig.wikiName]);
 
         // 해당 티켓 관련 알림 일괄 읽음 처리
         if (window.currentUser) {
@@ -452,13 +428,13 @@
       } catch (err) {
         console.error(err);
         hideAllPages();
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
     function renderComment(c, ticket) {
       const isDeleted = !!c.deleted_at;
-      const date = new Date(c.created_at * 1000).toLocaleString('zh-CN');
+      const date = new Date(c.created_at * 1000).toLocaleString(getLocale());
 
       // 역할 아이콘
       const authorRoleIcon = window.renderUserRoleIcon(c.author_role);
@@ -467,7 +443,7 @@
       if (c.parent_id && c.quoted_content) {
         quoteHtml = `
           <div class="discussion-quote">
-            <div class="discussion-quote-author"><i class="bi bi-reply"></i> ${window.escapeHtml(c.quoted_author_name || '未知用户')}:</div>
+            <div class="discussion-quote-author"><i class="bi bi-reply"></i> ${window.escapeHtml(c.quoted_author_name || ui("m_1ac13841ba2ea68b"))}:</div>
             <div class="discussion-quote-text">${window.escapeHtml(c.quoted_content || '')}</div>
           </div>
         `;
@@ -476,7 +452,7 @@
       // 본문은 위키 렌더링이 비동기이므로 빈 컨테이너만 박아두고 호출자가 별도 렌더.
       let contentHtml;
       if (isDeleted) {
-        contentHtml = '<span class="text-muted fst-italic">评论已删除。</span>';
+        contentHtml = ui("m_d15600fe57d00775");
       } else {
         contentHtml = '';
       }
@@ -487,9 +463,7 @@
         (window.currentUser.role !== 'banned' ||
           (ticket.user_id === window.currentUser.id && ticket.type === 'account'));
       if (!isDeleted && canReplyComment && ticket.status === 'open' && !ticket.deleted_at) {
-        commentActions += `<button class="btn btn-sm btn-link text-muted" data-id="${c.id}" data-author="${window.escapeHtml(c.author_name || '未知用户')}" data-content="${window.escapeHtml((c.content || '').substring(0, 100))}" onclick="startReply(+this.dataset.id, this.dataset.author, this.dataset.content)">
-          <i class="bi bi-reply"></i> 답글
-        </button>`;
+        commentActions += ui("m_572402f7759511c7", [c.id, window.escapeHtml(c.author_name || ui("m_1ac13841ba2ea68b")), window.escapeHtml((c.content || '').substring(0, 100))]);
       }
       if (!isDeleted && window.currentUser) {
         const userIsAdmin = isAdmin();
@@ -511,7 +485,7 @@
           <div class="discussion-comment-header">
             <span class="discussion-comment-author">
               ${c.author_picture ? `<img src="${c.author_picture}" class="discussion-comment-avatar" alt="" loading="lazy">` : ''}
-              ${window.escapeHtml(c.author_name || '未知用户')}${authorRoleIcon}
+              ${window.escapeHtml(c.author_name || ui("m_1ac13841ba2ea68b"))}${authorRoleIcon}
             </span>
             <span class="discussion-comment-date text-muted small">${date}</span>
           </div>
@@ -526,12 +500,7 @@
     function startReply(parentId, authorName, preview) {
       document.getElementById('replyParentId').value = parentId;
       const quoteEl = document.getElementById('replyQuote');
-      quoteEl.innerHTML = `
-        <div class="discussion-quote">
-          <div class="discussion-quote-author"><i class="bi bi-reply"></i> ${window.escapeHtml(authorName)}에게 답글:</div>
-          <div class="discussion-quote-text">${window.escapeHtml(preview)}${preview.length >= 100 ? '...' : ''}</div>
-        </div>
-      `;
+      quoteEl.innerHTML = ui("m_84df5ba53c2aae6f", [window.escapeHtml(authorName), window.escapeHtml(preview), preview.length >= 100 ? '...' : '']);
       quoteEl.classList.remove('d-none');
       document.getElementById('cancelReplyBtn').classList.remove('d-none');
       if (commentEditor) {
@@ -572,7 +541,7 @@
         const carryOver = fb ? fb.value : '';
         commentEditor = await create(rootEl, {
           initialValue: carryOver,
-          placeholder: '请输入评论（支持 Wiki 语法）',
+          placeholder: ui("m_2b00c5e5001419da"),
           getMentionCandidates: () => currentMentionParticipants,
         });
         if (fb) { fb.classList.add('d-none'); fb.value = ''; }
@@ -591,7 +560,7 @@
       const content = getCommentContent().trim();
       const parentId = document.getElementById('replyParentId').value;
 
-      if (!content) { Swal.fire('提示', '请输入评论内容。', 'warning'); return; }
+      if (!content) { Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_fb5329841caa622f"), 'warning'); return; }
 
       try {
         const body = { content };
@@ -603,26 +572,26 @@
           body: JSON.stringify(body)
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '发表评论失败');
+        if (!res.ok) throw new Error(data.error || ui("m_ccf19617f6bcd97c"));
 
         clearCommentContent();
         cancelReply();
         showTicketDetail(currentTicketId);
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
     // ── 티켓 상태 변경 ──
     async function changeTicketStatus(ticketId, status) {
-      const label = status === 'closed' ? '关闭' : '重新开放';
+      const label = status === 'closed' ? ui("m_3fd47edce45b3603") : ui("m_f18368c5975d3952");
       const result = await Swal.fire({
-        title: `문의 ${label}`,
-        text: `정말 이 문의를 ${label}하시겠습니까?`,
+        title: ui("m_2cf0a89e778a05e9", [label]),
+        text: ui("m_0595e20c83cbcbe0", [label]),
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: label,
-        cancelButtonText: '取消'
+        cancelButtonText: ui("m_2cd0f3be8738a86c")
       });
 
       if (!result.isConfirmed) return;
@@ -634,25 +603,25 @@
           body: JSON.stringify({ status })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '状态修改失败');
+        if (!res.ok) throw new Error(data.error || ui("m_3d5ef5f99249355c"));
 
         showTicketDetail(ticketId);
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
     // ── 티켓 삭제 ──
     async function deleteTicket(ticketId, hard) {
-      const label = hard ? '永久删除（无法恢复）' : '删除';
+      const label = hard ? ui("m_5397333d5562291a") : ui("m_2f9daa828907b93f");
       const result = await Swal.fire({
-        title: `문의 ${label}`,
-        text: hard ? '이 문의와 모든 댓글이 영구적으로 삭제됩니다.' : '이 문의를 삭제하시겠습니까?',
+        title: ui("m_2cf0a89e778a05e9", [label]),
+        text: hard ? ui("m_db90d465089098d6") : ui("m_b7fa5351ba888cb8"),
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         confirmButtonText: label,
-        cancelButtonText: '取消'
+        cancelButtonText: ui("m_2cd0f3be8738a86c")
       });
 
       if (!result.isConfirmed) return;
@@ -663,27 +632,27 @@
           : `/api/tickets/${ticketId}`;
         const res = await fetch(url, { method: 'DELETE' });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '删除失败');
+        if (!res.ok) throw new Error(data.error || ui("m_c228558cf257fc49"));
 
-        Swal.fire('已删除', '문의가 삭제되었습니다.', 'success').then(() => {
+        Swal.fire(ui("m_077a6d37719a0e21"), ui("m_2d3eef885bbbb868"), 'success').then(() => {
           window.location.href = '/tickets';
         });
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 
     // ── 댓글 삭제 ──
     async function deleteComment(commentId, hard) {
-      const label = hard ? '완전 삭제' : '删除';
+      const label = hard ? ui("m_41d62abcf8fafc00") : ui("m_2f9daa828907b93f");
       const result = await Swal.fire({
-        title: `댓글 ${label}`,
-        text: hard ? '이 댓글이 영구적으로 삭제됩니다.' : '이 댓글을 삭제하시겠습니까?',
+        title: ui("m_ce7bd71253be4191", [label]),
+        text: hard ? ui("m_8b1416695c6437b4") : ui("m_1482b30a82762df1"),
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         confirmButtonText: label,
-        cancelButtonText: '取消'
+        cancelButtonText: ui("m_2cd0f3be8738a86c")
       });
 
       if (!result.isConfirmed) return;
@@ -694,11 +663,11 @@
           : `/api/tickets/comment/${commentId}`;
         const res = await fetch(url, { method: 'DELETE' });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '删除失败');
+        if (!res.ok) throw new Error(data.error || ui("m_c228558cf257fc49"));
 
         showTicketDetail(currentTicketId);
       } catch (err) {
-        Swal.fire('错误', err.message, 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
       }
     }
 

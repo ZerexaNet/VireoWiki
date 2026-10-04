@@ -5,6 +5,7 @@
 // 데이터 전략: /api/w/all-index 로 전체 문서를 1회 받아 클라이언트가 네임스페이스 분리 →
 // 최상위/하위 계층 구성 → 초성 그룹/정렬 → 페이지네이션을 수행한다(카테고리 페이지 선례와 동일).
 // 카테고리/이미지 탭은 최초 진입 시 각자 /api/w/all-categories · /api/media/all 를 지연 로드한다.
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import { wikiInitialGroupOf } from '../../shared/chosung';
 
 const esc = (s) => window.escapeHtml(String(s ?? ''));
@@ -14,10 +15,10 @@ const DOC_PAGE_SIZE = 60;
 
 // 편집 ACL 플래그 라벨 — index.ts 의 편집 잠금 배지와 동일 매핑. (aged 는 실제 임계 일수를 주입)
 const ACL_FLAG_LABELS = {
-    aged: '가입 N일 이상',
-    page_editor: '本页编辑历史',
-    any_editor: '任意页面编辑历史',
-    admin_only: '仅管理员',
+    aged: ui("m_bf8508933cb57822"),
+    page_editor: ui("m_1067d4563021de5a"),
+    any_editor: ui("m_16e8ef1a632a2464"),
+    admin_only: ui("m_7f0dd12bee0266d4"),
 };
 const ACL_FLAG_ORDER = ['aged', 'page_editor', 'any_editor', 'admin_only'];
 
@@ -107,7 +108,7 @@ function buildBuckets(pages) {
 
 // ── 배지: 카테고리(쉼표 구분) + 편집 ACL ──
 function aclLabel(flag) {
-    if (flag === 'aged') return minAgeDays > 0 ? `가입 ${minAgeDays}일 이상` : ACL_FLAG_LABELS.aged;
+    if (flag === 'aged') return minAgeDays > 0 ? ui("m_3d1af832228cb235", [minAgeDays]) : ACL_FLAG_LABELS.aged;
     return ACL_FLAG_LABELS[flag] || flag;
 }
 
@@ -125,7 +126,7 @@ function aclBadges(flags, detail) {
         return valid.map(f => `<span class="badge bg-danger bg-opacity-10 text-danger border"><i class="bi bi-lock-fill"></i> ${esc(aclLabel(f))}</span>`).join('');
     }
     const content = '<ul class="mb-0 ps-3">' + valid.map(f => `<li>${esc(aclLabel(f))}</li>`).join('') + '</ul>';
-    return `<span class="badge bg-danger edit-lock-badge" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top" data-bs-html="true" data-bs-content="${esc(content)}" style="cursor:help;"><i class="bi bi-lock-fill"></i> 编辑受限</span>`;
+    return ui("m_ca766e440fd9a607", [esc(content)]);
 }
 
 function pageBadges(page) {
@@ -178,15 +179,15 @@ function paginationHtml(cur, total) {
     const pages = new Set([1, total]);
     for (let i = Math.max(2, cur - 2); i <= Math.min(total - 1, cur + 2); i++) pages.add(i);
     const sorted = [...pages].sort((a, b) => a - b);
-    let html = '<nav class="all-pagination" aria-label="페이지"><ul class="pagination justify-content-center flex-wrap">';
-    html += `<li class="page-item ${cur === 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-pg="${cur - 1}">上一页</a></li>`;
+    let html = ui("m_8fad0c21df08b91f");
+    html += ui("m_5c04d326f53bc0f1", [cur === 1 ? 'disabled' : '', cur - 1]);
     let prev = 0;
     for (const p of sorted) {
         if (prev && p - prev > 1) html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
         html += `<li class="page-item ${p === cur ? 'active' : ''}"><a class="page-link" href="#" data-pg="${p}">${p}</a></li>`;
         prev = p;
     }
-    html += `<li class="page-item ${cur === total ? 'disabled' : ''}"><a class="page-link" href="#" data-pg="${cur + 1}">下一页</a></li>`;
+    html += ui("m_292bdb75f0011656", [cur === total ? 'disabled' : '', cur + 1]);
     html += '</ul></nav>';
     return html;
 }
@@ -211,7 +212,7 @@ async function loadDocs() {
     el.innerHTML = window.uiSkeletonList(8);
     try {
         const res = await fetch('/api/w/all-index');
-        if (!res.ok) throw new Error('all-index load failed');
+        if (!res.ok) throw new Error(ui("m_8c7034ee0c0ebf93"));
         const data = await res.json();
         minAgeDays = Number(data.min_age_days) || 0;
         const pages = Array.isArray(data.pages) ? data.pages : [];
@@ -221,21 +222,21 @@ async function loadDocs() {
         currentNs = nsOrder.length ? nsOrder[0] : '';
         if (!nsOrder.length) {
             document.getElementById('nsSubTabs').innerHTML = '';
-            el.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: '暂无页面', text: '来创建第一个页面吧！' });
+            el.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: ui("m_517ee39c282012b5"), text: ui("m_33cecb018bdc5163") });
             return;
         }
         renderNsTabs();
         renderDocs(1);
     } catch (e) {
         console.error(e);
-        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-exclamation-triangle', title: '문서를 加载失败' });
+        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-exclamation-triangle', title: ui("m_6c23a6c802335620") });
     }
 }
 
 function renderNsTabs() {
     const tabsEl = document.getElementById('nsSubTabs');
     tabsEl.innerHTML = nsOrder.map(ns => {
-        const label = ns === '' ? '普通' : ns + ':';
+        const label = ns === '' ? ui("m_de907d10df98b498") : ns + ':';
         const count = nsBuckets[ns].tops.length;
         const active = ns === currentNs ? ' active' : '';
         return `<li class="nav-item" role="presentation"><button type="button" class="nav-link${active}" data-ns="${esc(ns)}">${esc(label)} <span class="badge bg-light text-muted border ms-1">${count}</span></button></li>`;
@@ -285,11 +286,11 @@ function topCardHtml(t) {
     const collapseId = `allsub-${t._cid}`;
     const titleHtml = t.page
         ? `<a class="all-card-title" href="/w/${enc(t.rootSlug)}" title="${esc(t.rootSlug)}">${esc(t.page.title || t.rootSlug)}</a>`
-        : `<span class="all-card-title is-missing" title="${esc(t.rootSlug)} (문서 없음)">${esc(t.rootSlug)}</span>`;
+        : ui("m_292f928b21f6601e", [esc(t.rootSlug), esc(t.rootSlug)]);
     const toggle = hasKids
-        ? `<button class="all-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}" aria-label="하위 문서 ${t.children.length}개 펼치기"><i class="bi bi-chevron-right"></i></button>`
+        ? ui("m_585130be06e9802e", [collapseId, collapseId, t.children.length])
         : '<span class="all-toggle" style="visibility:hidden;" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>';
-    const subCount = hasKids ? `<span class="badge bg-light text-muted border" title="하위 문서 수">${t.children.length}</span>` : '';
+    const subCount = hasKids ? ui("m_48a68458c672c173", [t.children.length]) : '';
 
     let html = `<div class="surface-card all-card"><div class="all-card-header">${toggle}${titleHtml}<span class="all-badges">${subCount}${pageBadges(t.page)}</span></div>`;
     if (hasKids) {
@@ -308,7 +309,7 @@ function renderDocs(page) {
     const bucket = nsBuckets[currentNs];
     disposePopovers(el);
     if (!bucket || bucket.tops.length === 0) {
-        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: '暂无页面' });
+        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: ui("m_517ee39c282012b5") });
         return;
     }
     const { items, grouped } = orderedTops(bucket.tops, docSort);
@@ -322,7 +323,7 @@ function renderDocs(page) {
     const body = grouped
         ? renderGroups(slice, topCardHtml, 'all-grid')
         : `<div class="all-grid">${slice.map(topCardHtml).join('')}</div>`;
-    const summary = `<div class="all-summary text-muted small">총 ${items.length}개 최상위 문서 · ${start + 1}–${start + slice.length} 표시</div>`;
+    const summary = ui("m_ec1326ec231a3ecf", [items.length, start + 1, start + slice.length]);
 
     el.innerHTML = summary + body + paginationHtml(cur, totalPages);
     initPopovers(el);
@@ -335,26 +336,26 @@ async function loadCats() {
     el.innerHTML = window.uiSkeletonList(8);
     try {
         const res = await fetch('/api/w/all-categories');
-        if (!res.ok) throw new Error('all-categories load failed');
+        if (!res.ok) throw new Error(ui("m_1592909a32281f5b"));
         const data = await res.json();
         catData = Array.isArray(data.categories) ? data.categories : [];
         renderCats();
     } catch (e) {
         console.error(e);
-        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-exclamation-triangle', title: '카테고리를 加载失败' });
+        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-exclamation-triangle', title: ui("m_dc0c4db71c6b7727") });
     }
 }
 
 function catItemHtml(c) {
     const lock = aclBadges(c.acl, false);
-    return `<a class="surface-card all-card" href="/w/category/${enc(c.name)}" title="${esc(c.name)}"><div class="all-card-header"><span class="all-card-title">${esc(c.name)}</span><span class="all-badges"><span class="badge bg-light text-muted border" title="문서 수">${Number(c.count) || 0}</span>${lock}</span></div></a>`;
+    return ui("m_e7ef0e0d1cd3a561", [enc(c.name), esc(c.name), esc(c.name), Number(c.count) || 0, lock]);
 }
 
 function renderCats() {
     const el = document.getElementById('catContent');
     disposePopovers(el);
     if (!catData || !catData.length) {
-        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: '카테고리가 없습니다' });
+        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: ui("m_e77a27edad4afb56") });
         return;
     }
     const sort = document.getElementById('catSortSelect').value;
@@ -369,7 +370,7 @@ function renderCats() {
         const dir = sort === 'count_desc' ? -1 : 1;
         items.sort((a, b) => (a.count !== b.count ? (a.count < b.count ? -1 : 1) * dir : collator.compare(a.name, b.name)));
     }
-    const summary = `<div class="all-summary text-muted small">총 ${items.length}개 카테고리</div>`;
+    const summary = ui("m_53e4f430e233f298", [items.length]);
     const body = grouped
         ? renderGroups(items, catItemHtml, 'all-grid')
         : `<div class="all-grid">${items.map(catItemHtml).join('')}</div>`;
@@ -390,13 +391,13 @@ async function loadImages() {
     el.innerHTML = window.uiSkeletonList(8);
     try {
         const res = await fetch('/api/media/all');
-        if (!res.ok) throw new Error('all-images load failed');
+        if (!res.ok) throw new Error(ui("m_437b0feecec97c38"));
         const data = await res.json();
         imgData = Array.isArray(data.items) ? data.items : [];
         renderImages();
     } catch (e) {
         console.error(e);
-        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-exclamation-triangle', title: '이미지를 加载失败' });
+        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-exclamation-triangle', title: ui("m_f79ea092eed5bb34") });
     }
 }
 
@@ -407,7 +408,7 @@ function imgItemHtml(m) {
 function renderImages() {
     const el = document.getElementById('imgContent');
     if (!imgData || !imgData.length) {
-        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: '이미지가 없습니다' });
+        el.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: ui("m_4e35e2915449a848") });
         return;
     }
     const sort = document.getElementById('imgSortSelect').value;
@@ -425,7 +426,7 @@ function renderImages() {
         const dir = sort === 'size_desc' ? -1 : 1;
         items.sort((a, b) => ((a.size || 0) - (b.size || 0)) * dir);
     }
-    const summary = `<div class="all-summary text-muted small">총 ${items.length}개 이미지</div>`;
+    const summary = ui("m_d7c4353ccc36611a", [items.length]);
     const body = grouped
         ? renderGroups(items, imgItemHtml, 'all-img-grid')
         : `<div class="all-img-grid">${items.map(imgItemHtml).join('')}</div>`;

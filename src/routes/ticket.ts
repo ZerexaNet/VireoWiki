@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env, Ticket, TicketComment } from '../types';
 import { requireAuth, requireAuthAllowBanned, requirePermission } from '../middleware/session';
@@ -31,10 +32,10 @@ const ticketRoutes = new Hono<Env>();
 
 // ── 타입 라벨 ──
 const typeLabels: Record<string, string> = {
-    general: '일반',
-    document: '문서',
-    discussion: '토론',
-    account: '계정',
+    general: ui("m_512989791c19de3f"),
+    document: ui("m_50da0b175337961e"),
+    discussion: ui("m_3d53da771fe0954d"),
+    account: ui("m_b0b3d3bc6c2762fe"),
 };
 
 // ── 접근 권한 확인 헬퍼 ──
@@ -156,23 +157,23 @@ ticketRoutes.post('/tickets', requireAuthAllowBanned, async (c) => {
     const { title, content, type } = await c.req.json<{ title: string; content: string; type: string }>();
 
     if (!title || !title.trim()) {
-        return c.json({ error: '티켓 제목을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_73e935d4625a54c4") }, 400);
     }
     if (!content || !content.trim()) {
-        return c.json({ error: '문의 내용을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_e626c97ad4a45854") }, 400);
     }
     if (!type || !typeLabels[type]) {
-        return c.json({ error: '올바른 문의 유형을 선택해주세요.' }, 400);
+        return c.json({ error: ui("m_0a132c1ce880adf0") }, 400);
     }
 
     // 권한: 일반 사용자는 ticket:create 필요. 차단된 사용자는 소명(이의제기) 채널로
     // '계정(account)' 유형 티켓만 작성할 수 있다 (관리자에게만 알림이 가는 유형).
     if (user.role === 'banned') {
         if (type !== 'account') {
-            return c.json({ error: '차단된 계정은 계정 문의(소명) 유형만 작성할 수 있습니다.' }, 403);
+            return c.json({ error: ui("m_14c17bf0e664ce23") }, 403);
         }
     } else if (!rbac.can(user.role, 'ticket:create')) {
-        return c.json({ error: '권한이 부족합니다. (ticket:create)' }, 403);
+        return c.json({ error: ui("m_f7f952cc043cf488") }, 403);
     }
 
     // 티켓 생성
@@ -199,7 +200,7 @@ ticketRoutes.post('/tickets', requireAuthAllowBanned, async (c) => {
         const { results: admins } = await db.prepare(adminQuery).all<{ id: number }>();
 
         const link = `/tickets/${ticketId}`;
-        const notifContent = `새 티켓 문의 [#${ticketId}] ${typeLabels[type]}: '${title.trim()}'`;
+        const notifContent = ui("m_5bf5e399001521a2", [ticketId, typeLabels[type], title.trim()]);
 
         // 멘션 수신자: 티켓 접근 권한이 있는 사용자만(제목 누설 방지), 본인 제외
         const mentionRecipients = filterTicketMentionRecipients(
@@ -208,7 +209,7 @@ ticketRoutes.post('/tickets', requireAuthAllowBanned, async (c) => {
             { user_id: user.id, type, deleted_at: null },
         );
         const mentionIdSet = new Set(mentionRecipients.map(r => r.id));
-        const mentionContent = `티켓 [#${ticketId}] '${title.trim()}'에서 회원님을 언급했습니다.`;
+        const mentionContent = ui("m_9896da0c836b54fb", [ticketId, title.trim()]);
 
         // 멘션된 관리자는 멘션 알림만 수신(ticket_created 중복 제거).
         const notifications = [
@@ -220,7 +221,7 @@ ticketRoutes.post('/tickets', requireAuthAllowBanned, async (c) => {
                     content: notifContent,
                     link,
                     push: {
-                        title: `새 티켓 #${ticketId}`,
+                        title: ui("m_d8ab105f45b56ef5", [ticketId]),
                         body: notifContent,
                         url: link,
                         tag: `ticket:${ticketId}`,
@@ -232,7 +233,7 @@ ticketRoutes.post('/tickets', requireAuthAllowBanned, async (c) => {
                 content: mentionContent,
                 link,
                 push: {
-                    title: `티켓 #${ticketId}`,
+                    title: ui("m_5eb2e809eabd4a29", [ticketId]),
                     body: mentionContent,
                     url: link,
                     tag: `mention:ticket:${ticketId}`,
@@ -278,14 +279,14 @@ ticketRoutes.get('/tickets/:id', requireAuthAllowBanned, async (c) => {
     `).bind(ticketId).first();
 
     if (!ticket) {
-        return c.json({ error: '티켓을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_efa6a7d1ee843957") }, 404);
     }
 
     const rbac = c.get('rbac');
 
     // 접근 권한 확인
     if (!canAccessTicket(rbac, user, ticket as any)) {
-        return c.json({ error: '접근 권한이 없습니다.' }, 403);
+        return c.json({ error: ui("m_20d1a711c808e7f5") }, 403);
     }
 
     enrichRole(ticket, 'user_role', '_user_email', c.env);
@@ -335,7 +336,7 @@ ticketRoutes.post('/tickets/:id/comments', requireAuthAllowBanned, async (c) => 
     const { content, parent_id } = await c.req.json<{ content: string; parent_id?: number }>();
 
     if (!content || !content.trim()) {
-        return c.json({ error: '댓글 내용을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_223fe5dd823bd69d") }, 400);
     }
 
     const rbac = c.get('rbac');
@@ -343,7 +344,7 @@ ticketRoutes.post('/tickets/:id/comments', requireAuthAllowBanned, async (c) => 
     // 권한: 일반 사용자는 comment:create 필요. 차단된 사용자는 자신의 티켓(소명 채널)에
     // 한해 댓글 작성을 허용한다 (본인 티켓 여부는 아래 canAccessTicket 으로 재확인).
     if (user.role !== 'banned' && !rbac.can(user.role, 'comment:create')) {
-        return c.json({ error: '권한이 부족합니다. (comment:create)' }, 403);
+        return c.json({ error: ui("m_b92fd6d4cae11fd8") }, 403);
     }
 
     const ticket = await db.prepare(
@@ -351,22 +352,22 @@ ticketRoutes.post('/tickets/:id/comments', requireAuthAllowBanned, async (c) => 
     ).bind(ticketId).first<Ticket & { title: string }>();
 
     if (!ticket || ticket.deleted_at) {
-        return c.json({ error: '티켓을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_efa6a7d1ee843957") }, 404);
     }
 
     // 접근 권한 확인 (차단 사용자는 canAccessTicket 에서 본인 티켓만 통과)
     if (!canAccessTicket(rbac, user, ticket)) {
-        return c.json({ error: '접근 권한이 없습니다.' }, 403);
+        return c.json({ error: ui("m_20d1a711c808e7f5") }, 403);
     }
 
     // 차단 사용자는 소명 채널(계정 유형)에만 댓글 작성 가능. 차단 전 작성한 일반/문서/토론
     // 티켓이라도 차단 중에는 계정 유형 외에는 작성을 막아 생성 경로와 동일하게 제한한다.
     if (user.role === 'banned' && ticket.type !== 'account') {
-        return c.json({ error: '차단된 계정은 계정 문의(소명) 티켓에만 댓글을 작성할 수 있습니다.' }, 403);
+        return c.json({ error: ui("m_137fe2b8ac68d1d4") }, 403);
     }
 
     if (ticket.status === 'closed') {
-        return c.json({ error: '닫힌 티켓에는 댓글을 작성할 수 없습니다.' }, 403);
+        return c.json({ error: ui("m_61d62a72e9bbbd6e") }, 403);
     }
 
     // parent_id 유효성 확인
@@ -375,7 +376,7 @@ ticketRoutes.post('/tickets/:id/comments', requireAuthAllowBanned, async (c) => 
             'SELECT id FROM ticket_comments WHERE id = ? AND ticket_id = ?'
         ).bind(parent_id, ticketId).first();
         if (!parentComment) {
-            return c.json({ error: '원본 댓글을 찾을 수 없습니다.' }, 404);
+            return c.json({ error: ui("m_887a3d6748f61f1b") }, 404);
         }
     }
 
@@ -408,7 +409,7 @@ ticketRoutes.post('/tickets/:id/comments', requireAuthAllowBanned, async (c) => 
         participants.forEach(p => allRecipients.add(p.author_id));
 
         const link = `/tickets/${ticketId}`;
-        const notifContent = `티켓 [#${ticketId}] '${ticket.title}'에 새 댓글이 달렸습니다.`;
+        const notifContent = ui("m_e55e57e155805806", [ticketId, ticket.title]);
 
         // 멘션 수신자: 티켓 접근 권한이 있는 사용자만(제목 누설 방지), 본인 제외
         const mentionRecipients = filterTicketMentionRecipients(
@@ -417,7 +418,7 @@ ticketRoutes.post('/tickets/:id/comments', requireAuthAllowBanned, async (c) => 
             ticket,
         );
         const mentionIdSet = new Set(mentionRecipients.map(r => r.id));
-        const mentionContent = `티켓 [#${ticketId}] '${ticket.title}'에서 회원님을 언급했습니다.`;
+        const mentionContent = ui("m_9896da0c836b54fb", [ticketId, ticket.title]);
 
         // 멘션된 사람은 일반 댓글 알림 대신 멘션 알림만 수신(중복 제거).
         const notifications = [
@@ -429,7 +430,7 @@ ticketRoutes.post('/tickets/:id/comments', requireAuthAllowBanned, async (c) => 
                     content: notifContent,
                     link,
                     push: {
-                        title: `티켓 #${ticketId}`,
+                        title: ui("m_5eb2e809eabd4a29", [ticketId]),
                         body: notifContent,
                         url: link,
                         tag: `ticket:${ticketId}`,
@@ -441,7 +442,7 @@ ticketRoutes.post('/tickets/:id/comments', requireAuthAllowBanned, async (c) => 
                 content: mentionContent,
                 link,
                 push: {
-                    title: `티켓 #${ticketId}`,
+                    title: ui("m_5eb2e809eabd4a29", [ticketId]),
                     body: mentionContent,
                     url: link,
                     tag: `mention:ticket:${ticketId}`,
@@ -470,7 +471,7 @@ ticketRoutes.put('/tickets/:id/status', requireAuth, async (c) => {
     const { status } = await c.req.json<{ status: 'open' | 'closed' }>();
 
     if (status !== 'open' && status !== 'closed') {
-        return c.json({ error: '올바른 상태값이 아닙니다.' }, 400);
+        return c.json({ error: ui("m_21e074f59c6a9b9b") }, 400);
     }
 
     const ticket = await db.prepare(
@@ -478,7 +479,7 @@ ticketRoutes.put('/tickets/:id/status', requireAuth, async (c) => {
     ).bind(ticketId).first<Ticket>();
 
     if (!ticket || ticket.deleted_at) {
-        return c.json({ error: '티켓을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_efa6a7d1ee843957") }, 404);
     }
 
     // 권한: 티켓 작성자 또는 ticket:manage 권한자
@@ -486,7 +487,7 @@ ticketRoutes.put('/tickets/:id/status', requireAuth, async (c) => {
     const isAdmin = rbac.can(user.role, 'ticket:manage');
 
     if (!isAuthor && !isAdmin) {
-        return c.json({ error: '티켓 상태를 변경할 권한이 없습니다.' }, 403);
+        return c.json({ error: ui("m_887479ba73c7e7d4") }, 403);
     }
 
     const oldStatus = ticket.status;
@@ -532,11 +533,11 @@ ticketRoutes.delete('/tickets/:id', requireAuth, requirePermission('ticket:manag
     ).bind(ticketId).first<Ticket>();
 
     if (!ticket) {
-        return c.json({ error: '티켓을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_efa6a7d1ee843957") }, 404);
     }
 
     if (ticket.deleted_at) {
-        return c.json({ error: '이미 삭제된 티켓입니다.' }, 400);
+        return c.json({ error: ui("m_201b7d60ef6e8116") }, 400);
     }
 
     await db.prepare(
@@ -565,7 +566,7 @@ ticketRoutes.delete('/tickets/:id/hard', requireAuth, async (c) => {
     const db = c.env.DB;
 
     if (!rbac.can(user.role, '*')) {
-        return c.json({ error: '최고 관리자만 완전 삭제할 수 있습니다.' }, 403);
+        return c.json({ error: ui("m_3a98a9bf830588d5") }, 403);
     }
 
     // 이 티켓의 모든 댓글에 매달린 page_links 정리 (이미지 역링크)
@@ -579,7 +580,7 @@ ticketRoutes.delete('/tickets/:id/hard', requireAuth, async (c) => {
     const result = await db.prepare('DELETE FROM tickets WHERE id = ?').bind(ticketId).run();
 
     if (result.meta.changes === 0) {
-        return c.json({ error: '티켓을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_efa6a7d1ee843957") }, 404);
     }
 
     // 관련 알림 정리
@@ -606,11 +607,11 @@ ticketRoutes.delete('/tickets/comment/:id', requireAuth, requirePermission('tick
     ).bind(commentId).first<TicketComment>();
 
     if (!comment) {
-        return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_cf7600fc999a9f1c") }, 404);
     }
 
     if (comment.deleted_at) {
-        return c.json({ error: '이미 삭제된 댓글입니다.' }, 400);
+        return c.json({ error: ui("m_cfbd9cf6e8eb8640") }, 400);
     }
 
     await db.prepare(
@@ -631,7 +632,7 @@ ticketRoutes.delete('/tickets/comment/:id/hard', requireAuth, async (c) => {
     const db = c.env.DB;
 
     if (!rbac.can(user.role, '*')) {
-        return c.json({ error: '최고 관리자만 완전 삭제할 수 있습니다.' }, 403);
+        return c.json({ error: ui("m_3a98a9bf830588d5") }, 403);
     }
 
     // 이 댓글에 매달린 page_links 정리 (이미지 역링크)
@@ -642,7 +643,7 @@ ticketRoutes.delete('/tickets/comment/:id/hard', requireAuth, async (c) => {
     const result = await db.prepare('DELETE FROM ticket_comments WHERE id = ?').bind(commentId).run();
 
     if (result.meta.changes === 0) {
-        return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_cf7600fc999a9f1c") }, 404);
     }
 
     return c.json({ success: true });
