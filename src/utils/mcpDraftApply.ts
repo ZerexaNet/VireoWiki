@@ -78,6 +78,7 @@ export async function applyDraftMutation(
     finalSummary: string | null,
 ): Promise<ApplyDraftOutcome> {
     const slug = draft.slug;
+    if (!rbac.can(user.role, draft.action === 'create' ? 'wiki:create' : 'wiki:edit')) return { ok: false, status: 403, body: { error: ui('permissions.denied') } };
 
     if (draft.action === 'update') {
         const page = await c.env.DB.prepare(

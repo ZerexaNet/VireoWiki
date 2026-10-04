@@ -20,6 +20,13 @@ test('language selector has the correct accessible label', () => {
     assert.match(result, /aria-label="Interface language"/);
 });
 
+test('shell title localization preserves the configured site name', async () => {
+    const en = JSON.parse(await readFile(new URL('../packages/wiki-shared/src/i18n/en.json', import.meta.url), 'utf8'));
+    const localized = localizeShell('<html><head><title>블로그 - My Custom Wiki</title></head></html>', 'en', en);
+    assert.match(localized, /Blog - My Custom Wiki/);
+    assert.doesNotMatch(localized, /블로그/);
+});
+
 // Build verification is available after npm run build without coupling unit tests to generated files.
 if (process.env.I18N_CHECK_BUILD === '1') test('all 42 generated shells use the requested language and an existing bootstrap', async () => {
     for (const locale of ['zh-CN', 'en']) {

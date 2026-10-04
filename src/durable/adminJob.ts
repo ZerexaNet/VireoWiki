@@ -618,7 +618,7 @@ export class AdminJobDO {
         const payload = (await this.state.storage.get<BulkDeletePayload>(PAYLOAD_KEY))!;
         const result = s.result as unknown as BulkDeleteResult;
         const db = this.env.DB;
-        const rbac = new RBAC();
+        const rbac = await RBAC.load(db);
         const sink: Promise<unknown>[] = [];
         const shim = this.makeShim(sink);
 
@@ -803,7 +803,7 @@ export class AdminJobDO {
         const payload = (await this.state.storage.get<BulkMovePayload>(PAYLOAD_KEY))!;
         const result = s.result as unknown as BulkMoveResult;
         const db = this.env.DB;
-        const rbac = new RBAC();
+        const rbac = await RBAC.load(db);
         const sink: Promise<unknown>[] = [];
         const shim = this.makeShim(sink);
 

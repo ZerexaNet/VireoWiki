@@ -48,7 +48,7 @@ import { createTocController } from '../article/toc';
       getDoc: () => currentPage,
       getSlug: () => currentSlug || '',
       wikiName: () => (window.appConfig && window.appConfig.wikiName) || 'CloudWiki',
-      canCreateSubdoc: (slug) => !!(window.currentUser && window.currentUser.permissions && window.currentUser.permissions['wiki:edit']) && !slug.includes(':'),
+      canCreateSubdoc: (slug) => !!(window.currentUser && window.currentUser.permissions && window.currentUser.permissions['wiki:create']) && !slug.includes(':'),
       onCreateSubdoc: (slug) => createSubdoc(slug),
       includeAi: true,
     };
@@ -861,7 +861,7 @@ import { createTocController } from '../article/toc';
 
         // 편집 권한 확인
         const _aclAdminOnly = _aclFlags.includes('admin_only');
-        const canEdit = window.currentUser && (isAdmin || !_aclAdminOnly);
+        const canEdit = window.currentUser?.permissions?.['wiki:edit'] && (isAdmin || !_aclAdminOnly);
 
         // 커맨드 팔레트 편집 단축키(`e`/"현재 문서 편집")용 정식 편집 대상 노출.
         // actionSlug 는 리다이렉트 시 canonical page.slug 이며, 편집 불가 시 null 로 비활성화한다.
@@ -874,7 +874,7 @@ import { createTocController } from '../article/toc';
         // 편집 요청 배지/드롭다운 — articleEditBtn 이 렌더된 뒤 실행해야 교체 대상이 존재한다.
         // 검토 가능한 편집 요청이 있고(서버 count>0, 검토 권한자 한정) 이 문서를 편집할 수 있는 사용자에게만
         // 노출(admin_only 잠금 문서는 제외 — 승인은 서버에서 ACL 재평가하므로 UI 도 일치). 상단 배너도 같은 검토 UI.
-        const _canReviewEdit = window.currentUser && (isAdmin || !_aclAdminOnly);
+        const _canReviewEdit = window.currentUser?.permissions?.['wiki:edit'] && (isAdmin || !_aclAdminOnly);
         if (_canReviewEdit) {
           const _pendingSlug = page.slug;
           const _editSlug = actionSlug;
@@ -920,22 +920,34 @@ import { createTocController } from '../article/toc';
             moreActionsHtml += ui("m_6d209ac8e2b23236", [window.escapeHtml(_catName)]);
           }
 
-          if (canEdit) {
-            if (page.deleted_at && isAdmin) {
+          if (window.currentUser) {
+            if (page.deleted_at && (window.currentUser.permissions?.['wiki:restore'] || window.currentUser.role === 'super_admin')) {
               moreActionsHtml += ui("m_36c060161233f9b5", [window.escapeHtml(actionSlug), window.escapeHtml(actionSlug)]);
             } else if (!page.deleted_at) {
-              if (isAdmin) {
+              if (isAdmin || window.currentUser.permissions?.['wiki:move'] || window.currentUser.permissions?.['wiki:delete']) {
                 const _isCategoryPage = _decodedActionSlug.startsWith('카테고리:');
                 const _categoryName = _isCategoryPage ? _decodedActionSlug.slice('카테고리:'.length) : '';
                 const _permButton = _isCategoryPage
                   ? ui("m_05838fba19cd3545", [window.escapeHtml(_categoryName)])
                   : ui("m_8fe5b03b9e5c164c", [window.escapeHtml(actionSlug)]);
-                moreActionsHtml += ui("m_1eee44365beb0add", [_permButton, window.escapeHtml(actionSlug), window.escapeHtml(actionSlug)]);
+                moreActionsHtml += ui("m_1eee44365beb0add", [isAdmin && window.currentUser.permissions?.['wiki:manage'] ? _permButton : '', window.escapeHtml(actionSlug), window.escapeHtml(actionSlug)]);
               }
             }
           }
         }
         document.getElementById('articleMoreActions').innerHTML = moreActionsHtml;
+        if (window.currentUser && page.id && !page.deleted_at) {
+          const li = document.createElement('li');
+          const link = document.createElement('a');
+          link.className = 'dropdown-item'; link.href = '/git?page=' + page.id; link.textContent = ui('git.title');
+          li.appendChild(link); document.getElementById('articleMoreActions').appendChild(li);
+        }
+        const operationButtons = [['promptMove', 'wiki:move'], ['confirmDelete', 'wiki:delete'], ['restorePage', 'wiki:restore']];
+        for (const [handler, permission] of operationButtons) {
+          if (!window.currentUser?.permissions?.[permission]) document.querySelectorAll(`#articleMoreActions [onclick*="${handler}("]`).forEach(button => button.closest('li')?.remove());
+        }
+        if (window.currentUser?.role !== 'super_admin') document.querySelectorAll('#articleMoreActions [onclick*="confirmHardDelete("]').forEach(button => button.closest('li')?.remove());
+
 
         // 주시 상태 확인 (로그인 시)
         if (window.currentUser && document.getElementById('watchToggleBtn')) {
@@ -1114,7 +1126,7 @@ import { createTocController } from '../article/toc';
         Swal.fire(ui("m_f56c6c82203b33f6"), ui("m_63f8fd344484659e"), 'info');
         return;
       }
-      if (!(window.currentUser.permissions && window.currentUser.permissions['wiki:edit'])) {
+      if (!(window.currentUser.permissions && window.currentUser.permissions['wiki:create'])) {
         Swal.fire(ui("m_e32c8a6ddd7bcef3"), ui("m_8f827503b320e3e5"), 'error');
         return;
       }
@@ -1754,7 +1766,7 @@ import { createTocController } from '../article/toc';
 
     // ── 문서 복원 (관리자) ──
     async function restorePage(slug) {
-      const isAdmin = window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin');
+      const isAdmin = window.currentUser?.permissions?.['wiki:restore'];
       if (!isAdmin) {
         Swal.fire(ui("m_e32c8a6ddd7bcef3"), ui("m_639865d45485dba9"), 'error');
         return;

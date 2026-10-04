@@ -664,3 +664,19 @@ CREATE TABLE IF NOT EXISTS mcp_api_keys (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_mcp_api_keys_expires ON mcp_api_keys(expires_at);
+
+CREATE TABLE IF NOT EXISTS permission_groups (id INTEGER PRIMARY KEY CHECK (id = 1), permissions TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 0, updated_by INTEGER, updated_at INTEGER);
+
+-- Git smart HTTP credentials and append-only page repository references.
+CREATE TABLE IF NOT EXISTS git_tokens (
+  user_id INTEGER PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
+  masked_token TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS git_page_heads (
+  page_id INTEGER PRIMARY KEY, head TEXT, version INTEGER NOT NULL DEFAULT 0,
+  lease TEXT, lease_until INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS git_commit_links (
+  page_id INTEGER NOT NULL, oid TEXT NOT NULL, revision_id INTEGER, user_id INTEGER,
+  PRIMARY KEY(page_id, oid)
+);

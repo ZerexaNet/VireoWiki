@@ -23,3 +23,11 @@ Markdown 页面、分类、重定向、模板引用、修订历史、Diff、回�
 ## 开源与来源
 
 VireoWiki 当前版本采用 [Mozilla Public License 2.0](LICENSE)（MPL-2.0）；所引入 CloudWiki 代码的原始 [MIT 许可证与版权声明](LICENSE-UPSTREAM) 单独保存。此前已发布版本所授予的权利不受此次调整影响。原作者的说明保存在 [UPSTREAM_README.md](UPSTREAM_README.md)。VireoWiki 的改动包括 NodeLoc OAuth 提供方、独立项目配置与构建修复。尚未在真实 NodeLoc 账号和 Cloudflare 资源上完成端到端部署验证。
+
+## 权限组、站点协议与 Git 编辑
+
+最高管理员可在后台“权限组”分别配置普通用户、讨论管理员、管理员的创建、编辑、删除、恢复、移动、回退、隐藏修订、媒体及 Git 提交权限。各组独立保存，撤销普通用户权限不会改变其他组。最高管理员、后台访问资格及永久删除权限保持固定。
+
+后台“服务条款与隐私政策”提供两份可编辑的 Markdown 初始模板，发布后作为普通 Wiki 文档保留修订历史。页脚入口为 `/terms`、`/privacy`，使用站点配置中的协议文档地址；请按本站实际服务修改模板。
+
+文档的“更多 → Git 提交”支持使用标准 Git 客户端提交 `page.md`，详见 [Git 编辑说明](GIT_EDITING.md)。网页与 Git 共用 Wiki 权限和编辑校验，服务器拒绝所有非快进覆盖及分支删除。

@@ -12,7 +12,7 @@ import {
     refreshRecentChangesCache,
     invalidatePaletteUsers,
 } from '../utils/cacheInvalidation';
-import { requireAdmin } from '../middleware/session';
+import { requireAdmin, requirePermission } from '../middleware/session';
 import { isSuperAdmin, getSuperAdmins, PRIVATE_AVATAR_PATH } from '../utils/auth';
 import { RBAC, ROLE_CASE_SQL, enrichRoles } from '../utils/role';
 import { fetchMediaTagMap, sanitizeTags } from '../utils/mediaTags';
@@ -65,6 +65,17 @@ import type {
 const adminRoutes = new Hono<Env>();
 
 adminRoutes.use('*', requireAdmin);
+adminRoutes.use('*', async (c, next) => {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
+        const path = c.req.path;
+        const permission = /\/(users|signup-requests)(\/|$)/.test(path) ? 'user:manage'
+            : /\/(category-acl|doc-setting-prefix-rules|pages)(\/|$)/.test(path) ? 'wiki:manage'
+            : /\/(categories|category-prefix-rules|palettes)(\/|$)/.test(path) ? 'wiki:edit' : null;
+        if (permission && !c.get('rbac').can(c.get('user')!.role, permission)) return c.json({ error: ui('permissions.denied') }, 403);
+    }
+    await next();
+});
+
 
 // ── 관리 로그 기록 헬퍼 ──
 export function writeAdminLog(c: any, type: string, log: string, userId: number) {
@@ -223,7 +234,7 @@ adminRoutes.put('/users/:id/role', async (c) => {
     return c.json({ success: true });
 });
 
-adminRoutes.put('/users/:id/ban', async (c) => {
+adminRoutes.put('/users/:id/ban', requirePermission('user:manage'), async (c) => {
     const db = c.env.DB;
     const targetUserId = c.req.param('id');
     const { days } = await c.req.json();
@@ -1969,7 +1980,7 @@ adminRoutes.get('/media/:id/backlinks', async (c) => {
  * DELETE /media/:id
  * 이미지 삭제 (R2 + DB)
  */
-adminRoutes.delete('/media/:id', async (c) => {
+adminRoutes.delete('/media/:id', requirePermission('media:delete'), async (c) => {
     const db = c.env.DB;
     const id = c.req.param('id');
 

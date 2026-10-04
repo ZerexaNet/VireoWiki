@@ -1837,7 +1837,7 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
 
     // 기본 권한 — wiki:edit 가 없으면 그 자체로 차단 (관리자 admin:access 는 우회).
     const isAdmin = rbac.can(user.role, 'admin:access');
-    if (!rbac.can(user.role, 'wiki:edit') && !isAdmin) {
+    if (!rbac.can(user.role, 'wiki:edit') && !rbac.can(user.role, 'wiki:create')) {
         return c.json({
             allowed: false,
             reason: "no_permission",
@@ -1892,6 +1892,8 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
         .prepare('SELECT id, is_private, edit_acl, deleted_at FROM pages WHERE slug = ?')
         .bind(slug)
         .first<{ id: number; is_private: number; edit_acl: string | null; deleted_at: number | null }>();
+
+    if (!rbac.can(user.role, page ? 'wiki:edit' : 'wiki:create')) return c.json({ allowed: false, reason: 'no_permission' }, 403);
 
     const minAge = await getEditAclMinAgeDays(db);
 
@@ -2010,7 +2012,7 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
     });
 });
 
-wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
+wiki.put('/w/:slug', requireAuth, async (c) => {
     const slug = normalizeSlug(c.req.param('slug'));
 
     // 슬러그가 비어 있으면 거부 (normalizeSlug 가 앞뒤 슬래시/공백을 모두 떼어낸 결과)
@@ -2064,7 +2066,7 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
     }
 
     // Turnstile 검증
-    if (c.env.TURNSTILE_SECRET_KEY) {
+    if (c.env.TURNSTILE_SECRET_KEY && !c.get('gitAuthenticated')) {
         const token = body.turnstileToken;
         if (!token) {
             return c.json({ error: ui("m_e6b962a8eaff5533") }, 403);
@@ -2208,6 +2210,10 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
         .bind(slug)
         .first<{ id: number; version: number; is_private: number; edit_acl: string | null; redirect_to: string | null; content: string; deleted_at: number | null; title: string | null; last_revision_id: number | null; category: string | null }>();
 
+    if (c.get('gitTargetPageId') !== undefined && existing?.id !== c.get('gitTargetPageId')) return c.json({ error: ui('permissions.conflict') }, 409);
+    const operation = existing ? 'wiki:edit' : 'wiki:create';
+    if (!rbac.can(user.role, operation)) return c.json({ error: ui('permissions.denied') }, 403);
+
     // edit_acl body 입력 검증 (관리자만 반영). 비관리자는 기존 값 마스킹.
     let requestedEditAcl: { provided: boolean; value: EditAcl | null } = { provided: false, value: null };
     if (Object.prototype.hasOwnProperty.call(body, 'edit_acl')) {
@@ -2216,6 +2222,7 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
             return c.json({ error: norm.error }, 400);
         }
         requestedEditAcl = { provided: true, value: norm.value };
+        if (isAdmin && !rbac.can(user.role, 'wiki:manage') && serializeEditAcl(norm.value) !== serializeEditAcl(parseEditAcl(existing?.edit_acl))) return c.json({ error: ui('permissions.denied') }, 403);
     }
 
     // 신규 title 이 다른 페이지의 slug 또는 title 과 충돌하면 거부.
@@ -2352,6 +2359,7 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
         // ── 기존 문서 수정 ──
         // Optimistic Locking 체크
         if (body.expected_version !== undefined && body.expected_version !== existing.version) {
+            if (c.get('gitAuthenticated')) return c.json({ error: ui('permissions.conflict') }, 409);
             // 내용이 완전히 동일하면 충돌로 보지 않고 진행 (Idempotent).
             // 레거시 저장 본문은 CRLF 일 수 있으므로 비교 양쪽을 LF 로 정규화한다.
             // (요청 본문은 이미 위에서 정규화됨) 제로폭 문자도 요청 본문과 동일하게
@@ -3184,12 +3192,14 @@ wiki.delete('/w/:slug', requireAuth, async (c) => {
     // Fetch page first to check permissions.
     // 영구 삭제(hard)는 이미 소프트삭제된 문서도 대상이므로 deleted_at 필터 없이 조회한다.
     // (deleted_at IS NULL 로 조회하면 소프트삭제된 문서를 영구 삭제할 때 "문서를 찾을 수 없음"으로 오거부됨)
-    const page = await db.prepare('SELECT id, edit_acl, deleted_at FROM pages WHERE slug = ?')
-        .bind(slug).first<{ id: number; edit_acl: string | null; deleted_at: number | null }>();
+    const page = await db.prepare('SELECT id, edit_acl, deleted_at, is_private FROM pages WHERE slug = ?')
+        .bind(slug).first<{ id: number; edit_acl: string | null; deleted_at: number | null; is_private: number }>();
 
     if (!page) {
         return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
+
+    if (page.is_private && !rbac.can(user.role, 'wiki:private')) return c.json({ error: ui('permissions.denied') }, 403);
 
     if (hard) {
         if (!rbac.can(user.role, '*')) {
@@ -3294,13 +3304,13 @@ wiki.delete('/w/:slug', requireAuth, async (c) => {
  * 문서 복원 (관리자 전용)
  * - Soft Delete된 문서를 복구
  */
-wiki.post('/w/:slug/restore', requireAuth, async (c) => {
+wiki.post('/w/:slug/restore', requireAuth, requirePermission('wiki:restore'), async (c) => {
     const slug = c.req.param('slug');
     const user = c.get('user')!;
     const rbac = c.get('rbac') as RBAC;
     const db = c.env.DB;
 
-    if (!rbac.can(user.role, 'wiki:delete')) {
+    if (!rbac.can(user.role, 'wiki:restore')) {
         return c.json({ error: ui("m_a20ccb3e6b01e324") }, 403);
     }
 
@@ -3313,11 +3323,13 @@ wiki.post('/w/:slug/restore', requireAuth, async (c) => {
         return c.json({ error: ui("m_c9c2979d1a731a43") }, 400);
     }
 
-    const page = await db.prepare('SELECT id, deleted_at FROM pages WHERE slug = ?').bind(slug).first<{ id: number; deleted_at: number | null }>();
+    const page = await db.prepare('SELECT id, deleted_at, is_private FROM pages WHERE slug = ?').bind(slug).first<{ id: number; deleted_at: number | null; is_private: number }>();
 
     if (!page) {
         return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
+
+    if (page.is_private && !rbac.can(user.role, 'wiki:private')) return c.json({ error: ui('permissions.denied') }, 403);
 
     if (!page.deleted_at) {
         return c.json({ error: ui("m_3c225b5dab81e41e") }, 400);
@@ -3374,6 +3386,7 @@ export async function movePage(
     rbac: RBAC,
     options?: { updateBacklinks?: boolean },
 ): Promise<MovePageOutcome> {
+    if (!rbac.can(user.role, 'wiki:move')) return { ok: false, status: 403, error: ui('permissions.denied'), old_slug: currentSlug };
     const db: D1Database = c.env.DB;
     const fail = (status: 400 | 403 | 404 | 409, error: string): MovePageOutcome =>
         ({ ok: false, status, error, old_slug: currentSlug });
@@ -3556,7 +3569,7 @@ export async function movePage(
  * POST /w/:slug/move
  * 문서 이동 (이름 변경) — 관리자 전용. 핵심 로직은 공유 헬퍼 movePage 에 위임한다.
  */
-wiki.post('/w/:slug/move', requireAdmin, async (c) => {
+wiki.post('/w/:slug/move', requireAuth, requirePermission('wiki:move'), async (c) => {
     const currentSlug = c.req.param('slug');
     const { new_slug, update_backlinks } = await c.req.json<{ new_slug: string; update_backlinks?: boolean }>();
     const user = c.get('user')!;
@@ -3586,7 +3599,7 @@ wiki.post('/w/:slug/move', requireAdmin, async (c) => {
  * POST /w/:slug/revert
  * 문서 되돌리기
  */
-wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async (c) => {
+wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:revert'), async (c) => {
     const slug = c.req.param('slug');
     const { revision_id } = await c.req.json<{ revision_id: number }>();
     const user = c.get('user')!;
@@ -3781,7 +3794,7 @@ async function loadRevisionForDeletion(
  * 리비전 단위 소프트 삭제 — 권한 없는 사용자에게 해당 리비전이 처음부터 없었던 것처럼 가린다.
  * 편집 요약은 DB 에 보존되어 관리자에게만 노출된다.
  */
-wiki.post('/w/:slug/revisions/:id/delete', requireAuth, requirePermission('wiki:delete'), async (c) => {
+wiki.post('/w/:slug/revisions/:id/delete', requireAuth, requirePermission('revision:delete'), async (c) => {
     const slug = c.req.param('slug');
     const revId = parseInt(c.req.param('id'), 10);
     const user = c.get('user')!;

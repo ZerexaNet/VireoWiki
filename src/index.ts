@@ -1,3 +1,6 @@
+import gitRoutes from './routes/git';
+import { HTTPException } from 'hono/http-exception';
+import permissionGroupsRoutes from './routes/permissionGroups';
 import { ui, getLocale, localeMiddleware } from './i18n/server';
 import { Hono, Context } from 'hono';
 import robotsTxtBase from './robots-txt';
@@ -52,6 +55,7 @@ app.use('*', secureHeaders());
 // /oauth/authorize 는 위키 도메인의 동의 폼에서 POST 되므로 CSRF 적용 (Origin 자동 검증).
 app.use('*', (c, next) => {
     const path = c.req.path;
+    if (/^\/git\/pages\/[1-9][0-9]*\.git\/git-(upload|receive)-pack$/.test(path)) return next();
     if (path === '/api/mcp' || path.startsWith('/api/mcp/')) return next();
     if (path === '/oauth/token' || path === '/oauth/register' || path === '/oauth/revoke') return next();
     return csrf()(c, next);
@@ -149,10 +153,12 @@ app.use('*', async (c, next) => {
 });
 
 // ── 라우트 등록 ──
+app.route('/', gitRoutes);
 app.route('/', authRoutes);
 app.route('/api', wikiRoutes);
 app.route('/api', searchRoutes);
 app.route('/', mediaRoutes);
+app.route('/api/admin/permission-groups', permissionGroupsRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/admin', adminJobRoutes);
 app.route('/api', discussionRoutes);
@@ -171,6 +177,9 @@ app.route('/api', qrLoginRoutes);
 // ── Service Worker (/sw.js) ──
 // Vite 빌드 산출물을 /dist/sw.js 로 두고, 루트 스코프 부여를 위해 /sw.js 로 위임한다.
 // Service-Worker-Allowed: / 헤더와 짧은 캐시를 함께 부여.
+app.get('/terms', c => c.redirect('/w/' + encodeURIComponent(c.env.TERMS_OF_SERVICE || 'Wiki/服务条款')));
+app.get('/privacy', c => c.redirect('/w/' + encodeURIComponent(c.env.PRIVACY_POLICY || 'Wiki/隐私政策')));
+
 app.get('/sw.js', async (c) => {
     const url = new URL(c.req.url);
     url.pathname = '/dist/sw.js';
@@ -1176,6 +1185,7 @@ app.notFound(async (c) => {
 
 // ── 에러 핸들러 ──
 app.onError(async (err, c) => {
+    if (err instanceof HTTPException) return err.getResponse();
     console.error('Unhandled error:', err);
     trackError(c, c.req.path, 500, err.message || 'Internal Server Error');
     if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/assets/')) {
