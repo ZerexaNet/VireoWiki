@@ -20,6 +20,7 @@
  * - 다른 모듈이 read/write 하는 state(slug, editor, sectionMode 등)는 types.ts 에
  *   선언된 window 프로퍼티를 직접 read/write 한다 — 모듈 내부 로컬 미러는 두지 않는다.
  */
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import './types';
 import { escapeHtml } from '../utils/html';
 import { normalizeSlug, hasSlugForbiddenChars } from '../utils/slug';
@@ -286,8 +287,8 @@ function ensureTurnstileVerified(): Promise<boolean> {
         if (typeof window.turnstile === 'undefined' || !turnstileReady) {
             window.Swal.fire({
                 icon: 'warning',
-                title: 'Turnstile 미준비',
-                text: '보안 검증 스크립트가 아직 로드되지 않았습니다. "캡챠 다시 로드" 버튼을 누른 뒤 다시 시도해주세요.',
+                title: ui("m_8f7caa3335f974ff"),
+                text: ui("m_4ec8d1c56721efad"),
             });
             resolve(false);
             return;
@@ -315,25 +316,25 @@ function ensureTurnstileVerified(): Promise<boolean> {
         overlay.className = 'turnstile-verify-overlay';
         overlay.setAttribute('role', 'dialog');
         overlay.setAttribute('aria-modal', 'true');
-        overlay.setAttribute('aria-label', '저장 전 보안 인증');
+        overlay.setAttribute('aria-label', ui("m_a8e3497b8f82e395"));
 
         const dialog = document.createElement('div');
         dialog.className = 'turnstile-verify-dialog';
 
         const titleEl = document.createElement('div');
         titleEl.className = 'turnstile-verify-title';
-        titleEl.textContent = '저장 전 보안 인증';
+        titleEl.textContent = ui("m_a8e3497b8f82e395");
 
         const bodyEl = document.createElement('div');
         bodyEl.className = 'turnstile-verify-body';
-        bodyEl.textContent = '계속 저장하려면 아래 보안 검증을 완료해주세요.';
+        bodyEl.textContent = ui("m_a3ecb95a4c5084e8");
 
         const mount = document.createElement('div');
         mount.className = 'turnstile-verify-mount';
 
         const hintEl = document.createElement('div');
         hintEl.className = 'turnstile-verify-hint';
-        hintEl.textContent = '바깥 영역을 클릭하거나 ESC 키를 누르면 저장이 취소됩니다.';
+        hintEl.textContent = ui("m_daa5a5069c80d9a9");
 
         dialog.appendChild(titleEl);
         dialog.appendChild(bodyEl);
@@ -401,7 +402,7 @@ function ensureTurnstileVerified(): Promise<boolean> {
             });
         } catch (e) {
             finish(false);
-            window.Swal.fire('错误', '보안 검증 위젯을 렌더링하지 못했습니다.', 'error');
+            window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_59402595c3c3b2ea"), 'error');
         }
     });
 }
@@ -461,10 +462,7 @@ async function updateCustomPreview() {
     const enabledExts = (window.appConfig && window.appConfig.enabledExtensions) || [];
     const extPrefix = enabledExts.find(ext => slug && slug.startsWith(ext + ':'));
     if (extPrefix) {
-        customPreview.innerHTML = `<div class="wiki-ext-raw-data">
-        <div class="wiki-ext-raw-badge"><i class="bi bi-database"></i> ${escapeHtml(extPrefix)} 익스텐션 데이터 (프리뷰 비활성화)</div>
-        <pre class="wiki-ext-raw-pre">${escapeHtml(md)}</pre>
-    </div>`;
+        customPreview.innerHTML = ui("m_86fb214a51cdf2f7", [escapeHtml(extPrefix), escapeHtml(md)]);
     } else {
         // 프리뷰 재렌더 전: 펼치기/접기, 아코디언, 탭, 외부 임베드 iframe 의
         // 상태를 캡처하고 iframe 노드는 document 내 parking 컨테이너로 옮긴다.
@@ -506,7 +504,7 @@ async function renderPreviewDiff(customPreview, diffMode) {
         customPreview.classList.remove('preview-diff-text', 'wrap-mode', 'wiki-content');
         customPreview.classList.add('preview-diff-rendered');
         if (typeof window.buildRichDiffHtml !== 'function') {
-            customPreview.innerHTML = '<div class="diff-empty">렌더 비교 모듈을 加载失败.</div>';
+            customPreview.innerHTML = ui("m_777bde40a9ff7e81");
             return;
         }
         const token = ++_previewDiffSeq;
@@ -599,9 +597,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             window.Swal.fire({
                 icon: 'warning',
-                title: '需要登录',
-                text: '문서를 편집하려면 로그인이 필요합니다.',
-                confirmButtonText: '登录',
+                title: ui("m_6eb1b64e260a2dd3"),
+                text: ui("m_0aee075de8329869"),
+                confirmButtonText: ui("m_1e2df9c3075ae9e4"),
             }).then(() => {
                 window.location.href = '/login';
             });
@@ -688,7 +686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     syncStateToWindow();
     if (!slug && !BLOG_MODE) {
-        window.Swal.fire('错误', '문서 제목이 지정되지 않았습니다.', 'error').then(() => {
+        window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_71bf59f4724ed8c3"), 'error').then(() => {
             window.location.href = '/';
         });
         return;
@@ -702,8 +700,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 끌어올려, 사용자가 확인 버튼을 눌러 홈으로 돌아갈 수 있도록 한다.
         window.Swal.fire({
             icon: 'error',
-            title: '错误',
-            text: '제목에 사용할 수 없는 특수문자가 포함되어 있습니다.',
+            title: ui("m_0bc1fb72ae1be5c5"),
+            text: ui("m_cb487221f2198b88"),
             didOpen: (el: HTMLElement) => {
                 const container = el.closest('.swal2-container') as HTMLElement | null;
                 if (container) container.style.zIndex = '10000';
@@ -735,37 +733,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!ep.allowed) {
                     const reason = ep.reason || 'unknown';
                     const labelMap: Record<string, string> = {
-                        aged: '가입 N일 이상',
-                        page_editor: '本页编辑历史',
-                        any_editor: '任意页面编辑历史',
-                        admin_only: '仅管理员',
+                        aged: ui("m_bf8508933cb57822"),
+                        page_editor: ui("m_1067d4563021de5a"),
+                        any_editor: ui("m_16e8ef1a632a2464"),
+                        admin_only: ui("m_7f0dd12bee0266d4"),
                     };
                     const aclSummary = (() => {
                         if (!ep.acl || !Array.isArray(ep.acl.flags) || ep.acl.flags.length === 0) return null;
-                        return ep.acl.flags.map((f: string) => labelMap[f] || f).join(' 그리고 ');
+                        return ep.acl.flags.map((f: string) => labelMap[f] || f).join(ui("m_96df792915787246"));
                     })();
-                    let title = '没有编辑权限';
+                    let title = ui("m_d81753fb3236ed05");
                     let html = '';
                     if (reason === 'admin_only') {
-                        html = '이 문서는 仅管理员으로 지정되어 일반 사용자는 편집할 수 없습니다.';
+                        html = ui("m_4416e10c79b8fcf2");
                     } else if (reason === 'private') {
-                        html = '이 문서는 비공개로 설정되어 있어 편집할 수 없습니다.';
+                        html = ui("m_3e16c452d266f638");
                     } else if (reason === 'deleted') {
-                        title = '삭제된 문서';
-                        html = '이 문서는 삭제된 상태입니다. 관리자가 복원해야 다시 편집할 수 있습니다.';
+                        title = ui("m_9105b84b4bd95493");
+                        html = ui("m_af0a9046ea4987d7");
                     } else if (reason === 'main_page') {
-                        html = '메인 문서는 관리자만 편집할 수 있습니다.';
+                        html = ui("m_0d16e7454b329be5");
                     } else if (reason === 'image_namespace') {
-                        html = '"이미지:" 네임스페이스의 문서는 미디어 업로드 페이지로 관리됩니다.';
+                        html = ui("m_1de4bab6f40b6bb7");
                     } else if (reason === 'no_permission') {
-                        html = '편집 권한이 없는 계정입니다.';
+                        html = ui("m_12313c8c625cf809");
                     } else if (reason === 'edit_acl' && aclSummary) {
-                        const sourceLabel = ep.source === 'prefix_rule' ? '하위 문서 자동 규칙' : '문서 설정';
+                        const sourceLabel = ep.source === 'prefix_rule' ? ui("m_6b59bacbccb7d095") : ui("m_5c9e81967192dcbf");
                         const minAge = typeof ep.min_age_days === 'number' ? ep.min_age_days : 0;
-                        const renderedSummary = aclSummary.replace(/N일/g, `${minAge}周日`);
-                        html = `이 문서는 다음 조건을 만족하는 사용자만 편집할 수 있습니다 (${sourceLabel}):<br><b>${renderedSummary}</b>`;
+                        const renderedSummary = aclSummary.replace(/N(?=일| days| 天)/g, String(minAge));
+                        html = ui("m_4a0c69945a24e95a", [sourceLabel, renderedSummary]);
                     } else {
-                        html = '편집 권한이 부족합니다.';
+                        html = ui("m_078038d646a5bcf5");
                     }
                     // 초기 로딩 오버레이(#initLoadingOverlay, z-index:9999)가 떠 있는 상태로
                     // 경고를 띄우면, 오버레이가 SweetAlert 위를 덮어 확인 버튼을 누를 수 없고
@@ -780,7 +778,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         icon: 'warning',
                         title,
                         html,
-                        confirmButtonText: '확인',
+                        confirmButtonText: ui("m_1aacb54c49924296"),
                     });
                     // 알림 확인 후, 권한 없는 사용자를 문서 단순 열람 페이지로 자동 리디렉션한다.
                     window.location.href = slug ? `/w/${encodeURIComponent(slug)}` : '/';
@@ -793,8 +791,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         toast: true,
                         position: 'top',
                         icon: 'info',
-                        title: '편집 요청 모드',
-                        text: '편집 권한이 부족하여, 저장하면 검토자 승인을 위한 편집 요청으로 제출됩니다.',
+                        title: ui("m_228d34a44aa2df08"),
+                        text: ui("m_32ab57e6d9aa8e69"),
                         showConfirmButton: false,
                         timer: 6000,
                         timerProgressBar: true,
@@ -840,16 +838,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const disableTextCounter = !!(extHook && extHook.disableTextCounter);
 
         const editorContainer = document.getElementById('editor');
-        editorContainer.innerHTML = `
-            <div class="wiki-ext-raw-editor">
-                <div class="wiki-ext-raw-editor-badge">
-                    <i class="bi bi-database"></i> ${escapeHtml(extPrefix)} 익스텐션 데이터
-                    <span class="wiki-ext-raw-editor-hint">마크다운 렌더링이 비활성화된 원시 데이터 편집 모드입니다</span>
-                </div>
-                <div id="extEditorToolbar" class="wiki-ext-editor-toolbar"></div>
-                <textarea id="rawExtTextarea" class="wiki-ext-raw-textarea" spellcheck="false"></textarea>
-            </div>
-        `;
+        editorContainer.innerHTML = ui("m_f4cd50ffad94e9c4", [escapeHtml(extPrefix)]);
 
         const rawTextarea = document.getElementById('rawExtTextarea');
         const toolbarEl = document.getElementById('extEditorToolbar');
@@ -1212,13 +1201,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     window.showPaletteAutocomplete?.('', { showAll: true });
                 } else if (type === 'size') {
                     renderChips('size', [
-                        { v: 'icon', label: '图标' }, { v: 'small', label: '小' },
-                        { v: 'medium', label: '中' }, { v: 'full', label: '大' },
+                        { v: 'icon', label: ui("m_0d720eeea26466dd") }, { v: 'small', label: ui("m_6a7339bb759788f3") },
+                        { v: 'medium', label: ui("m_a567bdaa11367f26") }, { v: 'full', label: ui("m_7d4ca7f48effd602") },
                     ]);
                     return; // 칩 메뉴 유지 — 핀을 숨기지 않는다.
                 } else if (type === 'align') {
                     renderChips('align', [
-                        { v: 'left', label: '왼쪽' }, { v: 'center', label: '가운데' }, { v: 'right', label: '오른쪽' },
+                        { v: 'left', label: ui("m_dc0103c11a2b107b") }, { v: 'center', label: ui("m_d41ad4fcb417e884") }, { v: 'right', label: ui("m_f594aa6a15b9381c") },
                     ]);
                     return; // 칩 메뉴 유지 — 핀을 숨기지 않는다.
                 }
@@ -1230,7 +1219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 pillEl.innerHTML = '';
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.innerHTML = '<i class="mdi mdi-pencil"></i> 编辑 <span class="tep-type">' + (ctx ? ctx.type : '') + '</span>';
+                btn.innerHTML = ui("m_106487d2bc2d660e") + (ctx ? ctx.type : '') + '</span>';
                 btn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); openEditor(); });
                 pillEl.appendChild(btn);
             }
@@ -1588,7 +1577,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 실제 모달은 edit-cheatsheet 번들(window.openSyntaxCheatsheet)이 제공한다.
         const cheatsheetBtn = createToolbarBtn(
             '<i class="mdi mdi-book-search-outline"></i>',
-            '문법 치트시트 (문법 검색)',
+            ui("m_f6eeae9b0f5d9dbb"),
             () => { if (typeof window.openSyntaxCheatsheet === 'function') window.openSyntaxCheatsheet(); }
         );
         cheatsheetBtn.id = 'cm-cheatsheet-btn';
@@ -1601,14 +1590,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 프레젠테이션 문서에서는 별도 '슬라이드 모드'가 없다 — 일반(split) 모드가 곧
         // 단일 슬라이드 에디터 + 동기화 덱 프리뷰로 통합된 슬라이드 편집 경험이다.
         const PC_MODES = {
-            split: { icon: 'mdi-view-split-vertical', label: '일반 모드', desc: '에디터 + 프리뷰' },
-            edit: { icon: 'mdi-pencil', label: '작성 모드', desc: '에디터만' },
-            preview: { icon: 'mdi-eye-outline', label: '보기 모드', desc: '프리뷰만' },
+            split: { icon: 'mdi-view-split-vertical', label: ui("m_e641c71c0d190e8a"), desc: ui("m_aa91acdd84951b8f") },
+            edit: { icon: 'mdi-pencil', label: ui("m_41b56eb1bf8a1682"), desc: ui("m_70112194ffe3dda1") },
+            preview: { icon: 'mdi-eye-outline', label: ui("m_868dabeaade8d9d4"), desc: ui("m_e07317efd9062e52") },
         };
 
         const modeBtn = createToolbarBtn(
             `<i class="mdi ${PC_MODES.split.icon}"></i><i class="mdi mdi-menu-down cm-toolbar-caret"></i>`,
-            '보기 방식 전환',
+            ui("m_d294c765583f8080"),
             () => toggleModePanel()
         );
         modeBtn.id = 'cm-mode-btn';
@@ -1665,7 +1654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             const m = PC_MODES[mode];
             modeBtn.innerHTML = `<i class="mdi ${m.icon}"></i><i class="mdi mdi-menu-down cm-toolbar-caret"></i>`;
-            modeBtn.title = `보기 방식: ${m.label}`;
+            modeBtn.title = ui("m_636e9d2eec6f82bc", [m.label]);
             modeBtn.classList.toggle('active', mode !== 'split');
             modePanel.querySelectorAll('.editor-mode-option').forEach(opt => {
                 opt.classList.toggle('active', opt.dataset.mode === mode);
@@ -1725,7 +1714,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderModePanel();
         setPcMode('split');
 
-        const settingsBtn = createToolbarBtn('<i class="mdi mdi-cog"></i>', '에디터 설정', () => toggleSettingsPanel());
+        const settingsBtn = createToolbarBtn('<i class="mdi mdi-cog"></i>', ui("m_eec44d1a5d65b9a3"), () => toggleSettingsPanel());
         settingsBtn.id = 'cm-settings-btn';
         toolbar.appendChild(settingsBtn);
 
@@ -1734,62 +1723,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         settingsPanel.id = 'editor-settings-panel';
         settingsPanel.className = 'editor-settings-panel';
         settingsPanel.style.display = 'none';
-        settingsPanel.innerHTML = `
-            <div class="editor-settings-title"><i class="mdi mdi-cog"></i> 에디터 설정</div>
-            <label class="editor-settings-item">
-                <span>줄 번호 표시</span>
-                <input type="checkbox" id="settingLineNumbers" ${editorSettings.showLineNumbers ? 'checked' : ''}>
-            </label>
-            <label class="editor-settings-item">
-                <span>스크롤 동기화</span>
-                <input type="checkbox" id="settingScrollSync" ${editorSettings.scrollSync ? 'checked' : ''}>
-            </label>
-            <label class="editor-settings-item editor-settings-subitem">
-                <input type="radio" name="settingScrollSyncMode" value="oneway"
-                    ${editorSettings.scrollSyncMode === 'oneway' ? 'checked' : ''}
-                    ${editorSettings.scrollSync ? '' : 'disabled'}>
-                <span>단방향 (에디터 → 프리뷰)</span>
-            </label>
-            <label class="editor-settings-item editor-settings-subitem">
-                <input type="radio" name="settingScrollSyncMode" value="twoway"
-                    ${editorSettings.scrollSyncMode === 'twoway' ? 'checked' : ''}
-                    ${editorSettings.scrollSync ? '' : 'disabled'}>
-                <span>양방향</span>
-            </label>
-            <label class="editor-settings-item">
-                <span>문법 하이라이트</span>
-                <input type="checkbox" id="settingSyntaxHighlight" ${editorSettings.syntaxHighlight ? 'checked' : ''}>
-            </label>
-            <label class="editor-settings-item">
-                <span>아이콘 표시</span>
-                <input type="checkbox" id="settingAdvancedEdit"
-                    ${editorSettings.advancedEdit && editorSettings.syntaxHighlight ? 'checked' : ''}
-                    ${editorSettings.syntaxHighlight ? '' : 'disabled'}>
-            </label>
-            <div class="editor-settings-divider"></div>
-            <div class="editor-settings-section-title">줄바꿈 모드</div>
-            <label class="editor-settings-item">
-                <input type="radio" name="settingWrapMode" value="wrap" ${editorSettings.wordWrap ? 'checked' : ''}>
-                <span>자동 줄바꿈 (기본)</span>
-            </label>
-            <label class="editor-settings-item">
-                <input type="radio" name="settingWrapMode" value="scroll" ${!editorSettings.wordWrap ? 'checked' : ''}>
-                <span>가로 스크롤</span>
-            </label>
-            <div class="editor-settings-divider"></div>
-            <label class="editor-settings-item">
-                <span>문법 자동완성</span>
-                <input type="checkbox" id="settingSyntaxAutocomplete" ${editorSettings.syntaxAutocomplete ? 'checked' : ''}>
-            </label>
-            <label class="editor-settings-item">
-                <span>문법 린트(경고)</span>
-                <input type="checkbox" id="settingSyntaxLint" ${editorSettings.syntaxLint ? 'checked' : ''}>
-            </label>
-            <label class="editor-settings-item">
-                <span>편집 요약 자동 작성</span>
-                <input type="checkbox" id="settingAutoSummary" ${editorSettings.autoSummary ? 'checked' : ''}>
-            </label>
-        `;
+        settingsPanel.innerHTML = ui("m_8138e088b975061f", [editorSettings.showLineNumbers ? 'checked' : '', editorSettings.scrollSync ? 'checked' : '', editorSettings.scrollSyncMode === 'oneway' ? 'checked' : '', editorSettings.scrollSync ? '' : 'disabled', editorSettings.scrollSyncMode === 'twoway' ? 'checked' : '', editorSettings.scrollSync ? '' : 'disabled', editorSettings.syntaxHighlight ? 'checked' : '', editorSettings.advancedEdit && editorSettings.syntaxHighlight ? 'checked' : '', editorSettings.syntaxHighlight ? '' : 'disabled', editorSettings.wordWrap ? 'checked' : '', !editorSettings.wordWrap ? 'checked' : '', editorSettings.syntaxAutocomplete ? 'checked' : '', editorSettings.syntaxLint ? 'checked' : '', editorSettings.autoSummary ? 'checked' : '']);
         document.body.appendChild(settingsPanel);
 
         function toggleSettingsPanel() {
@@ -1840,7 +1774,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ── 찾기/바꾸기 ──
         const findBtn = createToolbarBtn(
             '<i class="mdi mdi-magnify"></i>',
-            '찾기 / 바꾸기 (Ctrl+F)',
+            ui("m_1dd3e0d08015576b"),
             () => {
                 if (findPanel.style.display === 'block') closeFindPanel();
                 else openFindPanel();
@@ -1853,25 +1787,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         findPanel.id = 'cm-find-panel';
         findPanel.className = 'cm-find-panel';
         findPanel.style.display = 'none';
-        findPanel.innerHTML = `
-            <div class="cm-find-row">
-                <input type="text" id="cmFindInput" class="cm-find-input" placeholder="찾기" autocomplete="off" spellcheck="false">
-                <span class="cm-find-status" id="cmFindStatus"></span>
-                <button type="button" id="cmFindPrevBtn" class="cm-find-btn" title="이전 (Shift+Enter)"><i class="mdi mdi-chevron-up"></i></button>
-                <button type="button" id="cmFindNextBtn" class="cm-find-btn" title="다음 (Enter)"><i class="mdi mdi-chevron-down"></i></button>
-                <label class="cm-find-toggle" title="대소문자 구분">
-                    <input type="checkbox" id="cmFindCaseSensitive">
-                    <span>Aa</span>
-                </label>
-                <button type="button" id="cmFindCloseBtn" class="cm-find-btn cm-find-close" title="닫기 (Esc)"><i class="mdi mdi-close"></i></button>
-            </div>
-            <div class="cm-find-row">
-                <input type="text" id="cmReplaceInput" class="cm-find-input" placeholder="바꾸기" autocomplete="off" spellcheck="false">
-                <button type="button" id="cmReplaceOneBtn" class="cm-find-btn cm-find-btn-text" title="현재 일치 항목을 바꾸고 다음으로 이동">
-                    <i class="mdi mdi-find-replace"></i> 바꾸기
-                </button>
-            </div>
-        `;
+        findPanel.innerHTML = ui("m_47f25a8a6f1ad0f0");
         document.body.appendChild(findPanel);
 
         const findInput = findPanel.querySelector('#cmFindInput');
@@ -2811,7 +2727,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const catWarning = document.createElement('div');
     catWarning.className = 'text-danger small mt-1 d-none';
     catWarning.id = 'categoryWarning';
-    catWarning.innerHTML = '<i class="mdi mdi-alert"></i> 이 카테고리는 관리자만 적용할 수 있습니다.';
+    catWarning.innerHTML = ui("m_3d275876e9d3790b");
     catInput.parentNode.appendChild(catWarning);
 
     catInput.addEventListener('input', () => {
@@ -2819,7 +2735,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const cats = catInput.value.split(',').map(c => c.trim()).filter(c => c);
         const blockedCat = !isAdmin && cats.find(c => adminCategories.includes(c));
         if (blockedCat) {
-            catWarning.innerHTML = `<i class="mdi mdi-alert"></i> "${blockedCat}" 카테고리는 관리자만 적용할 수 있습니다.`;
+            catWarning.innerHTML = ui("m_5cc6bc297d72cde3", [blockedCat]);
             catWarning.classList.remove('d-none');
         } else {
             catWarning.classList.add('d-none');
@@ -2893,9 +2809,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             window.Swal.fire({
                 icon: 'error',
-                title: '삭제된 문서',
-                text: '삭제된 문서는 열람하거나 편집할 수 없습니다.',
-                confirmButtonText: '홈으로'
+                title: ui("m_9105b84b4bd95493"),
+                text: ui("m_0279a13372258c79"),
+                confirmButtonText: ui("m_ffe893bace2a4aba")
             }).then(() => {
                 window.location.href = '/';
             });
@@ -2909,16 +2825,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 overlay.classList.add('hidden');
                 overlay.style.display = 'none';
             }
-            let errMsg = '私有页面는 열람하거나 편집할 수 없습니다.';
+            let errMsg = ui("m_d90f7cd5f542d770");
             try {
                 const data = await res.json();
                 if (data && data.error) errMsg = data.error;
             } catch (_e) { /* noop */ }
             window.Swal.fire({
                 icon: 'error',
-                title: '私有页面',
+                title: ui("m_7599ad1f191ef2e6"),
                 text: errMsg,
-                confirmButtonText: '홈으로'
+                confirmButtonText: ui("m_ffe893bace2a4aba")
             }).then(() => {
                 window.location.href = '/';
             });
@@ -2996,8 +2912,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (typeof window.Swal !== 'undefined') {
                         window.Swal.fire({
                             icon: 'warning',
-                            title: '섹션을 찾지 못했습니다',
-                            text: '문서 구조가 변경되어 전체 편집 모드로 전환합니다.',
+                            title: ui("m_3d49bb2e1d4be61b"),
+                            text: ui("m_57e78dc7f8e63622"),
                             timer: 2500,
                             showConfirmButton: false
                         });
@@ -3014,13 +2930,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             pageVersion = page.version;
             document.getElementById('editPageTitle').innerHTML =
                 useSectionMode
-                    ? `<i class="mdi mdi-pencil-box-multiple"></i> 섹션 편집: ${escapeHtml(page.slug)}`
+                    ? ui("m_f1dc7031a246f3de", [escapeHtml(page.slug)])
                     : pendingMcpSubmissionId
-                        ? `<i class="bi bi-plug-fill"></i> MCP 편집안 편집: ${escapeHtml(page.slug)}`
+                        ? ui("m_587d35dab87367a2", [escapeHtml(page.slug)])
                         : pendingEditRequestId
-                            ? `<i class="mdi mdi-account-check-outline"></i> 편집 요청 검토: ${escapeHtml(page.slug)}`
-                            : `<i class="mdi mdi-pencil-box-multiple"></i> 편집: ${escapeHtml(page.slug)}`;
-            document.title = `편집: ${page.slug} - ${window.appConfig.wikiName}`;
+                            ? ui("m_bd0beaf1d5900673", [escapeHtml(page.slug)])
+                            : ui("m_d9d443198a541fbf", [escapeHtml(page.slug)]);
+            document.title = ui("m_f26649c1ec5369df", [page.slug, window.appConfig.wikiName]);
             // 변경 사항 미리보기 토글: 기존 문서 편집일 때만 노출.
             // 익스텐션 데이터는 프리뷰 패널 자체가 없으므로(원시 textarea 편집) 숨긴다.
             {
@@ -3051,7 +2967,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // (mcpSubmissionId 가 set 되지 않은 상태이므로 저장 후 /resolve 호출 없음).
                     // 그렇지 않으면 사용자가 일반 편집을 마치고 저장했을 때 cleanup 경로가 무관한
                     // draft 를 silently 삭제할 위험이 있다.
-                    window.Swal.fire('错误', e?.message || 'MCP 편집안을 加载失败.', 'error');
+                    window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), e?.message || ui("m_ac1724aa71d0fbe4"), 'error');
                 }
                 // 제출안 적재가 실패한 경우 (preload 실패 등) 정상 편집 세션으로 fallback. 이때
                 // checkDraft() 가 한번도 실행되지 않으면 같은 슬러그의 로컬 초안은 사용자에게
@@ -3079,7 +2995,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         erLoaded = true;
                     }
                 } catch (e: any) {
-                    window.Swal.fire('错误', e?.message || '편집 요청을 加载失败.', 'error');
+                    window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), e?.message || ui("m_ec96a006c6d2ae0f"), 'error');
                 }
                 if (!erLoaded) {
                     window.checkDraft().then(() => {
@@ -3144,19 +3060,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                         mcpLoaded = true;
                     }
                 } catch (e: any) {
-                    window.Swal.fire('错误', e?.message || 'MCP 편집안을 加载失败.', 'error');
+                    window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), e?.message || ui("m_ac1724aa71d0fbe4"), 'error');
                 }
                 document.getElementById('editPageTitle').innerHTML = mcpLoaded
-                    ? `<i class="bi bi-plug-fill"></i> MCP 편집안 편집(신규): ${escapeHtml(slug)}`
-                    : `<i class="mdi mdi-plus-circle"></i> 新页面 만들기`;
+                    ? ui("m_b208f22ff669d5d9", [escapeHtml(slug)])
+                    : ui("m_e07d5909c2cc9b7f");
                 document.title = mcpLoaded
-                    ? `MCP 편집: ${slug} - ${window.appConfig.wikiName}`
-                    : `新页面 - ${window.appConfig.wikiName}`;
+                    ? ui("m_4ded05e76ade6420", [slug, window.appConfig.wikiName])
+                    : ui("m_a2c620001e3e7c20", [window.appConfig.wikiName]);
                 if (!mcpLoaded) {
                     // 적재 실패 시에는 일반 신규 문서 흐름으로 fallback (템플릿 버튼 + 초안 복구).
                     const templateBtn = document.createElement('button');
                     templateBtn.className = 'btn btn-sm btn-outline-primary ms-3';
-                    templateBtn.innerHTML = '<i class="mdi mdi-content-copy"></i> 템플릿으로 시작하기';
+                    templateBtn.innerHTML = ui("m_7c5e12da007b64cd");
                     templateBtn.onclick = window.openTemplateModal;
                     document.getElementById('editPageTitle').appendChild(templateBtn);
                     window.checkDraft();
@@ -3173,18 +3089,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                         erLoaded = true;
                     }
                 } catch (e: any) {
-                    window.Swal.fire('错误', e?.message || '편집 요청을 加载失败.', 'error');
+                    window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), e?.message || ui("m_ec96a006c6d2ae0f"), 'error');
                 }
                 document.getElementById('editPageTitle').innerHTML = erLoaded
-                    ? `<i class="mdi mdi-account-check-outline"></i> 편집 요청 검토(신규): ${escapeHtml(slug)}`
-                    : `<i class="mdi mdi-plus-circle"></i> 新页面 만들기`;
+                    ? ui("m_d2201ebe07f4e5d1", [escapeHtml(slug)])
+                    : ui("m_e07d5909c2cc9b7f");
                 document.title = erLoaded
-                    ? `편집 요청 검토: ${slug} - ${window.appConfig.wikiName}`
-                    : `新页面 - ${window.appConfig.wikiName}`;
+                    ? ui("m_0eb8c95b69e10444", [slug, window.appConfig.wikiName])
+                    : ui("m_a2c620001e3e7c20", [window.appConfig.wikiName]);
                 if (!erLoaded) {
                     const templateBtn = document.createElement('button');
                     templateBtn.className = 'btn btn-sm btn-outline-primary ms-3';
-                    templateBtn.innerHTML = '<i class="mdi mdi-content-copy"></i> 템플릿으로 시작하기';
+                    templateBtn.innerHTML = ui("m_7c5e12da007b64cd");
                     templateBtn.onclick = window.openTemplateModal;
                     document.getElementById('editPageTitle').appendChild(templateBtn);
                     window.checkDraft();
@@ -3193,13 +3109,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.refreshAutoSummary();
             } else {
                 document.getElementById('editPageTitle').innerHTML =
-                    `<i class="mdi mdi-plus-circle"></i> 新页面 만들기`;
-                document.title = `新页面 - ${window.appConfig.wikiName}`;
+                    ui("m_e07d5909c2cc9b7f");
+                document.title = ui("m_a2c620001e3e7c20", [window.appConfig.wikiName]);
 
                 // 템플릿 불러오기 버튼 추가
                 const templateBtn = document.createElement('button');
                 templateBtn.className = 'btn btn-sm btn-outline-primary ms-3';
-                templateBtn.innerHTML = '<i class="mdi mdi-content-copy"></i> 템플릿으로 시작하기';
+                templateBtn.innerHTML = ui("m_7c5e12da007b64cd");
                 templateBtn.onclick = window.openTemplateModal;
                 document.getElementById('editPageTitle').appendChild(templateBtn);
                 window.checkDraft();
@@ -3429,7 +3345,7 @@ function enterSectionEditModeForMcp(
 
     const titleEl = document.getElementById('editPageTitle');
     if (titleEl && slug) {
-        titleEl.innerHTML = `<i class="bi bi-plug-fill"></i> MCP 편집안 문단 편집: ${escapeHtml(slug)}`;
+        titleEl.innerHTML = ui("m_0ccf1841c2e0bc91", [escapeHtml(slug)]);
     }
 
     syncStateToWindow();
@@ -3471,7 +3387,7 @@ async function loadMcpSubmissionIntoEditor(submissionId: number): Promise<boolea
     const res = await fetch(`/api/mcp-submissions/${submissionId}`);
     if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || `제출안 조회 실패 (HTTP ${res.status})`);
+        throw new Error(body?.error || ui("m_2b86743ed259dd90", [res.status]));
     }
     const detail = await res.json();
 
@@ -3482,8 +3398,8 @@ async function loadMcpSubmissionIntoEditor(submissionId: number): Promise<boolea
     if (typeof detail.slug !== 'string' || detail.slug !== slug) {
         await window.Swal.fire({
             icon: 'error',
-            title: '제출안 제목 불일치',
-            text: `제출안의 문서(${detail.slug ?? '?'}) 가 현재 편집 중인 문서(${slug ?? '?'}) 와 다릅니다. 해당 문서로 이동해 다시 시도하세요.`,
+            title: ui("m_3f50f2f92321f051"),
+            text: ui("m_29de34a5db6cd39b", [detail.slug ?? '?', slug ?? '?']),
         });
         window.location.href = '/mypage#mcp-submissions';
         return false;
@@ -3493,14 +3409,14 @@ async function loadMcpSubmissionIntoEditor(submissionId: number): Promise<boolea
     if (detail.has_conflict && detail.conflict_reason !== 'concurrent_modification') {
         await window.Swal.fire({
             icon: 'warning',
-            title: '에디터에서 처리할 수 없는 충돌',
+            title: ui("m_d4986e193451f103"),
             text: detail.conflict_reason === 'page_missing'
-                ? '문서가 삭제되었습니다. 에디터에서 편집할 수 없습니다.'
+                ? ui("m_9159f61dacd42488")
                 : detail.conflict_reason === 'slug_taken'
-                    ? '동일 제목의 다른 문서가 그 사이 생성되었습니다. mypage 에서 거부하거나 다른 제목으로 다시 시도하세요.'
+                    ? ui("m_a71068bef839a413")
                     : detail.conflict_reason === 'slug_soft_deleted'
-                        ? '동일 제목의 소프트 삭제된 문서가 존재합니다. 관리자가 먼저 처리해야 합니다.'
-                        : '에디터에서 해결할 수 없는 충돌입니다.',
+                        ? ui("m_61225cca4a4c7bd1")
+                        : ui("m_9997a5faaa88e5d5"),
         });
         window.location.href = '/mypage#mcp-submissions';
         return false;
@@ -3557,10 +3473,10 @@ async function loadMcpSubmissionIntoEditor(submissionId: number): Promise<boolea
                 localStorage.removeItem(DRAFT_KEY);
                 window.Swal?.fire({
                     icon: 'info',
-                    title: '기존 로컬 초안을 백업했습니다',
-                    html: `같은 문서에 작성 중이던 로컬 초안이 있어 MCP 편집안 적재 전에 보존했습니다.<br>저장 후에도 다음 키로 localStorage 에서 복구할 수 있습니다:<br><code>${escapeHtml(backupKey)}</code>`,
+                    title: ui("m_7ea99d6dde0b4b92"),
+                    html: ui("m_d7a7ab5dd04f5dc9", [escapeHtml(backupKey)]),
                     toast: false,
-                    confirmButtonText: '확인',
+                    confirmButtonText: ui("m_1aacb54c49924296"),
                 });
             }
         } catch { /* localStorage 비활성 등은 무시 */ }
@@ -3616,8 +3532,8 @@ async function loadMcpSubmissionIntoEditor(submissionId: number): Promise<boolea
                     toast: true,
                     position: 'top',
                     icon: 'info',
-                    title: '문단 편집 모드',
-                    text: `제출안이 '${seg.range.headingText}' 문단만 수정하여 해당 문단 편집 모드로 열었습니다.`,
+                    title: ui("m_7bbf0318ee8af6f0"),
+                    text: ui("m_0911555b8a35600c", [seg.range.headingText]),
                     showConfirmButton: false,
                     timer: 5000,
                     timerProgressBar: true,
@@ -3649,7 +3565,7 @@ async function loadEditRequestIntoEditor(requestId: number): Promise<boolean> {
     const res = await fetch(`/api/pending-edits/${requestId}`);
     if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || `편집 요청 조회 실패 (HTTP ${res.status})`);
+        throw new Error(body?.error || ui("m_b7b66bc469094b86", [res.status]));
     }
     const detail = await res.json();
 
@@ -3657,8 +3573,8 @@ async function loadEditRequestIntoEditor(requestId: number): Promise<boolean> {
     if (typeof detail.slug !== 'string' || detail.slug !== slug) {
         await window.Swal.fire({
             icon: 'error',
-            title: '문서 불일치',
-            text: `편집 요청의 문서(${detail.slug ?? '?'}) 가 현재 편집 중인 문서(${slug ?? '?'}) 와 다릅니다.`,
+            title: ui("m_1bc5210d145a3c23"),
+            text: ui("m_bfba8460901deca3", [detail.slug ?? '?', slug ?? '?']),
         });
         window.location.href = '/w/' + encodeURIComponent(slug);
         return false;
@@ -3668,14 +3584,14 @@ async function loadEditRequestIntoEditor(requestId: number): Promise<boolean> {
     if (detail.has_conflict && detail.conflict_reason !== 'concurrent_modification') {
         await window.Swal.fire({
             icon: 'warning',
-            title: '에디터에서 처리할 수 없는 충돌',
+            title: ui("m_d4986e193451f103"),
             text: detail.conflict_reason === 'page_missing'
-                ? '문서가 삭제되었습니다. 요청을 반려하세요.'
+                ? ui("m_d30060e4403b8eb9")
                 : detail.conflict_reason === 'slug_taken'
-                    ? '동일 제목의 다른 문서가 그 사이 생성되었습니다. 요청을 반려하세요.'
+                    ? ui("m_f39f6a885c587b81")
                     : detail.conflict_reason === 'slug_soft_deleted'
-                        ? '동일 제목의 소프트 삭제된 문서가 존재합니다. 관리자가 먼저 처리해야 합니다.'
-                        : '에디터에서 해결할 수 없는 충돌입니다.',
+                        ? ui("m_61225cca4a4c7bd1")
+                        : ui("m_9997a5faaa88e5d5"),
         });
         window.location.href = '/w/' + encodeURIComponent(slug);
         return false;
@@ -3726,9 +3642,9 @@ async function loadEditRequestIntoEditor(requestId: number): Promise<boolean> {
                 localStorage.removeItem(DRAFT_KEY);
                 window.Swal?.fire({
                     icon: 'info',
-                    title: '기존 로컬 초안을 백업했습니다',
-                    html: `같은 문서에 작성 중이던 로컬 초안이 있어 편집 요청 적재 전에 보존했습니다.<br>다음 키로 localStorage 에서 복구할 수 있습니다:<br><code>${escapeHtml(backupKey)}</code>`,
-                    confirmButtonText: '확인',
+                    title: ui("m_7ea99d6dde0b4b92"),
+                    html: ui("m_2b0655772f08d9b1", [escapeHtml(backupKey)]),
+                    confirmButtonText: ui("m_1aacb54c49924296"),
                 });
             }
         } catch { /* localStorage 비활성 등은 무시 */ }
@@ -3816,36 +3732,22 @@ async function openSplitToSubdocModal(): Promise<void> {
     const Swal = window.Swal;
     if (!Swal) return;
     if (!sectionMode || !sectionRange || !slug || !editor) {
-        await Swal.fire('错误', '섹션 편집 모드에서만 사용할 수 있습니다.', 'warning');
+        await Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_d2e4384df45b9b4f"), 'warning');
         return;
     }
 
     const headingText = (sectionRange.headingText || '').trim();
     const parentSlug = slug;
     const defaultTitle = headingText ? `${parentSlug}/${headingText}` : `${parentSlug}/`;
-    const computeDefaultLeave = (t: string) => `[[${t.trim()}]] 문서를 참고하세요.`;
+    const computeDefaultLeave = (t: string) => ui("m_088ab35000074718", [t.trim()]);
 
     const result = await Swal.fire<{ title: string; leave: string }>({
-        title: '<i class="mdi mdi-call-split me-2"></i>하위 문서로 분리',
-        html: `
-            <div class="text-start">
-                <div class="mb-3">
-                    <label for="splitSubdocTitle" class="form-label fw-bold">생성할 하위 문서 제목</label>
-                    <input type="text" id="splitSubdocTitle" class="form-control"
-                        value="${escapeHtml(defaultTitle)}" maxlength="100" autocomplete="off">
-                    <div class="form-text small text-muted">생성될 하위 문서의 제목입니다. 이미 존재하는 문서 제목은 사용할 수 없습니다.</div>
-                </div>
-                <div class="mb-2">
-                    <label for="splitLeaveBehind" class="form-label fw-bold">남길 내용</label>
-                    <textarea id="splitLeaveBehind" class="form-control" rows="3" maxlength="2000" style="resize: vertical;">${escapeHtml(computeDefaultLeave(defaultTitle))}</textarea>
-                    <div class="form-text small text-muted">기존 섹션의 헤딩 아래에 남을 내용입니다. 직접 수정하기 전까지는 위 제목 변경에 따라 자동 갱신됩니다.</div>
-                </div>
-            </div>
-        `,
+        title: ui("m_1dce7601c57d6ab5"),
+        html: ui("m_987d3b2d984ab715", [escapeHtml(defaultTitle), escapeHtml(computeDefaultLeave(defaultTitle))]),
         width: 600,
         showCancelButton: true,
-        confirmButtonText: '<i class="mdi mdi-call-split"></i> 분리',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_4def3dd2fad11187"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         focusConfirm: false,
         didOpen: () => {
             const titleEl = document.getElementById('splitSubdocTitle') as HTMLInputElement | null;
@@ -3869,20 +3771,20 @@ async function openSplitToSubdocModal(): Promise<void> {
             // 앞뒤 슬래시/공백은 서버에서 자동 제거되므로 클라이언트도 동일하게 정규화한 값을 사용.
             const normalized = normalizeSlug(rawTitle);
             if (!normalized) {
-                Swal.showValidationMessage('하위 문서 제목을 입력해주세요.');
+                Swal.showValidationMessage(ui("m_126ca21a144835c7"));
                 return false;
             }
             if (normalized === parentSlug) {
-                Swal.showValidationMessage('하위 문서 제목이 현재 문서와 같을 수 없습니다.');
+                Swal.showValidationMessage(ui("m_8cd214f180d806b2"));
                 return false;
             }
             // 서버 SLUG_FORBIDDEN_CHARS 와 동일하게 클라에서도 1차 차단.
             if (hasSlugForbiddenChars(normalized)) {
-                Swal.showValidationMessage('제목에 사용할 수 없는 특수문자가 포함되어 있습니다.');
+                Swal.showValidationMessage(ui("m_cb487221f2198b88"));
                 return false;
             }
             if (normalized.startsWith('이미지:')) {
-                Swal.showValidationMessage('"이미지:"는 이미지 문서 전용 네임스페이스이므로 사용할 수 없습니다.');
+                Swal.showValidationMessage(ui("m_c0dc12316cd1f6c2"));
                 return false;
             }
             // 남길 내용이 현재 입력 제목으로 자동 생성된 기본 문구 그대로면 정규화된 슬러그
@@ -3915,7 +3817,7 @@ async function openSplitToSubdocModal(): Promise<void> {
     const sectionBody = firstNl >= 0 ? sectionText.slice(firstNl + 1) : '';
 
     Swal.fire({
-        title: '하위 문서 생성 중...',
+        title: ui("m_02423492453f1807"),
         allowOutsideClick: false,
         didOpen: () => Swal.showLoading(),
     });
@@ -3927,7 +3829,7 @@ async function openSplitToSubdocModal(): Promise<void> {
             const checkRes = await fetch(`/api/w/${encodeURIComponent(newTitle)}?redirect=no&nocache=true`);
             if (checkRes.ok) {
                 Swal.close();
-                await Swal.fire('错误', `"${newTitle}" 문서가 이미 존재합니다. 다른 제목을 사용해주세요.`, 'warning');
+                await Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_a1b887de60f7c266", [newTitle]), 'warning');
                 return;
             }
         } catch (e) { /* 네트워크 오류는 PUT 단계에서 처리 */ }
@@ -3935,8 +3837,8 @@ async function openSplitToSubdocModal(): Promise<void> {
         const requestBody: Record<string, unknown> = {
             content: sectionBody,
             summary: headingText
-                ? `'${parentSlug}' 문서 '${headingText}' 섹션에서 분리`
-                : `'${parentSlug}' 문서에서 분리`,
+                ? ui("m_550903972ff086fa", [parentSlug, headingText])
+                : ui("m_d3209956264f62e3", [parentSlug]),
             // 신규 생성 강제 — 기존 문서가 있으면 409 로 거부됨.
             expected_version: 0,
         };
@@ -3956,16 +3858,16 @@ async function openSplitToSubdocModal(): Promise<void> {
         }
 
         if (!res.ok) {
-            let errMsg = '하위 문서 생성에 실패했습니다.';
+            let errMsg = ui("m_0b341923955c839f");
             try {
                 const data = await res.json() as { error?: string };
                 if (data && data.error) errMsg = data.error;
             } catch (e) { /* keep default */ }
             if (res.status === 409) {
-                errMsg = `"${newTitle}" 문서가 이미 존재합니다. 다른 제목을 사용해주세요.`;
+                errMsg = ui("m_a1b887de60f7c266", [newTitle]);
             }
             Swal.close();
-            await Swal.fire('错误', errMsg, 'error');
+            await Swal.fire(ui("m_0bc1fb72ae1be5c5"), errMsg, 'error');
             return;
         }
         // 신규 생성이면 서버가 201 을 반환한다. 200(idempotent update) 은 서버가
@@ -3973,12 +3875,12 @@ async function openSplitToSubdocModal(): Promise<void> {
         // 다른 사용자의 기존 문서를 무심코 건드리지 않도록 한다.
         if (res.status !== 201) {
             Swal.close();
-            await Swal.fire('错误', `"${newTitle}" 문서가 이미 존재합니다. 다른 제목을 사용해주세요.`, 'warning');
+            await Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_a1b887de60f7c266", [newTitle]), 'warning');
             return;
         }
     } catch (e) {
         Swal.close();
-        await Swal.fire('错误', '하위 문서 생성 중 네트워크 오류가 발생했습니다.', 'error');
+        await Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_55cb4ca7516ee2e8"), 'error');
         return;
     }
 
@@ -3996,8 +3898,8 @@ async function openSplitToSubdocModal(): Promise<void> {
     Swal.close();
     await Swal.fire({
         icon: 'success',
-        title: '하위 문서가 생성되었습니다',
-        html: `<a href="/w/${encodeURIComponent(newTitle)}" target="_blank" rel="noopener">${escapeHtml(newTitle)}</a> 문서를 새로 만들었습니다.<br>변경된 섹션 본문을 검토한 뒤 <strong>保存</strong> 버튼을 눌러 반영해주세요.`,
+        title: ui("m_12801cdf15ea11e9"),
+        html: ui("m_c1134648c2104c23", [encodeURIComponent(newTitle), escapeHtml(newTitle)]),
     });
 }
 
@@ -4028,8 +3930,8 @@ async function savePage() {
         if (!fullOriginalContent) {
             window.Swal.fire({
                 icon: 'error',
-                title: '문서 상태가 손상되었습니다',
-                text: '안전을 위해 저장을 중단합니다. 페이지를 새로고침 한 뒤 다시 시도해주세요.',
+                title: ui("m_d2f01605b3cde985"),
+                text: ui("m_bcde4f6d56f9c359"),
             });
             return;
         }
@@ -4046,14 +3948,14 @@ async function savePage() {
     if (!hasMeaningfulChanges()) {
         window.Swal.fire({
             icon: 'info',
-            title: '변경된 내용이 없습니다',
-            text: '본문을 편집하거나 카테고리, 리다이렉트 설정을 변경해주세요.',
+            title: ui("m_619d1e30ff390627"),
+            text: ui("m_5018d44a41d5eeb4"),
         });
         return;
     }
 
     if (category && !/^[가-힣a-zA-Z0-9\s,]+$/.test(category)) {
-        window.Swal.fire('错误', '카테고리에는 특수문자를 사용할 수 없습니다.', 'warning');
+        window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_a21df18dbb6dce0c"), 'warning');
         return;
     }
 
@@ -4086,7 +3988,7 @@ async function savePage() {
             saveInProgress = true;
             if (saveBtn) {
                 saveBtn.disabled = true;
-                saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 저장 중...';
+                saveBtn.innerHTML = ui("m_ab8e2f89966c4faa");
             }
             try {
                 const noteRes = await fetch(`/api/w/${encodeURIComponent(slug)}/editor-note`, {
@@ -4095,16 +3997,16 @@ async function savePage() {
                     body: JSON.stringify({ editor_note: currNote || null }),
                 });
                 if (!noteRes.ok) {
-                    const err = await noteRes.json().catch(() => ({ error: '保存失败。' }));
-                    window.Swal.fire({ icon: 'error', title: '保存失败', text: err.error || '保存失败。' });
+                    const err = await noteRes.json().catch(() => ({ error: ui("m_cf1487e7aa8947c2") }));
+                    window.Swal.fire({ icon: 'error', title: ui("m_6309a3bb5ba4c714"), text: err.error || ui("m_cf1487e7aa8947c2") });
                     return;
                 }
                 // originalPageMeta 의 editor_note 베이스라인 갱신.
                 if (originalPageMeta) originalPageMeta.editor_note = currNote;
                 if (typeof window.checkConcurrentEditors === 'function') window.checkConcurrentEditors();
-                window.Swal.fire({ icon: 'success', title: '편집 메모가 已保存。', timer: 1200, showConfirmButton: false });
+                window.Swal.fire({ icon: 'success', title: ui("m_e5d4d87fc2fbde73"), timer: 1200, showConfirmButton: false });
             } catch (e) {
-                window.Swal.fire({ icon: 'error', title: '保存失败', text: '네트워크 오류가 발생했습니다.' });
+                window.Swal.fire({ icon: 'error', title: ui("m_6309a3bb5ba4c714"), text: ui("m_8856aac2057bf097") });
             } finally {
                 // 이 분기는 자체 try/finally 로 완결되며, 아래 본문 저장 경로에서
                 // 선언되는 isSuccess / blockResave 를 참조하지 않는다(선언 전 참조 시
@@ -4113,7 +4015,7 @@ async function savePage() {
                 saveInProgress = false;
                 if (saveBtn) {
                     saveBtn.disabled = false;
-                    saveBtn.innerHTML = '<i class="mdi mdi-check"></i> 저장';
+                    saveBtn.innerHTML = ui("m_046f49a813cb38ec");
                 }
             }
             return;
@@ -4135,7 +4037,7 @@ async function savePage() {
     if (saveInProgress) return;
     saveInProgress = true;
     saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 저장 중...';
+    saveBtn.innerHTML = ui("m_ab8e2f89966c4faa");
 
     let isSuccess = false;
     // 재저장 차단 플래그 — 섹션 모드 409 복구 중 메타데이터 재조회 실패 시 설정한다.
@@ -4215,12 +4117,12 @@ async function savePage() {
                 if (erRes.status === 404) {
                     // 다른 검토자가 이미 처리했거나 요청이 취소됨.
                     isSuccess = true;
-                    await window.Swal.fire({ icon: 'info', title: '이미 처리된 요청', text: '이 편집 요청은 이미 승인/반려되었거나 취소되었습니다.' });
+                    await window.Swal.fire({ icon: 'info', title: ui("m_50f541096bae2050"), text: ui("m_c3f405538e609ea8") });
                     window.location.href = '/w/' + encodeURIComponent(slug);
                     return;
                 }
                 if (erData.error === 'author_missing') {
-                    await window.Swal.fire({ icon: 'error', title: '승인할 수 없음', text: '원 요청자 계정을 찾을 수 없습니다. 요청을 반려하세요.' });
+                    await window.Swal.fire({ icon: 'error', title: ui("m_d47eb575afb8b2de"), text: ui("m_b9cb3b7f38f0b29d") });
                     return;
                 }
                 // concurrent_modification: 검토 시작 후 다른 편집이 반영됨.
@@ -4229,11 +4131,11 @@ async function savePage() {
                 if (erData.error === 'conflict' && (erData.reason === 'concurrent_modification' || erData.reason === 'rev2_failed')) {
                     const re = await window.Swal.fire({
                         icon: 'warning',
-                        title: '문서가 변경되었습니다',
-                        text: erData.message || '검토를 시작한 뒤 다른 편집이 반영되었습니다. 최신 본문을 기준으로 다시 병합해야 합니다.',
+                        title: ui("m_2d74d57ce2bd8d9d"),
+                        text: erData.message || ui("m_e82a76527a5b9199"),
                         showCancelButton: true,
-                        confirmButtonText: '다시 병합',
-                        cancelButtonText: '取消',
+                        confirmButtonText: ui("m_dfeeb8fa2d7cef70"),
+                        cancelButtonText: ui("m_2cd0f3be8738a86c"),
                     });
                     if (re.isConfirmed) {
                         isSuccess = true; // beforeunload 경고 방지(의도된 재진입)
@@ -4244,18 +4146,18 @@ async function savePage() {
                 if (erData.error === 'conflict') {
                     await window.Swal.fire({
                         icon: 'warning',
-                        title: '승인 충돌',
-                        text: erData.reason === 'slug_taken' ? '동일 제목의 문서가 이미 존재합니다. 요청을 반려하세요.'
-                            : erData.reason === 'page_missing' ? '문서가 삭제되었습니다. 요청을 반려하세요.'
-                            : '문서 상태가 변경되어 승인할 수 없습니다. 다시 시도하거나 반려하세요.',
+                        title: ui("m_ebda4623f6052fe2"),
+                        text: erData.reason === 'slug_taken' ? ui("m_2a397554c1b76f42")
+                            : erData.reason === 'page_missing' ? ui("m_d30060e4403b8eb9")
+                            : ui("m_2ac931bcbefcca32"),
                     });
                     return;
                 }
                 if (erRes.status === 403) {
-                    await window.Swal.fire({ icon: 'error', title: '没有权限', text: '이 문서의 편집 요청을 승인할 권한이 없습니다.' });
+                    await window.Swal.fire({ icon: 'error', title: ui("m_e32c8a6ddd7bcef3"), text: ui("m_a295fe5c5da8d97e") });
                     return;
                 }
-                await window.Swal.fire({ icon: 'error', title: '승인 실패', text: erData.message || erData.error || '승인에 실패했습니다.' });
+                await window.Swal.fire({ icon: 'error', title: ui("m_005c43cba2f22464"), text: erData.message || erData.error || ui("m_52079e3d89b7f5ed") });
                 return;
             }
             // 승인 성공.
@@ -4268,11 +4170,11 @@ async function savePage() {
             isSuccess = true;
             await window.Swal.fire({
                 icon: 'success',
-                title: '편집 요청을 승인했습니다',
+                title: ui("m_137b95d21b3645b6"),
                 html: erData.partial
-                    ? '요청 본문은 반영되었지만, 승인자의 추가 편집은 반영되지 못했습니다. 게시된 문서를 다시 편집해 주세요.'
-                    : (erData.two_revisions ? '요청분과 추가 편집이 각각 리비전으로 반영되었습니다.' : '요청자 명의 리비전으로 반영되었습니다.'),
-                confirmButtonText: '확인',
+                    ? ui("m_cd3a4b02c8c8791f")
+                    : (erData.two_revisions ? ui("m_47c387cf256f410a") : ui("m_5ee2c8bb13ee1350")),
+                confirmButtonText: ui("m_1aacb54c49924296"),
             });
             window.location.href = '/w/' + encodeURIComponent(erData.slug || slug);
             return;
@@ -4346,18 +4248,18 @@ async function savePage() {
                     blockResave = true;
                     await window.Swal.fire({
                         icon: 'error',
-                        title: '문서 정보를 다시 가져오지 못했습니다',
-                        text: '다른 사용자의 변경을 덮어쓸 수 있어 저장을 중단합니다. 페이지를 새로고침 해주세요.',
+                        title: ui("m_97bc23a9b6bcad89"),
+                        text: ui("m_9753745bab72a39b"),
                     });
                     return;
                 }
 
                 await window.Swal.fire({
                     icon: 'warning',
-                    title: '편집 충돌이 발생했습니다',
+                    title: ui("m_deac7c7652570a2f"),
                     text: sameSectionChangedByOther
-                        ? '같은 섹션을 다른 사용자가 동시에 편집했습니다. 전체 편집 모드에서 충돌 내용을 확인해 주세요.'
-                        : '다른 사용자가 문서 구조를 변경했습니다. 전체 편집 모드로 전환합니다.',
+                        ? ui("m_ab2117fba2ece592")
+                        : ui("m_611b619761284845"),
                 });
 
                 // 편집하던 섹션 텍스트를 전체 본문에 합성.
@@ -4384,9 +4286,9 @@ async function savePage() {
                 const resolvedTitle = slug;
                 const editPageTitle = document.getElementById('editPageTitle');
                 if (editPageTitle) {
-                    editPageTitle.textContent = '编辑页面: ' + resolvedTitle;
+                    editPageTitle.textContent = ui("m_8c6b814d22d4c220") + resolvedTitle;
                 }
-                document.title = '编辑页面: ' + resolvedTitle;
+                document.title = ui("m_8c6b814d22d4c220") + resolvedTitle;
                 const banner = document.getElementById('sectionEditBanner');
                 if (banner) { banner.classList.add('d-none'); banner.classList.remove('d-flex'); }
                 // 숨겼던 필드 복원
@@ -4436,20 +4338,20 @@ async function savePage() {
                     window.showConflictModal({ current_version: data.current_version, content: data.content });
                 }
                 // 경계 변경: 충돌 UI 없이 전체 편집 모드로 전환 완료 → 사용자가 재저장 가능
-                saveBtn.innerHTML = '<i class="mdi mdi-check"></i> 저장';
+                saveBtn.innerHTML = ui("m_046f49a813cb38ec");
                 return;
             }
 
             // 버전 충돌 (Optimistic Locking Failure) — 일반 편집
             window.showConflictModal(data);
 
-            saveBtn.innerHTML = '<i class="mdi mdi-check"></i> 저장';
+            saveBtn.innerHTML = ui("m_046f49a813cb38ec");
             return;
         }
 
         if (!res.ok) {
             const data = await res.json();
-            throw new Error(data.error || '保存失败');
+            throw new Error(data.error || ui("m_6309a3bb5ba4c714"));
         }
 
         const saveResult: any = await res.json().catch(() => ({}));
@@ -4466,9 +4368,9 @@ async function savePage() {
             isSuccess = true; // beforeunload 경고 방지
             await window.Swal.fire({
                 icon: 'info',
-                title: '편집 요청이 제출되었습니다',
-                html: '이 편집은 검토자의 승인 후 반영됩니다.<br>승인 전까지 공개 문서에는 표시되지 않습니다.',
-                confirmButtonText: '확인',
+                title: ui("m_df18fdfe5cdeb2fd"),
+                html: ui("m_cf57f32bf33ad37b"),
+                confirmButtonText: ui("m_1aacb54c49924296"),
             });
             window.location.href = '/w/' + encodeURIComponent(saveResult.slug || slug);
             return;
@@ -4493,7 +4395,7 @@ async function savePage() {
                 if (resolveRes.ok) {
                     mcpSubmissionId = null;
                 } else {
-                    console.warn('[edit/main] MCP 제출안 cleanup 실패 (HTTP ' + resolveRes.status + '). mypage 에서 수동 정리 필요.');
+                    console.warn(ui("m_d9f1cf3269b58ea1") + resolveRes.status + ui("m_4e6946551ccdf3fe"));
                 }
             } catch (e) {
                 console.warn('[edit/main] MCP 제출안 cleanup 네트워크 오류:', e);
@@ -4524,8 +4426,8 @@ async function savePage() {
         }
         window.Swal.fire({
             icon: 'success',
-            title: '저장 완료!',
-            text: '문서가 성공적으로 已保存。',
+            title: ui("m_d947ad1f21ddcc20"),
+            text: ui("m_1d1afe44d0161452"),
             timer: 1500,
             showConfirmButton: false,
         }).then(() => {
@@ -4533,12 +4435,12 @@ async function savePage() {
         });
 
     } catch (err) {
-        window.Swal.fire('错误', err.message, 'error');
+        window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
     } finally {
         saveInProgress = false;
         // blockResave 가 true 이면 재저장으로 인한 덮어쓰기 위험이 있으므로 버튼을 비활성 상태로 유지.
         if (!isSuccess && !blockResave) {
-            saveBtn.innerHTML = '<i class="mdi mdi-check"></i> 저장';
+            saveBtn.innerHTML = ui("m_046f49a813cb38ec");
             if (turnstileWidgetId !== null) {
                 refreshTurnstile();
             } else {
@@ -4575,12 +4477,12 @@ async function cancelEdit() {
     if (editor && editor.getMarkdown().trim()) {
         // 내용 변경 여부 확인
         const result = await window.Swal.fire({
-            title: '편집을 취소하시겠습니까?',
-            text: '저장하지 않은 변경사항이 사라집니다.',
+            title: ui("m_ba1fba90f72fd53c"),
+            text: ui("m_9d6ccf8be686e292"),
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: '나가기',
-            cancelButtonText: '계속 편집',
+            confirmButtonText: ui("m_22bfa6072aee5d1e"),
+            cancelButtonText: ui("m_0120b5eb9a8d6f42"),
         });
         if (result.isConfirmed) {
             syncStateToWindow();
@@ -4601,7 +4503,7 @@ async function loadBlogContentForEdit() {
     if (blogPostId) {
         try {
             const res = await fetch(`/api/blog/${blogPostId}`);
-            if (!res.ok) throw new Error('포스트를 찾을 수 없습니다.');
+            if (!res.ok) throw new Error(ui("m_398adf981018d45c"));
             const post = await res.json();
             if (titleInput) titleInput.value = post.title || '';
             const blogContent = stripLineLeadingZeroWidth(post.content || '');
@@ -4609,7 +4511,7 @@ async function loadBlogContentForEdit() {
             syncStateToWindow();
             originalContent = blogContent;
         } catch (e) {
-            window.Swal.fire('错误', e.message, 'error').then(() => {
+            window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message, 'error').then(() => {
                 window.location.href = '/blog';
             });
             return;
@@ -4635,7 +4537,7 @@ async function saveBlogPost() {
     const titleInput = document.getElementById('blogTitleInput');
     const title = titleInput ? titleInput.value.trim() : '';
     if (!title) {
-        window.Swal.fire('错误', '제목을 입력해주세요.', 'warning');
+        window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_c5348ab5543850dd"), 'warning');
         return;
     }
 
@@ -4645,7 +4547,7 @@ async function saveBlogPost() {
     if (saveInProgress) return;
     saveInProgress = true;
     saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 저장 중...';
+    saveBtn.innerHTML = ui("m_ab8e2f89966c4faa");
 
     try {
         const url = blogPostId ? `/api/blog/${blogPostId}` : '/api/blog';
@@ -4658,7 +4560,7 @@ async function saveBlogPost() {
 
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || '保存失败');
+            throw new Error(data.error || ui("m_6309a3bb5ba4c714"));
         }
 
         const data = await res.json();
@@ -4668,17 +4570,17 @@ async function saveBlogPost() {
 
         window.Swal.fire({
             icon: 'success',
-            title: '저장 완료!',
-            text: '블로그 포스트가 已保存。',
+            title: ui("m_d947ad1f21ddcc20"),
+            text: ui("m_ae7385e23546887a"),
             timer: 1500,
             showConfirmButton: false,
         }).then(() => {
             window.location.href = `/blog/${savedId}`;
         });
     } catch (err) {
-        window.Swal!.fire('错误', (err as Error).message, 'error');
+        window.Swal!.fire(ui("m_0bc1fb72ae1be5c5"), (err as Error).message, 'error');
         saveInProgress = false;
-        saveBtn.innerHTML = '<i class="mdi mdi-check"></i> 저장';
+        saveBtn.innerHTML = ui("m_046f49a813cb38ec");
         saveBtn.disabled = false;
     }
 }

@@ -33,6 +33,7 @@
  */
 
 // types.ts 의 declare global { Window {...} } 가 본 모듈 컨텍스트로 들어오도록 import.
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import './types';
 
 declare global {
@@ -186,7 +187,7 @@ function formatHeadingList<T>(items: T[], mapToLabel: (item: T) => string): stri
     const labels = items.map(mapToLabel);
     if (labels.length <= HEADING_LIST_CAP) return labels.join(', ');
     const head = labels.slice(0, HEADING_LIST_CAP).join(', ');
-    return `${head} 외 ${labels.length - HEADING_LIST_CAP}개`;
+    return ui("m_37a35f695d13de6a", [head, labels.length - HEADING_LIST_CAP]);
 }
 
 function buildHeadingDiffParts(
@@ -194,22 +195,22 @@ function buildHeadingDiffParts(
     currHeadings: HeadingForSummary[],
     opts?: BuildHeadingDiffOptions,
 ): string[] {
-    const labelPrefix = (opts && opts.labelPrefix) || '섹션';
+    const labelPrefix = (opts && opts.labelPrefix) || ui("m_6d3d57e31f94600e");
     const includeBodyEdits = !!(opts && opts.includeBodyEdits);
     const diff = diffHeadings(origHeadings, currHeadings);
     const parts: string[] = [];
     if (diff.renamed.length === 1) {
         const r = diff.renamed[0];
-        parts.push(`${labelPrefix} '${r.from}' → '${r.to}' 이름 변경`);
+        parts.push(ui("m_e31c881e16db95c5", [labelPrefix, r.from, r.to]));
     } else if (diff.renamed.length > 1) {
         const list = formatHeadingList(diff.renamed, r => `'${r.from}' → '${r.to}'`);
-        parts.push(`${labelPrefix} 이름 변경 ${list}`);
+        parts.push(ui("m_e7a8a42e031bf6ea", [labelPrefix, list]));
     }
     if (diff.added.length) {
-        parts.push(`${labelPrefix} ${formatHeadingList(diff.added, h => `'${h.text}'`)} 추가`);
+        parts.push(ui("m_2f18f2b811bf77a0", [labelPrefix, formatHeadingList(diff.added, h => `'${h.text}'`)]));
     }
     if (diff.removed.length) {
-        parts.push(`${labelPrefix} ${formatHeadingList(diff.removed, h => `'${h.text}'`)} 삭제`);
+        parts.push(ui("m_f5adc7cae0cf6975", [labelPrefix, formatHeadingList(diff.removed, h => `'${h.text}'`)]));
     }
     // 헤딩이 동일한(공통) 섹션의 본문이 바뀐 경우 "섹션 'X' 편집" 으로 보고.
     // 부모-자식 섹션이 같은 변화로 중복 표시되는 잡음을 피하려고 own-body
@@ -224,7 +225,7 @@ function buildHeadingDiffParts(
             }
         }
         if (edited.length) {
-            parts.push(`${labelPrefix} ${formatHeadingList(edited, h => `'${h.text}'`)} 편집`);
+            parts.push(ui("m_aef0755c90fc2f17", [labelPrefix, formatHeadingList(edited, h => `'${h.text}'`)]));
         }
     }
     return parts;
@@ -259,7 +260,7 @@ function formatLineDiffStats(orig: string, curr: string): string {
         const oldN = countLines(orig);
         const newN = countLines(curr);
         if (oldN === newN) return '';
-        return newN > oldN ? `[+${newN - oldN}줄]` : `[-${oldN - newN}줄]`;
+        return newN > oldN ? ui("m_0ce908153b8c4723", [newN - oldN]) : ui("m_28f4885ee4cc6f4d", [oldN - newN]);
     }
     const Diff = window.Diff;
     if (!Diff || typeof Diff.diffLines !== 'function') return '';
@@ -279,9 +280,9 @@ function formatLineDiffStats(orig: string, curr: string): string {
         return '';
     }
     if (!added && !removed) return '';
-    if (added && removed) return `[+${added}줄 -${removed}줄]`;
-    if (added) return `[+${added}줄]`;
-    return `[-${removed}줄]`;
+    if (added && removed) return ui("m_4a3f2ae942af04cc", [added, removed]);
+    if (added) return ui("m_0ce908153b8c4723", [added]);
+    return ui("m_28f4885ee4cc6f4d", [removed]);
 }
 
 function appendLineStats(summary: string, stats: string): string {
@@ -318,9 +319,9 @@ function buildAutoEditSummary(): string {
             const headingRemoved = editorAvailable && !topHeading;
             const origSub = getOriginalHeadingsForSummary().slice(1);
             const currSub = headingRemoved ? currHeadings : currHeadings.slice(1);
-            const subParts = buildHeadingDiffParts(origSub, currSub, { labelPrefix: '하위 섹션' });
-            let prefix = `'${baseHeading}' 섹션을 '${splitInfo.newTitle}' 하위 문서로 분리`;
-            if (headingRemoved) prefix += ", 섹션 헤딩 삭제";
+            const subParts = buildHeadingDiffParts(origSub, currSub, { labelPrefix: ui("m_c10e2eaa0268650c") });
+            let prefix = ui("m_f359d66813daa42f", [baseHeading, splitInfo.newTitle]);
+            if (headingRemoved) prefix += ui("m_e1f660558dd31528");
             if (subParts.length) prefix += ', ' + subParts.join(', ');
             const sectionStats = editorAvailable
                 ? formatLineDiffStats(window.originalContent || '', currentContent)
@@ -351,17 +352,17 @@ function buildAutoEditSummary(): string {
         // 첫 항목(섹션 헤딩) 을 제외한 나머지를 비교한다.
         const origSub = getOriginalHeadingsForSummary().slice(1);
         const currSub = sectionStatus === 'removed' ? currHeadings : currHeadings.slice(1);
-        const subParts = buildHeadingDiffParts(origSub, currSub, { labelPrefix: '하위 섹션' });
+        const subParts = buildHeadingDiffParts(origSub, currSub, { labelPrefix: ui("m_c10e2eaa0268650c") });
 
         let prefix: string;
         if (sectionStatus === 'removed') {
-            prefix = `'${baseHeading}' 섹션 헤딩 삭제`;
+            prefix = ui("m_985a5f979ef19c05", [baseHeading]);
         } else if (sectionStatus === 'level') {
-            prefix = `'${baseHeading}' 섹션 레벨 변경 (H${baseLevel} → H${newLevel})`;
+            prefix = ui("m_cc11371b5a1dcf37", [baseHeading, baseLevel, newLevel]);
         } else if (sectionStatus === 'renamed') {
-            prefix = `'${baseHeading}' → '${newText}' 섹션 이름 변경`;
+            prefix = ui("m_8a12bc762ca4fdd5", [baseHeading, newText]);
         } else {
-            prefix = `'${baseHeading}' 편집`;
+            prefix = ui("m_3ce84c749766490c", [baseHeading]);
         }
         if (subParts.length) prefix += ', ' + subParts.join(', ');
         const sectionStats = editorAvailable
@@ -374,7 +375,7 @@ function buildAutoEditSummary(): string {
     const originalPageMeta = window.originalPageMeta;
     if (!originalPageMeta) {
         const newDocStats = editorAvailable ? formatLineDiffStats('', currentContent) : '';
-        return appendLineStats('문서 생성', newDocStats);
+        return appendLineStats(ui("m_ba5f59098d850c32"), newDocStats);
     }
 
     const origCats = originalPageMeta.category
@@ -400,14 +401,14 @@ function buildAutoEditSummary(): string {
 
     const parts: string[] = [];
     if (origTitle !== currTitle) {
-        if (!origTitle) parts.push(`대체 제목 '${currTitle}' 설정`);
-        else if (!currTitle) parts.push(`대체 제목 '${origTitle}' 해제`);
-        else parts.push(`대체 제목 '${origTitle}' → '${currTitle}' 변경`);
+        if (!origTitle) parts.push(ui("m_ae5e8a60a5e184d7", [currTitle]));
+        else if (!currTitle) parts.push(ui("m_2edd189025428bf6", [origTitle]));
+        else parts.push(ui("m_8c7c679e495c64d0", [origTitle, currTitle]));
     }
-    if (added.length) parts.push(`분류 ${added.map(c => `'${c}'`).join(', ')} 추가`);
-    if (removed.length) parts.push(`분류 ${removed.map(c => `'${c}'`).join(', ')} 삭제`);
+    if (added.length) parts.push(ui("m_6c44f3d4ed564acf", [added.map(c => `'${c}'`).join(', ')]));
+    if (removed.length) parts.push(ui("m_5a040009152a8117", [removed.map(c => `'${c}'`).join(', ')]));
     if (origRedirect !== currRedirect) {
-        parts.push(currRedirect ? `넘겨주기 '${currRedirect}' 설정` : '넘겨주기 해제');
+        parts.push(currRedirect ? ui("m_23a212a1e65a49ad", [currRedirect]) : ui("m_f6fbe6e758da10c3"));
     }
 
     // 편집 메모 — null/빈 문자열은 동일(미설정)로 취급.
@@ -415,16 +416,16 @@ function buildAutoEditSummary(): string {
     const noteEl = document.getElementById('editorNoteInput') as HTMLTextAreaElement | null;
     const currNote = noteEl ? noteEl.value.trim() : '';
     if (origNote !== currNote) {
-        if (!origNote) parts.push('편집 메모 설정');
-        else if (!currNote) parts.push('편집 메모 삭제');
-        else parts.push('편집 메모 변경');
+        if (!origNote) parts.push(ui("m_4622a0ae2316d86b"));
+        else if (!currNote) parts.push(ui("m_6cd2a24fc06cb39b"));
+        else parts.push(ui("m_8dcd11aee6f0dbb9"));
     }
 
     if (editorAvailable) {
         const currHeadings = extractHeadingsForSummary(currentContent);
         const origHeadings = getOriginalHeadingsForSummary();
         const headingParts = buildHeadingDiffParts(origHeadings, currHeadings, {
-            labelPrefix: '섹션',
+            labelPrefix: ui("m_6d3d57e31f94600e"),
             includeBodyEdits: true,
         });
         for (const p of headingParts) parts.push(p);
@@ -435,7 +436,7 @@ function buildAutoEditSummary(): string {
         if (!headingParts.length && parts.length === 0
             && origHeadings.length === 0 && currHeadings.length === 0
             && (window.originalContent || '') !== (currentContent || '')) {
-            parts.push('본문 편집');
+            parts.push(ui("m_8029674526ac2912"));
         }
     }
 

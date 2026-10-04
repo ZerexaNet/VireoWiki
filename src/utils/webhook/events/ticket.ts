@@ -1,5 +1,6 @@
 // 티켓 생성 / 상태 변경 Discord 이벤트 빌더 (admin 채널).
 
+import { ui } from '../../../i18n/server';
 import type { Env } from '../../../types';
 import type { WebhookEvent } from '../discord';
 import { absoluteUrl, escapeMd, nowIso, truncate } from '../format';
@@ -30,7 +31,7 @@ export function ticketCreate(args: {
                 icon_url: actor.picture ? absoluteUrl(env, actor.picture) : undefined,
             },
             fields: [
-                { name: '카테고리', value: escapeMd(category || '미지정'), inline: true },
+                { name: ui("m_b68c7d1bc9592573"), value: escapeMd(category || ui("m_050d981c6c43cdfb")), inline: true },
             ],
             timestamp: nowIso(),
         },
@@ -53,7 +54,7 @@ export function ticketStatus(args: {
         type: 'ticket_status',
         embed: {
             color: COLOR_TICKET,
-            title: `🎫 #${ticketId} 상태 변경`,
+            title: ui("m_6d7c36a0f5e096ea", [ticketId]),
             url,
             description:
                 `${truncate(escapeMd(title), 80)}\n\n\`${escapeMd(oldStatus)}\` → \`${escapeMd(newStatus)}\``,

@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import {
     buildCategoryOnlyStatements,
@@ -179,22 +180,22 @@ adminRoutes.put('/users/:id/role', async (c) => {
     const rbac = c.get('rbac') as RBAC;
 
     if (role !== 'user' && role !== 'discussion_manager' && role !== 'admin') {
-        return c.json({ error: '잘못된 권한입니다.' }, 400);
+        return c.json({ error: ui("m_ea679e2e44dc658c") }, 400);
     }
 
     const targetUser = await db.prepare(`SELECT * FROM users WHERE id = ?`).bind(targetUserId).first<User>();
 
     if (!targetUser) {
-        return c.json({ error: '유저를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_e380992be8c63526") }, 404);
     }
 
     if (isSuperAdmin(targetUser.email, c.env)) {
-        return c.json({ error: '최고 관리자의 권한은 변경할 수 없습니다.' }, 400);
+        return c.json({ error: ui("m_df76d4b07bcc4ab1") }, 400);
     }
 
     // 오직 최고 관리자만 다른 사람을 관리자로 만들거나 내릴 수 있음
     if (!rbac.can(currentUser.role, '*')) {
-        return c.json({ error: '관리자 임명/해제는 최고 관리자만 가능합니다.' }, 403);
+        return c.json({ error: ui("m_134929c0476fe5be") }, 403);
     }
 
     const oldRole = targetUser.role;
@@ -218,7 +219,7 @@ adminRoutes.put('/users/:id/role', async (c) => {
         }));
     }
 
-    writeAdminLog(c, 'role_change', `유저 #${targetUserId}(${targetUser.name})의 권한을 '${role}'(으)로 변경`, currentUser.id);
+    writeAdminLog(c, 'role_change', ui("m_f8876d2c7b783ca4", [targetUserId, targetUser.name, role]), currentUser.id);
     return c.json({ success: true });
 });
 
@@ -230,22 +231,22 @@ adminRoutes.put('/users/:id/ban', async (c) => {
     const rbac = c.get('rbac') as RBAC;
 
     if (typeof days !== 'number' || days < 0) {
-        return c.json({ error: '올바른 기간을 입력하세요.' }, 400);
+        return c.json({ error: ui("m_645f32deb057bd92") }, 400);
     }
 
     const targetUser = await db.prepare(`SELECT * FROM users WHERE id = ?`).bind(targetUserId).first<User>();
 
     if (!targetUser) {
-        return c.json({ error: '유저를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_e380992be8c63526") }, 404);
     }
 
     if (isSuperAdmin(targetUser.email, c.env)) {
-        return c.json({ error: '최고 관리자는 차단할 수 없습니다.' }, 400);
+        return c.json({ error: ui("m_1f541562fd01c78c") }, 400);
     }
 
     // 관리자는 다른 관리자를 차단할 수 없음 (최고 관리자 제외)
     if (!rbac.can(currentUser.role, '*') && rbac.can(targetUser.role, 'admin:access')) {
-        return c.json({ error: '관리자는 다른 관리자를 차단할 수 없습니다.' }, 403);
+        return c.json({ error: ui("m_3ed6d4e354c838b3") }, 403);
     }
 
     const now = Math.floor(Date.now() / 1000);
@@ -265,13 +266,13 @@ adminRoutes.put('/users/:id/ban', async (c) => {
     // 차단 시 알림 생성 (+ 푸시)
     if (days > 0) {
         try {
-            const banContent = `관리자에 의해 ${days}일간 차단되었습니다.`;
+            const banContent = ui("m_abb4a8d8ac94c992", [days]);
             await createNotification(c.env, c.executionCtx, {
                 userId: Number(targetUserId),
                 type: 'banned',
                 content: banContent,
                 push: {
-                    title: '차단 안내',
+                    title: ui("m_a9565509464e86d1"),
                     body: banContent,
                     url: '/',
                     tag: `ban:${targetUserId}`,
@@ -290,7 +291,7 @@ adminRoutes.put('/users/:id/ban', async (c) => {
         days: days > 0 ? days : undefined,
     }));
 
-    writeAdminLog(c, 'ban', days === 0 ? `유저 #${targetUserId}(${targetUser.name}) 차단 해제` : `유저 #${targetUserId}(${targetUser.name})를 ${days}일간 차단`, currentUser.id);
+    writeAdminLog(c, 'ban', days === 0 ? ui("m_069ae175a607723e", [targetUserId, targetUser.name]) : ui("m_5db36d624bb88e41", [targetUserId, targetUser.name, days]), currentUser.id);
     return c.json({ success: true, banned_until: bannedUntil });
 });
 
@@ -395,13 +396,13 @@ adminRoutes.post('/announcements', async (c) => {
     const db = c.env.DB;
     const body = await c.req.json<AnnouncementCreateRequest>().catch(() => ({} as AnnouncementCreateRequest));
     const title = typeof body.title === 'string' ? body.title.trim() : '';
-    if (!title) return c.json({ error: '제목을 입력하세요.' }, 400);
-    if (title.length > 200) return c.json({ error: '제목은 200자 이하여야 합니다.' }, 400);
+    if (!title) return c.json({ error: ui("m_80a42fdc93a8b3a3") }, 400);
+    if (title.length > 200) return c.json({ error: ui("m_6065324cc601db46") }, 400);
 
     let url: string | null = null;
     if (typeof body.url === 'string' && body.url.trim()) {
         if (!isSafeAnnouncementUrl(body.url)) {
-            return c.json({ error: 'URL 은 http(s):// 또는 / 로 시작해야 합니다.' }, 400);
+            return c.json({ error: ui("m_721e85fe55a6dfc1") }, 400);
         }
         url = body.url.trim();
     }
@@ -409,18 +410,18 @@ adminRoutes.post('/announcements', async (c) => {
     let postId: number | null = null;
     if (body.postId !== undefined && body.postId !== null) {
         const n = Number(body.postId);
-        if (!Number.isInteger(n) || n <= 0) return c.json({ error: 'postId 가 올바르지 않습니다.' }, 400);
+        if (!Number.isInteger(n) || n <= 0) return c.json({ error: ui("m_cd6ca34f9c9274eb") }, 400);
         const row = await db
             .prepare('SELECT id, deleted_at FROM blog_posts WHERE id = ?')
             .bind(n)
             .first<{ id: number; deleted_at: number | null }>();
-        if (!row || row.deleted_at) return c.json({ error: '존재하지 않는 블로그 포스트입니다.' }, 404);
+        if (!row || row.deleted_at) return c.json({ error: ui("m_0a9a88e363952e3f") }, 404);
         postId = n;
     }
 
     const iconValue = validateIcon(body.icon);
     if (iconValue === undefined && body.icon !== undefined && body.icon !== null && body.icon !== '') {
-        return c.json({ error: '아이콘 형식이 올바르지 않습니다.' }, 400);
+        return c.json({ error: ui("m_fb575a3d25163990") }, 400);
     }
     const icon: string | null = iconValue ?? null;
 
@@ -442,12 +443,12 @@ adminRoutes.post('/announcements', async (c) => {
         throw e;
     }
     if (conflict) {
-        return c.json({ error: '해당 블로그 포스트는 이미 공지로 발행되어 있습니다.' }, 409);
+        return c.json({ error: ui("m_8faf5b2e2a4160c8") }, 409);
     }
 
     const id = allocatedId;
     const currentUser = c.get('user')!;
-    writeAdminLog(c, 'announce', `공지 발행: #${id} "${title}"${postId !== null ? ` (blog#${postId})` : ''}`, currentUser.id);
+    writeAdminLog(c, 'announce', ui("m_dd77fc076afa8ac6", [id, title, postId !== null ? ` (blog#${postId})` : '']), currentUser.id);
 
     // Discord community 채널 알림은 블로그 포스트 연동 공지에만 발송 (기존 동작 보존).
     if (postId !== null) {
@@ -481,7 +482,7 @@ adminRoutes.post('/announcements', async (c) => {
 adminRoutes.patch('/announcements/:id', async (c) => {
     const db = c.env.DB;
     const id = Number(c.req.param('id'));
-    if (!Number.isInteger(id) || id <= 0) return c.json({ error: 'id 가 올바르지 않습니다.' }, 400);
+    if (!Number.isInteger(id) || id <= 0) return c.json({ error: ui("m_4ca9f71978de0cc6") }, 400);
 
     const body = await c.req.json<AnnouncementUpdateRequest>().catch(() => ({} as AnnouncementUpdateRequest));
 
@@ -489,15 +490,15 @@ adminRoutes.patch('/announcements/:id', async (c) => {
     let titleUpdate: string | undefined;
     if (typeof body.title === 'string') {
         const t = body.title.trim();
-        if (!t) return c.json({ error: '제목을 입력하세요.' }, 400);
-        if (t.length > 200) return c.json({ error: '제목은 200자 이하여야 합니다.' }, 400);
+        if (!t) return c.json({ error: ui("m_80a42fdc93a8b3a3") }, 400);
+        if (t.length > 200) return c.json({ error: ui("m_6065324cc601db46") }, 400);
         titleUpdate = t;
     }
     let iconUpdate: string | null | undefined; // undefined = 변경 안 함, null = 명시적으로 기본 아이콘
     if (body.icon !== undefined) {
         const v = validateIcon(body.icon);
         if (v === undefined && body.icon !== null && body.icon !== '') {
-            return c.json({ error: '아이콘 형식이 올바르지 않습니다.' }, 400);
+            return c.json({ error: ui("m_fb575a3d25163990") }, 400);
         }
         iconUpdate = v ?? null;
     }
@@ -528,9 +529,9 @@ adminRoutes.patch('/announcements/:id', async (c) => {
         if (e instanceof AnnouncementMutationError) return c.json({ error: e.message }, 503);
         throw e;
     }
-    if (notFound) return c.json({ error: '공지를 찾을 수 없습니다.' }, 404);
+    if (notFound) return c.json({ error: ui("m_8941843751b73156") }, 404);
     if (didChange) {
-        writeAdminLog(c, 'announce', `공지 수정: #${id} "${finalTitle}"`, c.get('user')!.id);
+        writeAdminLog(c, 'announce', ui("m_159b9a7741b2361c", [id, finalTitle]), c.get('user')!.id);
     }
     return c.json({ success: true });
 });
@@ -541,7 +542,7 @@ adminRoutes.patch('/announcements/:id', async (c) => {
 adminRoutes.delete('/announcements/:id', async (c) => {
     const db = c.env.DB;
     const id = Number(c.req.param('id'));
-    if (!Number.isInteger(id) || id <= 0) return c.json({ error: 'id 가 올바르지 않습니다.' }, 400);
+    if (!Number.isInteger(id) || id <= 0) return c.json({ error: ui("m_4ca9f71978de0cc6") }, 400);
 
     let notFound = false;
     let removedTitle = '';
@@ -557,8 +558,8 @@ adminRoutes.delete('/announcements/:id', async (c) => {
         if (e instanceof AnnouncementMutationError) return c.json({ error: e.message }, 503);
         throw e;
     }
-    if (notFound) return c.json({ error: '공지를 찾을 수 없습니다.' }, 404);
-    writeAdminLog(c, 'announce', `공지 철회: #${id} "${removedTitle}"`, c.get('user')!.id);
+    if (notFound) return c.json({ error: ui("m_8941843751b73156") }, 404);
+    writeAdminLog(c, 'announce', ui("m_1f2acd38d1fdb703", [id, removedTitle]), c.get('user')!.id);
     return c.json({ success: true });
 });
 
@@ -569,11 +570,11 @@ adminRoutes.delete('/announcements/:id', async (c) => {
 adminRoutes.post('/announcements/reorder', async (c) => {
     const db = c.env.DB;
     const body = await c.req.json<AnnouncementReorderRequest>().catch(() => ({} as AnnouncementReorderRequest));
-    if (!Array.isArray(body.order)) return c.json({ error: 'order 는 배열이어야 합니다.' }, 400);
+    if (!Array.isArray(body.order)) return c.json({ error: ui("m_279a839056ee1c30") }, 400);
 
     const newOrderIds = body.order.map(n => Number(n));
     if (new Set(newOrderIds).size !== newOrderIds.length) {
-        return c.json({ error: '중복된 ID 가 있습니다.' }, 400);
+        return c.json({ error: ui("m_414eef8d5089d64b") }, 400);
     }
 
     let mismatch = false;
@@ -591,8 +592,8 @@ adminRoutes.post('/announcements/reorder', async (c) => {
         if (e instanceof AnnouncementMutationError) return c.json({ error: e.message }, 503);
         throw e;
     }
-    if (mismatch) return c.json({ error: '현재 공지 ID 와 일치해야 합니다.' }, 400);
-    writeAdminLog(c, 'announce', '공지 순서 변경', c.get('user')!.id);
+    if (mismatch) return c.json({ error: ui("m_ce643349a6112764") }, 400);
+    writeAdminLog(c, 'announce', ui("m_7b2942f9fc5aa0db"), c.get('user')!.id);
     return c.json({ success: true });
 });
 
@@ -602,10 +603,10 @@ adminRoutes.post('/announcements/reorder', async (c) => {
 adminRoutes.post('/announcements/:id/move', async (c) => {
     const db = c.env.DB;
     const id = Number(c.req.param('id'));
-    if (!Number.isInteger(id) || id <= 0) return c.json({ error: 'id 가 올바르지 않습니다.' }, 400);
+    if (!Number.isInteger(id) || id <= 0) return c.json({ error: ui("m_4ca9f71978de0cc6") }, 400);
     const body = await c.req.json<AnnouncementMoveRequest>().catch(() => ({} as AnnouncementMoveRequest));
     if (body.direction !== 'up' && body.direction !== 'down') {
-        return c.json({ error: 'direction 은 up 또는 down 이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_8c9c3d9c42be0512") }, 400);
     }
 
     let notFound = false;
@@ -624,8 +625,8 @@ adminRoutes.post('/announcements/:id/move', async (c) => {
         if (e instanceof AnnouncementMutationError) return c.json({ error: e.message }, 503);
         throw e;
     }
-    if (notFound) return c.json({ error: '공지를 찾을 수 없습니다.' }, 404);
-    if (moved) writeAdminLog(c, 'announce', `공지 이동: #${id} ${body.direction}`, c.get('user')!.id);
+    if (notFound) return c.json({ error: ui("m_8941843751b73156") }, 404);
+    if (moved) writeAdminLog(c, 'announce', ui("m_e547850637ba3ade", [id, body.direction]), c.get('user')!.id);
     return c.json({ success: true });
 });
 
@@ -657,7 +658,7 @@ adminRoutes.put('/settings', async (c) => {
         const signupChanged = body.signup_policy !== undefined && oldRow != null && body.signup_policy !== oldRow.signup_policy;
         const minAgeChanged = body.edit_acl_min_age_days !== undefined && Number(body.edit_acl_min_age_days) !== (oldRow?.edit_acl_min_age_days ?? 0);
         if (signupChanged || minAgeChanged) {
-            return c.json({ error: '사이트 전역 설정은 최고 관리자만 변경할 수 있습니다.' }, 403);
+            return c.json({ error: ui("m_4e9dad53d17ad6f9") }, 403);
         }
     }
 
@@ -666,7 +667,7 @@ adminRoutes.put('/settings', async (c) => {
     if (body.namechange_ratelimit !== undefined) {
         const val = Number(body.namechange_ratelimit);
         if (isNaN(val) || (val < -1)) {
-            return c.json({ error: '-1 이상의 정수를 입력하세요.' }, 400);
+            return c.json({ error: ui("m_c3f42c4127677ace") }, 400);
         }
         await db.prepare('UPDATE settings SET namechange_ratelimit = ? WHERE id = 1')
             .bind(val)
@@ -689,7 +690,7 @@ adminRoutes.put('/settings', async (c) => {
     if (body.signup_policy !== undefined) {
         const val = body.signup_policy;
         if (val !== 'open' && val !== 'approval') {
-            return c.json({ error: '회원가입 정책은 "open" 또는 "approval"만 가능합니다.' }, 400);
+            return c.json({ error: ui("m_3926d37021dd5bac") }, 400);
         }
         await db.prepare('UPDATE settings SET signup_policy = ? WHERE id = 1')
             .bind(val)
@@ -702,7 +703,7 @@ adminRoutes.put('/settings', async (c) => {
     if (body.edit_acl_min_age_days !== undefined) {
         const val = Number(body.edit_acl_min_age_days);
         if (!Number.isFinite(val) || !Number.isInteger(val) || val < 0 || val > 36500) {
-            return c.json({ error: '편집 ACL 가입 일수 임계값은 0 이상 36500 이하의 정수여야 합니다.' }, 400);
+            return c.json({ error: ui("m_dd73227944f3b24e") }, 400);
         }
         await db.prepare('UPDATE settings SET edit_acl_min_age_days = ? WHERE id = 1')
             .bind(val)
@@ -721,12 +722,12 @@ adminRoutes.put('/settings', async (c) => {
     if (changes.length > 0 && rbac.can(currentUser.role, '*')) {
         dispatchDiscord(c.env, c.executionCtx, superAdminAction({
             actorName: currentUser.name,
-            label: '전역 설정 변경',
+            label: ui("m_f95cea1cbd17aed8"),
             target: changes.join('\n'),
         }));
     }
 
-    writeAdminLog(c, 'settings', `위키 설정 변경: ${JSON.stringify(body)}`, currentUser.id);
+    writeAdminLog(c, 'settings', ui("m_3b95ca231fd78ac9", [JSON.stringify(body)]), currentUser.id);
     return c.json({ success: true });
 });
 
@@ -745,7 +746,7 @@ adminRoutes.get('/signup-requests', async (c) => {
 
     const validStatuses = ['pending', 'approved', 'rejected', 'blocked', 'all'];
     if (!validStatuses.includes(status)) {
-        return c.json({ error: '잘못된 상태 값입니다.' }, 400);
+        return c.json({ error: ui("m_cb74b7f1f6aa5aba") }, 400);
     }
 
     let queryStr = `SELECT sr.*, u.name as reviewer_name FROM signup_requests sr LEFT JOIN users u ON sr.reviewed_by = u.id`;
@@ -792,10 +793,10 @@ adminRoutes.put('/signup-requests/:id/approve', async (c) => {
         .first<{ id: number; provider: string; uid: string; email: string; name: string; picture: string | null; picture_private: number; status: string }>();
 
     if (!request) {
-        return c.json({ error: '가입 신청을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_3aefa99fa362ec14") }, 404);
     }
     if (request.status !== 'pending') {
-        return c.json({ error: '이미 처리된 신청입니다.' }, 400);
+        return c.json({ error: ui("m_26bf3a5c77a1d6e8") }, 400);
     }
 
     // 이메일 중복 체크 (다른 공급자로 이미 가입된 이메일)
@@ -804,7 +805,7 @@ adminRoutes.put('/signup-requests/:id/approve', async (c) => {
         .bind(request.email)
         .first<{ id: number }>();
     if (emailDup) {
-        return c.json({ error: '이미 동일한 이메일로 가입된 사용자가 있습니다.' }, 409);
+        return c.json({ error: ui("m_3207e71f669e7d66") }, 409);
     }
 
     // 중복 이름 확인
@@ -860,15 +861,15 @@ adminRoutes.put('/signup-requests/:id/approve', async (c) => {
         c.executionCtx.waitUntil((async () => {
             await promoteSignupSubscriptions(c.env, requestId, newUserId);
             await pushToUser(c.env, newUserId, {
-                title: '가입이 승인되었습니다',
-                body: `${finalName}님, ${c.env.WIKI_NAME || '위키'}에 오신 것을 환영합니다.`,
+                title: ui("m_fe7c2184c6281693"),
+                body: ui("m_f3b0e304fe72ea17", [finalName, c.env.WIKI_NAME || ui("m_807b32fb748e5ea0")]),
                 url: '/',
                 tag: `signup:${requestId}`,
             });
         })());
     }
 
-    writeAdminLog(c, 'signup_approve', `가입 신청 승인: ${request.name} (${request.email})`, currentUser.id);
+    writeAdminLog(c, 'signup_approve', ui("m_4ac9e18d389472c1", [request.name, request.email]), currentUser.id);
     return c.json({ success: true });
 });
 
@@ -886,10 +887,10 @@ adminRoutes.put('/signup-requests/:id/reject', async (c) => {
         .first<{ id: number; name: string; email: string; status: string }>();
 
     if (!request) {
-        return c.json({ error: '가입 신청을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_3aefa99fa362ec14") }, 404);
     }
     if (request.status !== 'pending') {
-        return c.json({ error: '이미 처리된 신청입니다.' }, 400);
+        return c.json({ error: ui("m_26bf3a5c77a1d6e8") }, 400);
     }
 
     const now = Math.floor(Date.now() / 1000);
@@ -912,15 +913,15 @@ adminRoutes.put('/signup-requests/:id/reject', async (c) => {
     // 옵트인된 구독으로 거절 푸시를 보내고 구독 정리
     c.executionCtx.waitUntil((async () => {
         await pushToSignupRequest(c.env, requestId, {
-            title: '가입 신청 결과',
-            body: '가입 신청이 거절되었습니다. 다시 신청하실 수 있습니다.',
+            title: ui("m_6b2aba4efe8db65a"),
+            body: ui("m_82b589a40a35bb0b"),
             url: '/login',
             tag: `signup:${requestId}`,
         });
         await deleteSignupSubscriptions(c.env, requestId);
     })());
 
-    writeAdminLog(c, 'signup_reject', `가입 신청 거절: ${request.name} (${request.email})`, currentUser.id);
+    writeAdminLog(c, 'signup_reject', ui("m_b961ccd0211a154b", [request.name, request.email]), currentUser.id);
     return c.json({ success: true });
 });
 
@@ -938,10 +939,10 @@ adminRoutes.put('/signup-requests/:id/block', async (c) => {
         .first<{ id: number; name: string; email: string; status: string }>();
 
     if (!request) {
-        return c.json({ error: '가입 신청을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_3aefa99fa362ec14") }, 404);
     }
     if (request.status !== 'pending') {
-        return c.json({ error: '이미 처리된 신청입니다.' }, 400);
+        return c.json({ error: ui("m_26bf3a5c77a1d6e8") }, 400);
     }
 
     const now = Math.floor(Date.now() / 1000);
@@ -957,15 +958,15 @@ adminRoutes.put('/signup-requests/:id/block', async (c) => {
     // 옵트인된 구독으로 차단 푸시를 보내고 구독 정리
     c.executionCtx.waitUntil((async () => {
         await pushToSignupRequest(c.env, requestId, {
-            title: '가입 신청 결과',
-            body: '가입이 차단되어 더 이상 신청하실 수 없습니다.',
+            title: ui("m_6b2aba4efe8db65a"),
+            body: ui("m_128abb2d38023dfd"),
             url: '/login',
             tag: `signup:${requestId}`,
         });
         await deleteSignupSubscriptions(c.env, requestId);
     })());
 
-    writeAdminLog(c, 'signup_block', `가입 신청 차단: ${request.name} (${request.email})`, currentUser.id);
+    writeAdminLog(c, 'signup_block', ui("m_57304c35b2c1ae2b", [request.name, request.email]), currentUser.id);
     return c.json({ success: true });
 });
 
@@ -992,18 +993,18 @@ adminRoutes.post('/categories', async (c) => {
     const { name } = await c.req.json<{ name: string }>();
 
     if (!name || name.trim().length === 0) {
-        return c.json({ error: '카테고리 이름을 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_ba456591ad3e7df7") }, 400);
     }
 
     try {
         await db.prepare('INSERT INTO admin_categories (name) VALUES (?)')
             .bind(name.trim())
             .run();
-        writeAdminLog(c, 'category_add', `카테고리 추가: ${name.trim()}`, c.get('user')!.id);
+        writeAdminLog(c, 'category_add', ui("m_780a4f6da8ad2e1a", [name.trim()]), c.get('user')!.id);
         return c.json({ success: true });
     } catch (e: any) {
         if (e.message?.includes('UNIQUE')) {
-            return c.json({ error: '이미 존재하는 카테고리입니다.' }, 409);
+            return c.json({ error: ui("m_d29e8f3e8ffd04bb") }, 409);
         }
         throw e;
     }
@@ -1025,10 +1026,10 @@ adminRoutes.delete('/categories/:id', async (c) => {
         .run();
 
     if (result.meta.changes === 0) {
-        return c.json({ error: '카테고리를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_8baac37faa1da152") }, 404);
     }
 
-    writeAdminLog(c, 'category_delete', `카테고리 삭제: ${cat?.name || id}`, c.get('user')!.id);
+    writeAdminLog(c, 'category_delete', ui("m_c464bf2bb778ec11", [cat?.name || id]), c.get('user')!.id);
     return c.json({ success: true });
 });
 
@@ -1137,7 +1138,7 @@ adminRoutes.get('/category-acl', async (c) => {
 adminRoutes.get('/category-acl/:name', async (c) => {
     const db = c.env.DB;
     const name = c.req.param('name');
-    if (!name) return c.json({ error: 'name 이 비어 있습니다.' }, 400);
+    if (!name) return c.json({ error: ui("m_fd04e6fd149684a1") }, 400);
 
     const row = await db
         .prepare('SELECT name, edit_acl FROM category_acl WHERE name = ?')
@@ -1185,9 +1186,9 @@ adminRoutes.put('/category-acl/:name', async (c) => {
     const db = c.env.DB;
     const currentUser = c.get('user')!;
     const name = c.req.param('name');
-    if (!name) return c.json({ error: 'name 이 비어 있습니다.' }, 400);
+    if (!name) return c.json({ error: ui("m_fd04e6fd149684a1") }, 400);
     if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(name)) {
-        return c.json({ error: '카테고리 이름에 사용할 수 없는 문자가 포함되어 있습니다.' }, 400);
+        return c.json({ error: ui("m_592c3fe662fb1c68") }, 400);
     }
 
     const body = await c.req.json<{ edit_acl?: unknown }>().catch(() => ({} as { edit_acl?: unknown }));
@@ -1197,7 +1198,7 @@ adminRoutes.put('/category-acl/:name', async (c) => {
 
     if (serialized === null) {
         await clearCategoryAclRow(db, name, currentUser.id);
-        writeAdminLog(c, 'category_acl_clear', `카테고리 ACL 비활성: ${name}`, currentUser.id);
+        writeAdminLog(c, 'category_acl_clear', ui("m_a5312718c2987eb0", [name]), currentUser.id);
         return c.json({ success: true, name, edit_acl: null });
     }
 
@@ -1213,7 +1214,7 @@ adminRoutes.put('/category-acl/:name', async (c) => {
         .bind(name, serialized, currentUser.id)
         .run();
 
-    writeAdminLog(c, 'category_acl_set', `카테고리 ACL 변경: ${name} → ${serialized}`, currentUser.id);
+    writeAdminLog(c, 'category_acl_set', ui("m_0c200cb9ffbed5e8", [name, serialized]), currentUser.id);
     return c.json({ success: true, name, edit_acl: norm.value, exists: true });
 });
 
@@ -1228,7 +1229,7 @@ adminRoutes.delete('/category-acl/:name', async (c) => {
     const db = c.env.DB;
     const currentUser = c.get('user')!;
     const name = c.req.param('name');
-    if (!name) return c.json({ error: 'name 이 비어 있습니다.' }, 400);
+    if (!name) return c.json({ error: ui("m_fd04e6fd149684a1") }, 400);
 
     const aclResult = await db.prepare('DELETE FROM category_acl WHERE name = ?').bind(name).run();
     let legacyChanges = 0;
@@ -1239,9 +1240,9 @@ adminRoutes.delete('/category-acl/:name', async (c) => {
         // admin_categories 가 이미 DROP 된 환경 — 무시.
     }
     if (aclResult.meta.changes === 0 && legacyChanges === 0) {
-        return c.json({ error: '카테고리 ACL 행이 없습니다.' }, 404);
+        return c.json({ error: ui("m_4bc80e3d2f3e6ed7") }, 404);
     }
-    writeAdminLog(c, 'category_acl_delete', `카테고리 ACL 삭제: ${name} (legacy=${legacyChanges})`, currentUser.id);
+    writeAdminLog(c, 'category_acl_delete', ui("m_0c643c63a7d091cb", [name, legacyChanges]), currentUser.id);
     return c.json({ success: true });
 });
 
@@ -1252,7 +1253,7 @@ adminRoutes.delete('/category-acl/:name', async (c) => {
 adminRoutes.get('/category-acl/:name/pages', async (c) => {
     const db = c.env.DB;
     const name = c.req.param('name');
-    if (!name) return c.json({ error: 'name 이 비어 있습니다.' }, 400);
+    if (!name) return c.json({ error: ui("m_fd04e6fd149684a1") }, 400);
 
     const { results } = await db
         .prepare(
@@ -1291,9 +1292,9 @@ adminRoutes.post('/category-acl/:name/bulk-apply', async (c) => {
     const db = c.env.DB;
     const currentUser = c.get('user')!;
     const name = c.req.param('name');
-    if (!name) return c.json({ error: 'name 이 비어 있습니다.' }, 400);
+    if (!name) return c.json({ error: ui("m_fd04e6fd149684a1") }, 400);
     if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(name)) {
-        return c.json({ error: '카테고리 이름에 사용할 수 없는 문자가 포함되어 있습니다.' }, 400);
+        return c.json({ error: ui("m_592c3fe662fb1c68") }, 400);
     }
 
     const body = await c.req.json<{
@@ -1331,7 +1332,7 @@ adminRoutes.post('/category-acl/:name/bulk-apply', async (c) => {
     };
     const ids = sanitizeIds(body.ids);
     if (ids.length > CATEGORY_ACL_BULK_MAX) {
-        return c.json({ error: `한 번에 처리할 수 있는 문서는 ${CATEGORY_ACL_BULK_MAX}개까지입니다.` }, 400);
+        return c.json({ error: ui("m_b3caf5b30c7fbe72", [CATEGORY_ACL_BULK_MAX]) }, 400);
     }
 
     // 1) 템플릿 upsert (옵션). serialized=null 이면 비활성 — 레거시 admin_categories 와의
@@ -1411,7 +1412,7 @@ adminRoutes.post('/category-acl/:name/bulk-apply', async (c) => {
                     buildVirtualRevisionStatement(
                         db,
                         u.id,
-                        `[권한] 편집 ACL 변경: ${u.oldAcl ?? '비활성'} → ${u.newAcl ?? '비활성'}`,
+                        ui("m_74ae499212b6752f", [u.oldAcl ?? ui("m_ffdbb50e2aa475ec"), u.newAcl ?? ui("m_ffdbb50e2aa475ec")]),
                         currentUser.id
                     )
                 );
@@ -1437,7 +1438,7 @@ adminRoutes.post('/category-acl/:name/bulk-apply', async (c) => {
     writeAdminLog(
         c,
         'category_acl_bulk_apply',
-        `카테고리 ACL 일괄 적용: ${name} (모드=${mode}, 스캔=${scanned}, 변경=${updates.length}/${ids.length}${templateSaved ? ', 템플릿저장' : ''})`,
+        ui("m_3e3bc59fe5cbacc5", [name, mode, scanned, updates.length, ids.length, templateSaved ? ui("m_18d2ef3481b14747") : '']),
         currentUser.id
     );
 
@@ -1475,7 +1476,7 @@ adminRoutes.get('/bulk-manage/search', async (c) => {
     const currentUser = c.get('user')!;
     const rbac = c.get('rbac') as RBAC;
     if (!rbac.can(currentUser.role, '*')) {
-        return c.json({ error: '최고 관리자만 사용할 수 있습니다.' }, 403);
+        return c.json({ error: ui("m_1276de4f2ff69f84") }, 403);
     }
 
     const db = c.env.DB;
@@ -1618,9 +1619,9 @@ function buildImageUsageWhere(): string {
 function buildImageUsageBindings(media: { r2_key: string; filename: string }): string[] {
     return [
         media.r2_key,
-        `[[이미지:${media.filename}]]`,
-        `[[이미지:${media.filename}|`,
-        `[[이미지:${media.filename}#`,
+        ui("m_85e145de59c5d3f3", [media.filename]),
+        ui("m_ce322b2939e689ee", [media.filename]),
+        ui("m_3ef3cc43b593206d", [media.filename]),
     ];
 }
 
@@ -1687,7 +1688,7 @@ adminRoutes.get('/media/gc', async (c) => {
     // 문서 대량 관리(bulk-manage)와 동일하게 최고 관리자에게만 허용한다.
     const gcRbac = c.get('rbac') as RBAC;
     if (!gcRbac.can(c.get('user')!.role, '*')) {
-        return c.json({ error: '최고 관리자만 사용할 수 있습니다.' }, 403);
+        return c.json({ error: ui("m_1276de4f2ff69f84") }, 403);
     }
     const db = c.env.DB;
 
@@ -1771,17 +1772,17 @@ adminRoutes.post('/media/gc', async (c) => {
     // 비가역 대량 삭제 — GET /media/gc 와 동일하게 최고 관리자 전용.
     const gcRbac = c.get('rbac') as RBAC;
     if (!gcRbac.can(user.role, '*')) {
-        return c.json({ error: '최고 관리자만 사용할 수 있습니다.' }, 403);
+        return c.json({ error: ui("m_1276de4f2ff69f84") }, 403);
     }
     const { ids } = await c.req.json<{ ids: number[] }>();
 
     if (!Array.isArray(ids) || ids.length === 0) {
-        return c.json({ error: '삭제할 이미지를 선택해주세요.' }, 400);
+        return c.json({ error: ui("m_6592941155924ffc") }, 400);
     }
     // 무제한 id 배열로 인한 순차 R2/DB 작업 폭주를 막기 위해 1회 호출당 상한을 둔다.
     const GC_DELETE_MAX = 200;
     if (ids.length > GC_DELETE_MAX) {
-        return c.json({ error: `한 번에 최대 ${GC_DELETE_MAX}개까지만 삭제할 수 있습니다.` }, 400);
+        return c.json({ error: ui("m_5f125601b256554e", [GC_DELETE_MAX]) }, 400);
     }
 
     const deleted: number[] = [];
@@ -1794,7 +1795,7 @@ adminRoutes.post('/media/gc', async (c) => {
             .first<{ r2_key: string, filename: string }>();
 
         if (!mediaItem) {
-            errors.push(`ID ${id}: 이미지를 찾을 수 없음`);
+            errors.push(ui("m_19f204595de41ff1", [id]));
             continue;
         }
 
@@ -1802,7 +1803,7 @@ adminRoutes.post('/media/gc', async (c) => {
         const stillUsed = await isImageReferencedAnywhere(db, mediaItem);
 
         if (stillUsed) {
-            errors.push(`${mediaItem.filename}: 현재 사용 중인 이미지`);
+            errors.push(ui("m_d1f4b10ae2b81356", [mediaItem.filename]));
             continue;
         }
 
@@ -1822,7 +1823,7 @@ adminRoutes.post('/media/gc', async (c) => {
     }
 
     if (deleted.length > 0) {
-        writeAdminLog(c, 'media_gc', `쓰레기 수집: ${deleted.length}개 미사용 이미지 삭제`, user.id);
+        writeAdminLog(c, 'media_gc', ui("m_b0f36928bf289681", [deleted.length]), user.id);
         // 각 이미지 문서(/w/이미지:파일명) 캐시 무효화
         c.executionCtx.waitUntil(
             Promise.allSettled(deletedFilenames.map(fn => invalidatePageCache(c, `이미지:${fn}`)))
@@ -1853,7 +1854,7 @@ adminRoutes.get('/media/:id/backlinks', async (c) => {
         .first<{ r2_key: string, filename: string }>();
 
     if (!mediaItem) {
-        return c.json({ error: '이미지를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_9c0935a851d6062d") }, 404);
     }
 
     // 1차: page_links 테이블에서 인덱스 기반 조회 (위키 + 블로그 + 토론 + 티켓)
@@ -1978,7 +1979,7 @@ adminRoutes.delete('/media/:id', async (c) => {
         .first<{ r2_key: string; filename: string }>();
 
     if (!mediaItem) {
-        return c.json({ error: '이미지를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_9c0935a851d6062d") }, 404);
     }
 
     // R2에서 파일 삭제
@@ -1994,7 +1995,7 @@ adminRoutes.delete('/media/:id', async (c) => {
     // 이미지 문서 캐시 무효화 (/w/이미지:파일명, /api/w/...)
     c.executionCtx.waitUntil(invalidatePageCache(c, `이미지:${mediaItem.filename}`));
 
-    writeAdminLog(c, 'media_delete', `미디어 삭제: ${mediaItem.r2_key}`, c.get('user')!.id);
+    writeAdminLog(c, 'media_delete', ui("m_4ffa12c344dee170", [mediaItem.r2_key]), c.get('user')!.id);
     return c.json({ success: true });
 });
 
@@ -2126,9 +2127,9 @@ function filterRulesByRelatedTo<T extends { prefix: string }>(rules: T[], relate
 function validateCategoryPrefix(raw: unknown): { prefix: string } | { error: string } {
     const rawStr = typeof raw === 'string' ? raw : '';
     const prefix = rawStr.trim().replace(/\/+$/, '');
-    if (!prefix) return { error: 'prefix 를 입력해주세요.' };
-    if (prefix.length > 200) return { error: 'prefix 는 최대 200자까지 입력할 수 있습니다.' };
-    if (PREFIX_FORBIDDEN_CHARS.test(prefix)) return { error: 'prefix 에 제어문자를 사용할 수 없습니다.' };
+    if (!prefix) return { error: ui("m_c0be3b1a827e4c76") };
+    if (prefix.length > 200) return { error: ui("m_5a85f5d54b42fdd3") };
+    if (PREFIX_FORBIDDEN_CHARS.test(prefix)) return { error: ui("m_496b6b1ade3a4e6a") };
     return { prefix };
 }
 
@@ -2156,7 +2157,7 @@ async function scanPrefixSubpages<T extends { slug: string }>(
 ): Promise<T[]> {
     for (const col of columns) {
         if (!SCAN_ALLOWED_COLUMNS.has(col)) {
-            throw new Error(`scanPrefixSubpages: disallowed column '${col}'`);
+            throw new Error(ui("m_1aee0ae203eabd47", [col]));
         }
     }
     const range = subtreeSlugRange(prefix);
@@ -2216,11 +2217,11 @@ adminRoutes.post('/category-prefix-rules', async (c) => {
 
     const rawCategories = typeof body.categories === 'string' ? body.categories : '';
     if (!CATEGORY_PATTERN.test(rawCategories) || rawCategories.trim() === '') {
-        return c.json({ error: '카테고리에는 한글/영문/숫자/공백/쉼표만 사용할 수 있습니다.' }, 400);
+        return c.json({ error: ui("m_6246136884f91732") }, 400);
     }
     const categories = normalizeCategoryString(rawCategories);
     if (!categories) {
-        return c.json({ error: '카테고리를 1개 이상 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_b4b1f2a564d854b5") }, 400);
     }
 
     await db
@@ -2238,7 +2239,7 @@ adminRoutes.post('/category-prefix-rules', async (c) => {
     writeAdminLog(
         c,
         'category_prefix_rule_save',
-        `자동 카테고리 규칙 저장: ${prefix} → ${categories}`,
+        ui("m_bc7101092992ca04", [prefix, categories]),
         currentUser.id
     );
     return c.json({ success: true, prefix, categories });
@@ -2262,12 +2263,12 @@ adminRoutes.delete('/category-prefix-rules/:id', async (c) => {
         .run();
 
     if (result.meta.changes === 0) {
-        return c.json({ error: '규칙을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_b9e3e99701625ec3") }, 404);
     }
     writeAdminLog(
         c,
         'category_prefix_rule_delete',
-        `자동 카테고리 규칙 삭제: ${rule?.prefix || id}`,
+        ui("m_865de98deb7295d1", [rule?.prefix || id]),
         currentUser.id
     );
     return c.json({ success: true });
@@ -2288,7 +2289,7 @@ adminRoutes.get('/category-prefix-rules/subpages', async (c) => {
 
     if (pages.length > CATEGORY_SUBPAGES_MAX) {
         return c.json({
-            error: `하위 문서가 너무 많아 일괄 모달에서 다룰 수 없습니다 (${pages.length}건, 한도 ${CATEGORY_SUBPAGES_MAX}). 더 깊은 prefix 로 분할해주세요.`,
+            error: ui("m_a7cfdc8a772d1f56", [pages.length, CATEGORY_SUBPAGES_MAX]),
         }, 400);
     }
 
@@ -2327,11 +2328,11 @@ adminRoutes.post('/category-prefix-rules/bulk-apply', async (c) => {
 
     const rawCategories = typeof body.categories === 'string' ? body.categories : '';
     if (!CATEGORY_PATTERN.test(rawCategories) || rawCategories.trim() === '') {
-        return c.json({ error: '카테고리에는 한글/영문/숫자/공백/쉼표만 사용할 수 있습니다.' }, 400);
+        return c.json({ error: ui("m_6246136884f91732") }, 400);
     }
     const categories = normalizeCategoryString(rawCategories);
     if (!categories) {
-        return c.json({ error: '카테고리를 1개 이상 입력해주세요.' }, 400);
+        return c.json({ error: ui("m_b4b1f2a564d854b5") }, 400);
     }
 
     const sanitizeIds = (raw: unknown): number[] => {
@@ -2351,10 +2352,10 @@ adminRoutes.post('/category-prefix-rules/bulk-apply', async (c) => {
     const persist = body.persist === true;
 
     if (addIdsIn.length === 0 && removeIdsIn.length === 0 && !persist) {
-        return c.json({ error: '적용할 문서를 선택하거나 자동 규칙으로 저장 옵션을 켜주세요.' }, 400);
+        return c.json({ error: ui("m_ddbda3182182b4aa") }, 400);
     }
     if (Math.max(addIdsIn.length, removeIdsIn.length) > CATEGORY_SUBPAGES_MAX) {
-        return c.json({ error: `한 번에 처리할 수 있는 문서는 ${CATEGORY_SUBPAGES_MAX}개까지입니다.` }, 400);
+        return c.json({ error: ui("m_b3caf5b30c7fbe72", [CATEGORY_SUBPAGES_MAX]) }, 400);
     }
 
     // 적용 대상이 있을 때만 페이지 스캔 (persist-only 면 스캔 생략 가능)
@@ -2436,7 +2437,7 @@ adminRoutes.post('/category-prefix-rules/bulk-apply', async (c) => {
     writeAdminLog(
         c,
         'category_bulk_apply',
-        `하위 문서 카테고리 관리: ${prefix}/** (스캔=${scanned}, 추가=${addUpdates.length}/${addIdsIn.length}, 제거=${removeUpdates.length}/${removeIdsIn.length}, categories=${categories}${ruleSaved ? ', 규칙저장' : ''})`,
+        ui("m_1fba32a0382881be", [prefix, scanned, addUpdates.length, addIdsIn.length, removeUpdates.length, removeIdsIn.length, categories, ruleSaved ? ui("m_d34070e2c5d7788f") : '']),
         currentUser.id
     );
 
@@ -2469,7 +2470,7 @@ type DocSettingRuleRow = {
 function parseFlag(v: unknown): { value: number | null } | { error: string } {
     if (v === undefined || v === null) return { value: null };
     if (v === 0 || v === 1) return { value: v };
-    return { error: '플래그 값은 0, 1, null 중 하나여야 합니다.' };
+    return { error: ui("m_d8c31374d308ba44") };
 }
 
 type FlagAction = 'none' | 'on' | 'off';
@@ -2543,12 +2544,12 @@ adminRoutes.post('/doc-setting-prefix-rules', async (c) => {
             categoriesNormalized = null;
         } else if (typeof raw === 'string') {
             if (!CATEGORY_PATTERN.test(raw)) {
-                return c.json({ error: '카테고리에는 한글/영문/숫자/공백/쉼표만 사용할 수 있습니다.' }, 400);
+                return c.json({ error: ui("m_6246136884f91732") }, 400);
             }
             const norm = normalizeCategoryString(raw);
             categoriesNormalized = norm || null;
         } else {
-            return c.json({ error: 'categories 는 쉼표 구분 문자열이어야 합니다.' }, 400);
+            return c.json({ error: ui("m_e71b631ca9300163") }, 400);
         }
     }
 
@@ -2562,7 +2563,7 @@ adminRoutes.post('/doc-setting-prefix-rules', async (c) => {
     const finalAcl = editAclProvided ? editAclSerialized : (existingRow?.edit_acl ?? null);
     const finalCats = categoriesProvided ? categoriesNormalized : (existingRow?.categories ?? null);
     if (finalPriv === null && finalAcl === null && finalCats === null) {
-        return c.json({ error: '비공개/편집 ACL/카테고리 중 적어도 한 항목은 규칙을 지정해야 합니다.' }, 400);
+        return c.json({ error: ui("m_129ad77a88ffe229") }, 400);
     }
 
     // finalPriv/finalAcl/finalCats 가 이미 "보존 vs 갱신" 로직을 포함하므로 단순 excluded.* 매핑만 한다.
@@ -2583,7 +2584,7 @@ adminRoutes.post('/doc-setting-prefix-rules', async (c) => {
     writeAdminLog(
         c,
         'doc_setting_prefix_rule_save',
-        `자동 문서 설정 규칙 저장: ${prefix} → private=${finalPriv ?? '-'}, edit_acl=${finalAcl ?? '-'}, categories=${finalCats ?? '-'}`,
+        ui("m_d54c013d31143bba", [prefix, finalPriv ?? '-', finalAcl ?? '-', finalCats ?? '-']),
         currentUser.id
     );
     return c.json({ success: true, prefix, is_private: finalPriv, edit_acl: finalAcl, categories: finalCats });
@@ -2607,12 +2608,12 @@ adminRoutes.delete('/doc-setting-prefix-rules/:id', async (c) => {
         .run();
 
     if (result.meta.changes === 0) {
-        return c.json({ error: '규칙을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_b9e3e99701625ec3") }, 404);
     }
     writeAdminLog(
         c,
         'doc_setting_prefix_rule_delete',
-        `자동 문서 설정 규칙 삭제: ${rule?.prefix || id}`,
+        ui("m_9d02d96d16f78ae8", [rule?.prefix || id]),
         currentUser.id
     );
     return c.json({ success: true });
@@ -2633,7 +2634,7 @@ adminRoutes.get('/doc-setting-prefix-rules/subpages', async (c) => {
 
     if (pages.length > CATEGORY_SUBPAGES_MAX) {
         return c.json({
-            error: `하위 문서가 너무 많아 일괄 모달에서 다룰 수 없습니다 (${pages.length}건, 한도 ${CATEGORY_SUBPAGES_MAX}). 더 깊은 prefix 로 분할해주세요.`,
+            error: ui("m_a7cfdc8a772d1f56", [pages.length, CATEGORY_SUBPAGES_MAX]),
         }, 400);
     }
 
@@ -2682,7 +2683,7 @@ adminRoutes.post('/doc-setting-prefix-rules/bulk-apply', async (c) => {
 
     const privateAction = parseAction(body.privateAction);
     if (!privateAction) {
-        return c.json({ error: "privateAction 은 'none'|'on'|'off' 중 하나여야 합니다." }, 400);
+        return c.json({ error: ui("m_ead44cdfaef58eda") }, 400);
     }
     // ACL 액션: 'none' = 변경 없음, 'clear' = NULL 로 설정, 'set' = aclValue 로 설정.
     const aclAction: 'none' | 'clear' | 'set' =
@@ -2695,7 +2696,7 @@ adminRoutes.post('/doc-setting-prefix-rules/bulk-apply', async (c) => {
         if ('error' in norm) return c.json({ error: norm.error }, 400);
         aclSetValue = serializeEditAcl(norm.value);
         if (aclSetValue === null) {
-            return c.json({ error: "aclAction='set' 일 때 aclValue 가 비어 있습니다. 비활성은 'clear' 를 사용하세요." }, 400);
+            return c.json({ error: ui("m_85b9bf60faf26a87") }, 400);
         }
     }
 
@@ -2710,11 +2711,11 @@ adminRoutes.post('/doc-setting-prefix-rules/bulk-apply', async (c) => {
     if (categoriesAction === 'add' || categoriesAction === 'set') {
         const raw = typeof body.categoriesValue === 'string' ? body.categoriesValue : '';
         if (!CATEGORY_PATTERN.test(raw) || raw.trim() === '') {
-            return c.json({ error: '카테고리에는 한글/영문/숫자/공백/쉼표만 사용할 수 있습니다.' }, 400);
+            return c.json({ error: ui("m_6246136884f91732") }, 400);
         }
         const norm = normalizeCategoryString(raw);
         if (!norm) {
-            return c.json({ error: '카테고리를 1개 이상 입력해주세요.' }, 400);
+            return c.json({ error: ui("m_b4b1f2a564d854b5") }, 400);
         }
         categoriesValue = norm;
     }
@@ -2722,7 +2723,7 @@ adminRoutes.post('/doc-setting-prefix-rules/bulk-apply', async (c) => {
     const persist = body.persist === true;
 
     if (privateAction === 'none' && aclAction === 'none' && categoriesAction === 'none' && !persist) {
-        return c.json({ error: '변경할 설정을 선택하거나 자동 규칙으로 저장 옵션을 켜주세요.' }, 400);
+        return c.json({ error: ui("m_3068682e59372c1d") }, 400);
     }
 
     const sanitizeIds = (raw: unknown): number[] => {
@@ -2740,7 +2741,7 @@ adminRoutes.post('/doc-setting-prefix-rules/bulk-apply', async (c) => {
     const idsIn = sanitizeIds(body.ids);
 
     if (idsIn.length > CATEGORY_SUBPAGES_MAX) {
-        return c.json({ error: `한 번에 처리할 수 있는 문서는 ${CATEGORY_SUBPAGES_MAX}개까지입니다.` }, 400);
+        return c.json({ error: ui("m_b3caf5b30c7fbe72", [CATEGORY_SUBPAGES_MAX]) }, 400);
     }
 
     let scanned = 0;
@@ -2811,9 +2812,9 @@ adminRoutes.post('/doc-setting-prefix-rules/bulk-apply', async (c) => {
                     await ensureRevisionsVirtualMigration(db);
                     const vstmts = permChanges.map(u => {
                         const parts: string[] = [];
-                        if (u.aclChanged) parts.push(`편집 ACL 변경: ${u.curAcl ?? '비활성'} → ${u.newAcl ?? '비활성'}`);
-                        if (u.privChanged) parts.push(`비공개 설정 ${u.newPriv ? 'ON' : 'OFF'}`);
-                        return buildVirtualRevisionStatement(db, u.id, `[권한] ${parts.join(' / ')}`, currentUser.id);
+                        if (u.aclChanged) parts.push(ui("m_d572c78b8583fa19", [u.curAcl ?? ui("m_ffdbb50e2aa475ec"), u.newAcl ?? ui("m_ffdbb50e2aa475ec")]));
+                        if (u.privChanged) parts.push(ui("m_fb140132c244fc1e", [u.newPriv ? 'ON' : 'OFF']));
+                        return buildVirtualRevisionStatement(db, u.id, ui("m_7deba0b2c89d4723", [parts.join(' / ')]), currentUser.id);
                     });
                     for (let i = 0; i < vstmts.length; i += chunkSize) {
                         await db.batch(vstmts.slice(i, i + chunkSize));
@@ -2861,7 +2862,7 @@ adminRoutes.post('/doc-setting-prefix-rules/bulk-apply', async (c) => {
         }
 
         if (rulePriv === null && ruleAcl === null && ruleCats === null) {
-            return c.json({ error: '자동 규칙으로 저장하려면 비공개/편집 ACL/카테고리 중 하나 이상을 지정해야 합니다.' }, 400);
+            return c.json({ error: ui("m_39da805aa28f9199") }, 400);
         }
         await db
             .prepare(
@@ -2892,7 +2893,7 @@ adminRoutes.post('/doc-setting-prefix-rules/bulk-apply', async (c) => {
     writeAdminLog(
         c,
         'doc_setting_bulk_apply',
-        `하위 문서 설정 관리: ${prefix}/** (스캔=${scanned}, 변경=${updates.length}/${idsIn.length}, private=${privateAction}, acl=${aclAction}, cats=${categoriesAction}${ruleSaved ? ', 규칙저장' : ''})`,
+        ui("m_9d34ec7de65bd465", [prefix, scanned, updates.length, idsIn.length, privateAction, aclAction, categoriesAction, ruleSaved ? ui("m_d34070e2c5d7788f") : '']),
         currentUser.id
     );
 
@@ -2911,13 +2912,13 @@ adminRoutes.post('/doc-setting-prefix-rules/bulk-apply', async (c) => {
 adminRoutes.get('/pages/:slug/edit-acl', async (c) => {
     const db = c.env.DB;
     const slug = normalizeSlug(c.req.param('slug'));
-    if (!slug) return c.json({ error: 'slug 가 비어 있습니다.' }, 400);
+    if (!slug) return c.json({ error: ui("m_cbcbb3a4f3b94b1d") }, 400);
 
     const page = await db
         .prepare('SELECT id, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL')
         .bind(slug)
         .first<{ id: number; edit_acl: string | null }>();
-    if (!page) return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    if (!page) return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
 
     return c.json({ slug, edit_acl: parseEditAcl(page.edit_acl) });
 });
@@ -2931,7 +2932,7 @@ adminRoutes.put('/pages/:slug/edit-acl', async (c) => {
     const db = c.env.DB;
     const currentUser = c.get('user')!;
     const slug = normalizeSlug(c.req.param('slug'));
-    if (!slug) return c.json({ error: 'slug 가 비어 있습니다.' }, 400);
+    if (!slug) return c.json({ error: ui("m_cbcbb3a4f3b94b1d") }, 400);
 
     const body = await c.req.json<{ edit_acl?: unknown }>();
     const norm = normalizeEditAcl(body.edit_acl ?? null);
@@ -2943,7 +2944,7 @@ adminRoutes.put('/pages/:slug/edit-acl', async (c) => {
         .prepare('SELECT id, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL')
         .bind(slug)
         .first<{ id: number; edit_acl: string | null }>();
-    if (!page) return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    if (!page) return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
 
     const prevSerialized = page.edit_acl;
     if (prevSerialized === serialized) {
@@ -2963,7 +2964,7 @@ adminRoutes.put('/pages/:slug/edit-acl', async (c) => {
         await insertVirtualRevision(
             db,
             page.id,
-            `[권한] 편집 ACL 변경: ${prevSerialized ?? '비활성'} → ${serialized ?? '비활성'}`,
+            ui("m_74ae499212b6752f", [prevSerialized ?? ui("m_ffdbb50e2aa475ec"), serialized ?? ui("m_ffdbb50e2aa475ec")]),
             currentUser.id
         );
     } catch (e) {
@@ -2981,7 +2982,7 @@ adminRoutes.put('/pages/:slug/edit-acl', async (c) => {
     writeAdminLog(
         c,
         'page_edit_acl_set',
-        `문서 편집 ACL 변경: ${slug} → ${serialized ?? '비활성'}`,
+        ui("m_26d991ce5ab3d99d", [slug, serialized ?? ui("m_ffdbb50e2aa475ec")]),
         currentUser.id
     );
     return c.json({ success: true, edit_acl: norm.value });
@@ -2999,7 +3000,7 @@ adminRoutes.patch('/pages/:slug/flags', async (c) => {
     const currentUser = c.get('user')!;
     const rbac = c.get('rbac') as RBAC;
     const slug = normalizeSlug(c.req.param('slug'));
-    if (!slug) return c.json({ error: 'slug 가 비어 있습니다.' }, 400);
+    if (!slug) return c.json({ error: ui("m_cbcbb3a4f3b94b1d") }, 400);
 
     const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>));
     const hasPriv = Object.prototype.hasOwnProperty.call(body, 'is_private');
@@ -3007,7 +3008,7 @@ adminRoutes.patch('/pages/:slug/flags', async (c) => {
     let nextPriv: 0 | 1 | undefined;
     if (hasPriv) {
         const v = body.is_private;
-        if (v !== 0 && v !== 1) return c.json({ error: 'is_private 는 0 또는 1 이어야 합니다.' }, 400);
+        if (v !== 0 && v !== 1) return c.json({ error: ui("m_167335d1fe4b72af") }, 400);
         nextPriv = v;
     }
 
@@ -3015,7 +3016,7 @@ adminRoutes.patch('/pages/:slug/flags', async (c) => {
         .prepare('SELECT id, is_private FROM pages WHERE slug = ? AND deleted_at IS NULL')
         .bind(slug)
         .first<{ id: number; is_private: number }>();
-    if (!page) return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+    if (!page) return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
 
     const privateChanged = nextPriv !== undefined && nextPriv !== page.is_private;
 
@@ -3039,7 +3040,7 @@ adminRoutes.patch('/pages/:slug/flags', async (c) => {
         await insertVirtualRevision(
             db,
             page.id,
-            `[권한] 비공개 설정 ${nextPriv ? 'ON' : 'OFF'}`,
+            ui("m_9ee87e5f6318909d", [nextPriv ? 'ON' : 'OFF']),
             currentUser.id
         );
     } catch (e) {
@@ -3059,7 +3060,7 @@ adminRoutes.patch('/pages/:slug/flags', async (c) => {
     writeAdminLog(
         c,
         'page_flags_set',
-        `문서 플래그 변경: ${slug} → 비공개 ${nextPriv ? 'ON' : 'OFF'}`,
+        ui("m_191a136b0fb06b11", [slug, nextPriv ? 'ON' : 'OFF']),
         currentUser.id
     );
 
@@ -3099,7 +3100,7 @@ function normalizeRawRowBody(body: any): {
             out[k] = null;
         } else if (typeof v === 'string') {
             if (!isSafeCssColor(v)) {
-                return { ...out, error: `허용되지 않은 색상 값입니다: ${v}` };
+                return { ...out, error: ui("m_d8487cf70ba43a40", [v]) };
             }
             out[k] = v;
         } else {
@@ -3112,7 +3113,7 @@ function normalizeRawRowBody(body: any): {
         out.light_bg === null && out.light_color === null &&
         out.dark_bg === null && out.dark_color === null
     ) {
-        return { ...out, error: 'bg 또는 color 값을 최소 1개 입력해주세요.' };
+        return { ...out, error: ui("m_08a6adb370b3919b") };
     }
     return out;
 }
@@ -3162,12 +3163,12 @@ function normalizePaletteBody(body: any): {
         finalLight.bg === undefined && finalLight.color === undefined &&
         finalDark.bg === undefined && finalDark.color === undefined
     ) {
-        return { light: finalLight, dark: finalDark, error: 'bg 또는 color 값을 최소 1개 입력해주세요.' };
+        return { light: finalLight, dark: finalDark, error: ui("m_08a6adb370b3919b") };
     }
 
     for (const v of [finalLight.bg, finalLight.color, finalDark.bg, finalDark.color]) {
         if (v !== undefined && !isSafeCssColor(v)) {
-            return { light: finalLight, dark: finalDark, error: `허용되지 않은 색상 값입니다: ${v}` };
+            return { light: finalLight, dark: finalDark, error: ui("m_d8487cf70ba43a40", [v]) };
         }
     }
     return { light: finalLight, dark: finalDark };
@@ -3198,15 +3199,15 @@ adminRoutes.post('/palettes', async (c) => {
     const currentUser = c.get('user')!;
     const body = await c.req.json<any>().catch(() => null);
     if (!body || typeof body !== 'object') {
-        return c.json({ error: '요청 본문이 올바르지 않습니다.' }, 400);
+        return c.json({ error: ui("m_9c15cffdb22483bf") }, 400);
     }
 
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!PALETTE_NAME_RE.test(name)) {
-        return c.json({ error: '팔레트 이름은 영문/숫자/언더스코어/하이픈 1~64자만 사용할 수 있습니다.' }, 400);
+        return c.json({ error: ui("m_9c95023c39a049f1") }, 400);
     }
     if (RESERVED_PALETTE_NAMES.has(name.toLowerCase())) {
-        return c.json({ error: `'${name}' 은 하드코딩 프리셋과 겹치므로 사용할 수 없습니다.` }, 400);
+        return c.json({ error: ui("m_32b4508fa9dae6fe", [name]) }, 400);
     }
 
     let lightBg: string | null;
@@ -3253,7 +3254,7 @@ adminRoutes.post('/palettes', async (c) => {
         .bind(name, lightBg, lightColor, darkBg, darkColor, currentUser.id)
         .run();
 
-    writeAdminLog(c, 'palette_save', `팔레트 저장: ${name}`, currentUser.id);
+    writeAdminLog(c, 'palette_save', ui("m_c43cbd277bab8e60", [name]), currentUser.id);
     await invalidatePaletteUsers(c, name);
     return c.json({ success: true, name });
 });
@@ -3269,7 +3270,7 @@ adminRoutes.delete('/palettes/:name', async (c) => {
     const name = c.req.param('name');
 
     if (!PALETTE_NAME_RE.test(name)) {
-        return c.json({ error: '잘못된 팔레트 이름입니다.' }, 400);
+        return c.json({ error: ui("m_f8a8daac0ad531d0") }, 400);
     }
 
     // DELETE 전에 사용 페이지 목록을 먼저 수집 — 삭제 후엔 palette name lookup 이 빈 결과.
@@ -3283,10 +3284,10 @@ adminRoutes.delete('/palettes/:name', async (c) => {
         .run();
 
     if (result.meta.changes === 0) {
-        return c.json({ error: '팔레트를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_a3529e228f5f66d5") }, 404);
     }
 
-    writeAdminLog(c, 'palette_delete', `팔레트 삭제: ${name}`, currentUser.id);
+    writeAdminLog(c, 'palette_delete', ui("m_de6063acba84ba4a", [name]), currentUser.id);
     return c.json({ success: true });
 });
 

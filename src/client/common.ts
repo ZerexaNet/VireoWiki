@@ -18,6 +18,7 @@
  *   inline <script> 와의 호환성을 위해 본 모듈도 자체 정의 + window 노출 유지.
  */
 
+import { ui, getLocale } from '../../packages/wiki-shared/src/i18n/client';
 import * as PushClient from './push';
 import {
     emptyState,
@@ -149,16 +150,16 @@ function mountMediaTagInput({ container, input, initial }) {
         const t = String(raw || '').trim();
         if (!t) return false;
         if (t.length > 50) {
-            showTagWarning('标签太长', '标签最多 50 字。');
+            showTagWarning(ui("m_de8f14b2aedcbfaf"), ui("m_9341d4a4f50d3c34"));
             return false;
         }
         if (!MEDIA_TAG_VALID_RE.test(t)) {
-            showTagWarning('不支持特殊字符', '标签名称不能包含特殊字符。');
+            showTagWarning(ui("m_63d43c7f9b539745"), ui("m_341c9158d0aeffee"));
             return false;
         }
         if (tags.includes(t)) return false;
         if (tags.length >= 20) {
-            showTagWarning('标签数量超限', '最多添加 20 个标签。');
+            showTagWarning(ui("m_a94b9e1aaa79c9b1"), ui("m_d6fec6bc78d9cef5"));
             return false;
         }
         tags.push(t);
@@ -570,7 +571,7 @@ function setupSettingsModal() {
             skinRoot.dataset.bound = '1';
             var labels = skinMeta.labels || {};
             skinMenu.innerHTML = skinMeta.list.map(function (k, i) {
-                var label = labels[k] || k;
+                var label = k === 'default' ? (getLocale() === 'en' ? 'Default' : '默认') : k === 'vector' ? 'Vector' : (labels[k] || k);
                 return '<li class="skin-select-option" role="option" id="settingThemeSkinOpt-' + i + '"'
                     + ' data-value="' + escapeHtml(k) + '" aria-selected="false" tabindex="-1">'
                     + '<span class="skin-select-check"><i class="mdi mdi-check" aria-hidden="true"></i></span>'
@@ -664,7 +665,7 @@ async function goRandomPage() {
         }
     } catch (e) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire('错误', '无法打开随机页面。', 'error');
+            Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_cde96ff40e7778ed"), 'error');
         }
     }
 }
@@ -724,12 +725,12 @@ function renderSingleBanner(ann) {
         const a = document.createElement('a');
         a.className = 'announcement-banner-text';
         a.href = url;
-        a.textContent = ann.title || '新公告';
+        a.textContent = ann.title || ui("m_aad7db05d61d31ff");
         inner.appendChild(a);
     } else {
         const span = document.createElement('span');
         span.className = 'announcement-banner-text';
-        span.textContent = ann.title || '新公告';
+        span.textContent = ann.title || ui("m_aad7db05d61d31ff");
         inner.appendChild(span);
     }
 
@@ -739,7 +740,7 @@ function renderSingleBanner(ann) {
     skipBox.type = 'checkbox';
     skipBox.className = 'form-check-input me-1';
     const skipText = document.createElement('span');
-    skipText.textContent = '不再显示';
+    skipText.textContent = ui("m_a2d3a4eeefd7bf8f");
     skipLabel.appendChild(skipBox);
     skipLabel.appendChild(skipText);
     skipBox.onchange = () => {
@@ -755,7 +756,7 @@ function renderSingleBanner(ann) {
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'announcement-banner-close btn-close';
-    closeBtn.setAttribute('aria-label', '关闭');
+    closeBtn.setAttribute('aria-label', ui("m_3fd47edce45b3603"));
     closeBtn.onclick = () => banner.classList.add('d-none');
     inner.appendChild(closeBtn);
 
@@ -1068,7 +1069,7 @@ async function loadNotifications(append = false) {
     } else {
         const loadMoreBtn = document.getElementById('notifLoadMoreBtn');
         if (loadMoreBtn) {
-            loadMoreBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 正在加载...';
+            loadMoreBtn.innerHTML = ui("m_94c57dbb47dd1a3f");
             loadMoreBtn.disabled = true;
         }
     }
@@ -1081,7 +1082,7 @@ async function loadNotifications(append = false) {
         const has_more = data.has_more || false;
 
         if (notifs.length === 0 && !append) {
-            body.innerHTML = emptyState({ compact: true, icon: 'mdi mdi-inbox-outline', title: '暂无通知' });
+            body.innerHTML = emptyState({ compact: true, icon: 'mdi mdi-inbox-outline', title: ui("m_051ea7bfba93e9e6") });
             return;
         }
 
@@ -1101,16 +1102,7 @@ async function loadNotifications(append = false) {
             const timeAgo = _formatTimeAgo(n.created_at);
             const unreadCls = n.read_at ? '' : ' unread';
 
-            return `<div class="notification-item${unreadCls}" data-notif-id="${escapeHtml(String(n.id))}" data-notif-type="${escapeHtml(n.type)}" data-notif-ref="${escapeHtml(String(n.ref_id || ''))}" data-notif-link="${escapeHtml(n.link || '')}">
-                <i class="notif-icon ${icon} type-${escapeHtml(n.type)}"></i>
-                <div class="notif-content">
-                    <div class="notif-text">${escapeHtml(n.content)}</div>
-                    <div class="notif-time">${timeAgo}</div>
-                </div>
-                <button class="notif-delete" data-delete-id="${escapeHtml(String(n.id))}" title="删除">
-                    <i class="mdi mdi-close"></i>
-                </button>
-            </div>`;
+            return ui("m_08d7d6ce0ebacb38", [unreadCls, escapeHtml(String(n.id)), escapeHtml(n.type), escapeHtml(String(n.ref_id || '')), escapeHtml(n.link || ''), icon, escapeHtml(n.type), escapeHtml(n.content), timeAgo, escapeHtml(String(n.id))]);
         }).join('');
 
         if (append) {
@@ -1123,13 +1115,7 @@ async function loadNotifications(append = false) {
 
         if (has_more) {
             _notifOffset += _notifLimit;
-            body.insertAdjacentHTML('beforeend', `
-                <div id="notifLoadMoreWrapper" class="text-center p-2 border-top">
-                    <button id="notifLoadMoreBtn" class="btn btn-sm btn-link text-decoration-none w-100" data-load-more="true">
-                        更多 <i class="mdi mdi-chevron-down"></i>
-                    </button>
-                </div>
-            `);
+            body.insertAdjacentHTML('beforeend', ui("m_74df34d3749eea0f"));
         }
 
         // 이벤트 델리게이션 (한 번만 등록)
@@ -1162,11 +1148,11 @@ async function loadNotifications(append = false) {
         }
     } catch (e) {
         if (!append) {
-            body.innerHTML = '<div class="notification-empty text-danger">通知加载失败</div>';
+            body.innerHTML = ui("m_a424f4ceb627b56d");
         } else {
             const loadMoreBtn = document.getElementById('notifLoadMoreBtn');
             if (loadMoreBtn) {
-                loadMoreBtn.innerHTML = '加载失败，重试';
+                loadMoreBtn.innerHTML = ui("m_030fa62eb15037f3");
                 loadMoreBtn.disabled = false;
             }
         }
@@ -1176,26 +1162,26 @@ async function loadNotifications(append = false) {
 function _formatTimeAgo(unixTimestamp) {
     const now = Math.floor(Date.now() / 1000);
     const diff = now - unixTimestamp;
-    if (diff < 60) return '刚刚';
-    if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
-    if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
-    if (diff < 604800) return Math.floor(diff / 86400) + ' 天前';
-    return new Date(unixTimestamp * 1000).toLocaleDateString('zh-CN');
+    if (diff < 60) return ui("m_de6785d99e028971");
+    if (diff < 3600) return Math.floor(diff / 60) + ui("m_f8083e01520b7dac");
+    if (diff < 86400) return Math.floor(diff / 3600) + ui("m_9ebf77f67bc49767");
+    if (diff < 604800) return Math.floor(diff / 86400) + ui("m_5972982ce6bc68ca");
+    return new Date(unixTimestamp * 1000).toLocaleDateString(getLocale());
 }
 
 // ── 사용자 역할 아이콘 렌더링 ──
 function renderUserRoleIcon(role) {
     const roleMap = {
-        super_admin: { icon: 'bi-shield-fill-check', color: '#f97316', label: '超级管理员' },
-        admin: { icon: 'bi-shield-fill-check', color: '#3b82f6', label: '관리자' },
-        discussion_manager: { icon: 'bi-shield-fill-check', color: '#22c55e', label: '讨论管理员' },
-        banned: { icon: 'bi-ban', color: '#ef4444', label: '封禁' },
-        deleted: { icon: 'bi-x-circle-fill', color: '#9ca3af', label: '已注销' },
+        super_admin: { icon: 'bi-shield-fill-check', color: '#f97316', label: ui("m_56db248412ff2792") },
+        admin: { icon: 'bi-shield-fill-check', color: '#3b82f6', label: ui("m_78496a61deb74f2d") },
+        discussion_manager: { icon: 'bi-shield-fill-check', color: '#22c55e', label: ui("m_7a44dba7742f6b57") },
+        banned: { icon: 'bi-ban', color: '#ef4444', label: ui("m_6f93ba4c79f837ca") },
+        deleted: { icon: 'bi-x-circle-fill', color: '#9ca3af', label: ui("m_958ece350af5369a") },
     };
     const cfg = roleMap[role];
     const icon = cfg ? cfg.icon : 'bi-person-fill';
     const color = cfg ? cfg.color : '#9ca3af';
-    const label = cfg ? cfg.label : '普通用户';
+    const label = cfg ? cfg.label : ui("m_f6a2faaac200e75d");
     return `<i class="bi ${escapeHtml(icon)} user-role-icon ms-1" tabindex="0" data-bs-toggle="popover" data-bs-content="${escapeHtml(label)}" data-bs-trigger="hover focus" data-bs-placement="top" style="color:${color};font-size:0.8em;cursor:pointer;" aria-label="${escapeHtml(label)}"></i>`;
 }
 
@@ -1223,7 +1209,7 @@ async function deleteNotification(id) {
         loadNotificationCount();
     } catch (e) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire('错误', '删除通知失败。', 'error');
+            Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_b9dfeed9394b41c2"), 'error');
         }
     }
 }
@@ -1236,7 +1222,7 @@ async function markAllNotificationsRead() {
         loadNotificationCount();
     } catch (e) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire('错误', '标记已读失败。', 'error');
+            Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_f8abee26e0bf27ae"), 'error');
         }
     }
 }
@@ -1245,13 +1231,13 @@ window.markAllNotificationsRead = markAllNotificationsRead;
 async function deleteAllNotifications() {
     if (typeof Swal === 'undefined') return;
     const result = await Swal.fire({
-        title: '删除全部通知',
-        text: '将删除所有通知，此操作无法撤销。',
+        title: ui("m_22abbed26f07b173"),
+        text: ui("m_c883eb513f547831"),
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
-        confirmButtonText: '全部删除',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_9b2ccbb48e31d52a"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
     });
     if (!result.isConfirmed) return;
     try {
@@ -1260,7 +1246,7 @@ async function deleteAllNotifications() {
         loadNotifications();
         loadNotificationCount();
     } catch (e) {
-        Swal.fire('错误', '删除通知失败。', 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_b9dfeed9394b41c2"), 'error');
     }
 }
 window.deleteAllNotifications = deleteAllNotifications;
@@ -1288,12 +1274,12 @@ function applyPushStatusPill(subscribed: boolean) {
     if (subscribed) {
         pill.classList.remove('push-status-off');
         pill.classList.add('push-status-on');
-        text.textContent = '接收中';
+        text.textContent = ui("m_2066f4e83f732ab8");
         if (dot) dot.className = 'mdi mdi-bell-ring';
     } else {
         pill.classList.remove('push-status-on');
         pill.classList.add('push-status-off');
-        text.textContent = '已关闭';
+        text.textContent = ui("m_6744b4c6a9aa0038");
         if (dot) dot.className = 'mdi mdi-bell-off';
     }
 }
@@ -1316,12 +1302,12 @@ async function refreshPushToggle() {
         applyPushStatusPill(subscribed);
         const icon = btn.querySelector('i');
         if (subscribed) {
-            labelEl.textContent = '取消推送订阅';
+            labelEl.textContent = ui("m_00c6d96fa30a71b1");
             if (icon) icon.className = 'mdi mdi-bell-off-outline';
             btn.classList.remove('btn-outline-secondary', 'btn-success');
             btn.classList.add('btn-outline-danger');
         } else {
-            labelEl.textContent = '接收推送通知';
+            labelEl.textContent = ui("m_229f3f58efb2b445");
             if (icon) icon.className = 'mdi mdi-bell-ring-outline';
             btn.classList.remove('btn-outline-danger', 'btn-outline-secondary');
             btn.classList.add('btn-success');
@@ -1333,22 +1319,22 @@ async function refreshPushToggle() {
                 if (subscribed) {
                     const res = await mod.unsubscribe();
                     if (res.success) {
-                        showPushToast('info', '푸시 알림 구독을 해제했습니다');
+                        showPushToast('info', ui("m_a4d9636a501c734d"));
                     } else {
-                        showPushToast('error', '푸시 알림 구독 해제 실패');
+                        showPushToast('error', ui("m_6c38770816549d26"));
                     }
                 } else {
                     const res = await mod.subscribeForUser();
                     if (res.success) {
-                        showPushToast('success', '已订阅推送通知');
+                        showPushToast('success', ui("m_7de85bfdf94080d7"));
                     } else if (res.reason === 'denied') {
                         if (typeof Swal !== 'undefined') {
-                            Swal.fire('通知权限已禁用', '请在浏览器设置中允许通知。', 'warning');
+                            Swal.fire(ui("m_efbd623a09987dc7"), ui("m_bfd3af733fbd80eb"), 'warning');
                         }
                     } else if (res.reason === 'unsupported' || res.reason === 'disabled') {
-                        showPushToast('warning', '当前浏览器不支持推送通知');
+                        showPushToast('warning', ui("m_f34747723d1d3bcc"));
                     } else {
-                        showPushToast('error', '푸시 알림 구독에 실패했습니다');
+                        showPushToast('error', ui("m_892529bce47eabeb"));
                     }
                 }
             } finally {
@@ -1368,8 +1354,8 @@ async function viewMessage(messageId) {
         if (!res.ok) throw new Error();
         const msg = await res.json();
 
-        const date = new Date(msg.created_at * 1000).toLocaleString('zh-CN');
-        const senderName = msg.sender_name || '未知用户';
+        const date = new Date(msg.created_at * 1000).toLocaleString(getLocale());
+        const senderName = msg.sender_name || ui("m_1ac13841ba2ea68b");
         const senderPic = isSafeUrl(msg.sender_picture)
             ? `<img src="${escapeHtml(msg.sender_picture)}" class="rounded-circle me-2" width="28" height="28" loading="lazy">`
             : '<i class="mdi mdi-account-circle fs-4 me-2 text-muted"></i>';
@@ -1397,12 +1383,12 @@ async function viewMessage(messageId) {
 
         const showReplyBtn = canReply && currentUser && msg.sender_id !== currentUser.id;
         const replyBtnHtml = showReplyBtn
-            ? `<button class="btn btn-sm btn-outline-primary mt-2" id="swal-reply-btn"><i class="mdi mdi-reply"></i> 답장</button>`
+            ? ui("m_5d63997a05b668f1")
             : '';
 
         if (typeof Swal !== 'undefined') {
             Swal.fire({
-                title: '<i class="mdi mdi-email-outline text-primary"></i> 쪽지',
+                title: ui("m_66e824fac80d97ba"),
                 html: `
                     <div class="text-start">
                         <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
@@ -1417,7 +1403,7 @@ async function viewMessage(messageId) {
                     </div>
                 `,
                 showConfirmButton: true,
-                confirmButtonText: '关闭',
+                confirmButtonText: ui("m_3fd47edce45b3603"),
                 width: 480,
                 didOpen: () => {
                     const replyBtn = document.getElementById('swal-reply-btn');
@@ -1437,7 +1423,7 @@ async function viewMessage(messageId) {
 
     } catch (e) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire('错误', '쪽지를 불러올 수 없습니다.', 'error');
+            Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_0adc4beac9ba4b15"), 'error');
         }
     }
 }
@@ -1449,16 +1435,16 @@ async function replyToMessage(originalMsgId, receiverId, receiverName) {
     Swal.close();
 
     const { value: content, isConfirmed } = await Swal.fire({
-        title: `<i class="mdi mdi-reply text-primary"></i> ${escapeHtml(receiverName)}님에게 답장`,
+        title: ui("m_ca401920b0fcdb0c", [escapeHtml(receiverName)]),
         input: 'textarea',
-        inputPlaceholder: '답장 내용을 입력하세요...',
+        inputPlaceholder: ui("m_2beba854a0be713e"),
         inputAttributes: { maxlength: 2000 },
         showCancelButton: true,
-        confirmButtonText: '보내기',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_9aee63bd0f6981b7"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         width: 480,
         inputValidator: (val) => {
-            if (!val || !val.trim()) return '내용을 입력해주세요.';
+            if (!val || !val.trim()) return ui("m_ab85f44f1d779fcb");
         }
     });
 
@@ -1471,12 +1457,12 @@ async function replyToMessage(originalMsgId, receiverId, receiverName) {
             });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || '발송 실패');
+                throw new Error(data.error || ui("m_c76bcedd965ccb8f"));
             }
 
-            Swal.fire({ icon: 'success', title: '쪽지 발송 완료', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Swal.fire({ icon: 'success', title: ui("m_34f48b56d4e22e22"), toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
         } catch (e) {
-            Swal.fire('错误', '쪽지 발송에 실패했습니다.', 'error');
+            Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_eeaf95fca202a934"), 'error');
         }
     }
 }
@@ -1485,16 +1471,16 @@ async function sendMessage(receiverId, receiverName) {
     if (typeof Swal === 'undefined') return;
 
     const { value: content, isConfirmed } = await Swal.fire({
-        title: `<i class="mdi mdi-email-plus-outline text-primary"></i> ${escapeHtml(receiverName)}님에게 쪽지`,
+        title: ui("m_25f3b0bc182bfca2", [escapeHtml(receiverName)]),
         input: 'textarea',
-        inputPlaceholder: '쪽지 내용을 입력하세요...',
+        inputPlaceholder: ui("m_4b6b457e887fe436"),
         inputAttributes: { maxlength: 2000 },
         showCancelButton: true,
-        confirmButtonText: '보내기',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_9aee63bd0f6981b7"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         width: 480,
         inputValidator: (val) => {
-            if (!val || !val.trim()) return '내용을 입력해주세요.';
+            if (!val || !val.trim()) return ui("m_ab85f44f1d779fcb");
         }
     });
 
@@ -1507,12 +1493,12 @@ async function sendMessage(receiverId, receiverName) {
             });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || '발송 실패');
+                throw new Error(data.error || ui("m_c76bcedd965ccb8f"));
             }
 
-            Swal.fire({ icon: 'success', title: '쪽지 발송 완료', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Swal.fire({ icon: 'success', title: ui("m_34f48b56d4e22e22"), toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
         } catch (e) {
-            Swal.fire('错误', '쪽지 발송에 실패했습니다.', 'error');
+            Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_eeaf95fca202a934"), 'error');
         }
     }
 }
@@ -1635,11 +1621,11 @@ async function sendMessage(receiverId, receiverName) {
 function getRelativeTime(unixTs) {
     const now = Math.floor(Date.now() / 1000);
     const diff = now - unixTs;
-    if (diff < 60) return '刚刚';
-    if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
-    if (diff < 604800) return `${Math.floor(diff / 86400)} 天前`;
-    return new Date(unixTs * 1000).toLocaleDateString('zh-CN');
+    if (diff < 60) return ui("m_de6785d99e028971");
+    if (diff < 3600) return ui("m_2f10882d8db32301", [Math.floor(diff / 60)]);
+    if (diff < 86400) return ui("m_13d9a4afbbd1b91f", [Math.floor(diff / 3600)]);
+    if (diff < 604800) return ui("m_dd30752bcdb324d3", [Math.floor(diff / 86400)]);
+    return new Date(unixTs * 1000).toLocaleDateString(getLocale());
 }
 
 // ── 최근 변경 로드 (recent-changes-container 클래스를 가진 모든 요소에 채움) ──
@@ -1657,13 +1643,13 @@ async function loadRecentChanges() {
                 <div class="rc-title">${escapeHtml(item.slug)}</div>
                 <div class="rc-meta">
                   <span class="rc-time">${timeAgo}</span>
-                  <span class="rc-author">${escapeHtml(item.author_name || '未知用户')}</span>
+                  <span class="rc-author">${escapeHtml(item.author_name || ui("m_1ac13841ba2ea68b"))}</span>
                 </div>
               </a>
             `;
         }).join('');
 
-        const emptyMsg = emptyState({ compact: true, icon: 'bi bi-inbox', title: '변경 내역이 없습니다' });
+        const emptyMsg = emptyState({ compact: true, icon: 'bi bi-inbox', title: ui("m_e22f859d1ee42e08") });
         const content = data.changes.length > 0 ? html : emptyMsg;
 
         document.querySelectorAll('.recent-changes-container').forEach(el => {
@@ -1723,7 +1709,7 @@ async function loadTrending() {
             `;
         }).join('');
 
-        const emptyMsg = emptyState({ compact: true, icon: 'bi bi-graph-up', title: '트렌딩 데이터가 없습니다' });
+        const emptyMsg = emptyState({ compact: true, icon: 'bi bi-graph-up', title: ui("m_c1fee7c8e96d332c") });
         const content = data.trending && data.trending.length > 0 ? html : emptyMsg;
 
         document.querySelectorAll('.trending-container').forEach(el => {
@@ -1808,12 +1794,12 @@ function initTrendingTicker(container, count) {
                 // 펼치기 - 애니메이션으로 전체 높이 적용, 변형 초기화
                 parent.style.height = `${count * itemHeight}px`;
                 container.style.transform = 'translateY(0)';
-                clone.innerHTML = '접기 <i class="bi bi-chevron-up"></i>';
+                clone.innerHTML = ui("m_04bf37d3b91172bc");
                 clearInterval(tickerInterval);
             } else {
                 // 접기 - 다시 1줄 크기로, 현재 순위 위치로 이동 애니메이션
                 applyFoldedState();
-                clone.innerHTML = '펼치기 <i class="bi bi-chevron-down"></i>';
+                clone.innerHTML = ui("m_06864158538ff797");
                 tickerInterval = setInterval(slideNext, 3000);
             }
         });

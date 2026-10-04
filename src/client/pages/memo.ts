@@ -22,6 +22,7 @@
  * CM6 모듈은 main.ts 와 동일하게 런타임 동적 import(esm.sh importmap, vite external) 로 받으며,
  * CDN 이 unreachable 이면 textarea 폴백으로 최소 편집·저장·프리뷰를 유지한다.
  */
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import {
     makeMarkdownHighlightStyles,
     makeLightTheme,
@@ -84,7 +85,7 @@ async function renderMemoPreview(text: string): Promise<void> {
     // 본문 렌더 스타일(render.css)이 적용되도록 wiki-content 클래스를 보장한다.
     if (!preview.classList.contains('wiki-content')) preview.classList.add('wiki-content');
     if (!text.trim()) {
-        preview.innerHTML = '<p class="text-muted">여기에 작성한 내용의 미리보기가 표시됩니다.</p>';
+        preview.innerHTML = ui("m_1da451d950e67360");
         return;
     }
     if (typeof w.renderWikiContent === 'function') {
@@ -113,10 +114,10 @@ function wireActions(editor: MemoEditor): void {
                 await navigator.clipboard.writeText(text);
                 w.Swal?.fire({
                     toast: true, position: 'top-end', icon: 'success',
-                    title: '복사했습니다', showConfirmButton: false, timer: 1500,
+                    title: ui("m_5e80b233136bd398"), showConfirmButton: false, timer: 1500,
                 });
             } catch {
-                w.Swal?.fire('복사 실패', '클립보드 접근이 차단되어 복사하지 못했습니다.', 'warning');
+                w.Swal?.fire(ui("m_0642e2d15469a319"), ui("m_30afc383a79c4c03"), 'warning');
             }
         });
     }
@@ -129,15 +130,15 @@ function wireActions(editor: MemoEditor): void {
             if (w.Swal) {
                 const result = await w.Swal.fire({
                     icon: 'warning',
-                    title: '메모를 비울까요?',
-                    text: '작성한 내용이 모두 지워집니다. 이 동작은 되돌릴 수 없습니다.',
+                    title: ui("m_55989464e0bdfe34"),
+                    text: ui("m_9984388a30009815"),
                     showCancelButton: true,
-                    confirmButtonText: '비우기',
-                    cancelButtonText: '取消',
+                    confirmButtonText: ui("m_8a6da2bbb2f4d6d5"),
+                    cancelButtonText: ui("m_2cd0f3be8738a86c"),
                 });
                 confirmed = !!result.isConfirmed;
             } else {
-                confirmed = window.confirm('메모를 비울까요? 작성한 내용이 모두 지워집니다.');
+                confirmed = window.confirm(ui("m_85ff8a415e01b187"));
             }
             if (!confirmed) return;
             editor.setText('');
@@ -429,20 +430,20 @@ async function initCodeMirrorEditor(host: HTMLElement, initialDoc: string): Prom
     });
 
     // ── 문법 치트시트 버튼 (제안 G-5) — 문서 편집기와 동일한 진입점 ──
-    const cheatsheetBtn = createToolbarBtn('<i class="mdi mdi-book-search-outline"></i>', '문법 치트시트 (문법 검색)', () => {
+    const cheatsheetBtn = createToolbarBtn('<i class="mdi mdi-book-search-outline"></i>', ui("m_f6eeae9b0f5d9dbb"), () => {
         if (typeof window.openSyntaxCheatsheet === 'function') window.openSyntaxCheatsheet();
     });
     cheatsheetBtn.id = 'cm-cheatsheet-btn';
     toolbarEl.appendChild(cheatsheetBtn);
 
     // ── 찾기/바꾸기 + 설정 버튼(공유 모드 드롭다운 앞에 위치) ──
-    const findBtn = createToolbarBtn('<i class="mdi mdi-magnify"></i>', '찾기 / 바꾸기 (Ctrl+F)', () => {
+    const findBtn = createToolbarBtn('<i class="mdi mdi-magnify"></i>', ui("m_1dd3e0d08015576b"), () => {
         if (findPanel.style.display === 'block') closeFindPanel(); else openFindPanel();
     });
     findBtn.id = 'cm-find-btn';
     toolbarEl.appendChild(findBtn);
 
-    const settingsBtn = createToolbarBtn('<i class="mdi mdi-cog"></i>', '에디터 설정', () => toggleSettingsPanel());
+    const settingsBtn = createToolbarBtn('<i class="mdi mdi-cog"></i>', ui("m_eec44d1a5d65b9a3"), () => toggleSettingsPanel());
     settingsBtn.id = 'cm-settings-btn';
     toolbarEl.appendChild(settingsBtn);
 
@@ -456,46 +457,7 @@ async function initCodeMirrorEditor(host: HTMLElement, initialDoc: string): Prom
     const settingsPanel = document.createElement('div');
     settingsPanel.className = 'editor-settings-panel';
     settingsPanel.style.display = 'none';
-    settingsPanel.innerHTML = `
-        <div class="editor-settings-title"><i class="mdi mdi-cog"></i> 에디터 설정</div>
-        <label class="editor-settings-item">
-            <span>줄 번호 표시</span>
-            <input type="checkbox" id="memoSettingLineNumbers" ${editorSettings.showLineNumbers ? 'checked' : ''}>
-        </label>
-        <label class="editor-settings-item">
-            <span>스크롤 동기화</span>
-            <input type="checkbox" id="memoSettingScrollSync" ${editorSettings.scrollSync ? 'checked' : ''}>
-        </label>
-        <label class="editor-settings-item editor-settings-subitem">
-            <input type="radio" name="memoScrollSyncMode" value="oneway"
-                ${editorSettings.scrollSyncMode === 'oneway' ? 'checked' : ''} ${editorSettings.scrollSync ? '' : 'disabled'}>
-            <span>단방향 (에디터 → 프리뷰)</span>
-        </label>
-        <label class="editor-settings-item editor-settings-subitem">
-            <input type="radio" name="memoScrollSyncMode" value="twoway"
-                ${editorSettings.scrollSyncMode === 'twoway' ? 'checked' : ''} ${editorSettings.scrollSync ? '' : 'disabled'}>
-            <span>양방향</span>
-        </label>
-        <label class="editor-settings-item">
-            <span>문법 하이라이트</span>
-            <input type="checkbox" id="memoSettingSyntaxHighlight" ${editorSettings.syntaxHighlight ? 'checked' : ''}>
-        </label>
-        <label class="editor-settings-item">
-            <span>아이콘 표시</span>
-            <input type="checkbox" id="memoSettingAdvancedEdit"
-                ${editorSettings.advancedEdit && editorSettings.syntaxHighlight ? 'checked' : ''} ${editorSettings.syntaxHighlight ? '' : 'disabled'}>
-        </label>
-        <div class="editor-settings-divider"></div>
-        <div class="editor-settings-section-title">줄바꿈 모드</div>
-        <label class="editor-settings-item">
-            <input type="radio" name="memoWrapMode" value="wrap" ${editorSettings.wordWrap ? 'checked' : ''}>
-            <span>자동 줄바꿈 (기본)</span>
-        </label>
-        <label class="editor-settings-item">
-            <input type="radio" name="memoWrapMode" value="scroll" ${!editorSettings.wordWrap ? 'checked' : ''}>
-            <span>가로 스크롤</span>
-        </label>
-    `;
+    settingsPanel.innerHTML = ui("m_3dda158061c728c1", [editorSettings.showLineNumbers ? 'checked' : '', editorSettings.scrollSync ? 'checked' : '', editorSettings.scrollSyncMode === 'oneway' ? 'checked' : '', editorSettings.scrollSync ? '' : 'disabled', editorSettings.scrollSyncMode === 'twoway' ? 'checked' : '', editorSettings.scrollSync ? '' : 'disabled', editorSettings.syntaxHighlight ? 'checked' : '', editorSettings.advancedEdit && editorSettings.syntaxHighlight ? 'checked' : '', editorSettings.syntaxHighlight ? '' : 'disabled', editorSettings.wordWrap ? 'checked' : '', !editorSettings.wordWrap ? 'checked' : '']);
     document.body.appendChild(settingsPanel);
 
     function toggleSettingsPanel(): void {
@@ -682,25 +644,7 @@ async function initCodeMirrorEditor(host: HTMLElement, initialDoc: string): Prom
     findPanel.id = 'cm-find-panel';
     findPanel.className = 'cm-find-panel';
     findPanel.style.display = 'none';
-    findPanel.innerHTML = `
-        <div class="cm-find-row">
-            <input type="text" id="memoFindInput" class="cm-find-input" placeholder="찾기" autocomplete="off" spellcheck="false">
-            <span class="cm-find-status" id="memoFindStatus"></span>
-            <button type="button" id="memoFindPrevBtn" class="cm-find-btn" title="이전 (Shift+Enter)"><i class="mdi mdi-chevron-up"></i></button>
-            <button type="button" id="memoFindNextBtn" class="cm-find-btn" title="다음 (Enter)"><i class="mdi mdi-chevron-down"></i></button>
-            <label class="cm-find-toggle" title="대소문자 구분">
-                <input type="checkbox" id="memoFindCaseSensitive">
-                <span>Aa</span>
-            </label>
-            <button type="button" id="memoFindCloseBtn" class="cm-find-btn cm-find-close" title="닫기 (Esc)"><i class="mdi mdi-close"></i></button>
-        </div>
-        <div class="cm-find-row">
-            <input type="text" id="memoReplaceInput" class="cm-find-input" placeholder="바꾸기" autocomplete="off" spellcheck="false">
-            <button type="button" id="memoReplaceOneBtn" class="cm-find-btn cm-find-btn-text" title="현재 일치 항목을 바꾸고 다음으로 이동">
-                <i class="mdi mdi-find-replace"></i> 바꾸기
-            </button>
-        </div>
-    `;
+    findPanel.innerHTML = ui("m_609e74288eb6fdee");
     document.body.appendChild(findPanel);
 
     const findInput = findPanel.querySelector<HTMLInputElement>('#memoFindInput')!;
@@ -898,20 +842,7 @@ async function initCodeMirrorEditor(host: HTMLElement, initialDoc: string): Prom
 // ── CM6 로드 실패(예: esm.sh unreachable) 시 textarea 폴백 ──
 // 툴바·문법 하이라이트·모달은 없지만 입력·자동 저장·실시간 프리뷰는 그대로 동작한다.
 function initTextareaFallback(host: HTMLElement, initialDoc: string): MemoEditor {
-    host.innerHTML = `
-        <div class="wiki-editor-layout" data-fallback="1">
-            <div class="cm-mobile-tabs" id="cm-mobile-tabs">
-                <button class="cm-tab-btn active" data-tab="editor"><i class="mdi mdi-pencil"></i> 에디터</button>
-                <button class="cm-tab-btn" data-tab="preview"><i class="mdi mdi-eye"></i> 프리뷰</button>
-            </div>
-            <div class="wiki-editor-split-row" id="wiki-editor-split-row">
-                <div class="wiki-editor-pane cm-tab-active" id="cm-editor-pane">
-                    <textarea id="memoFallbackTextarea" class="form-control" spellcheck="false"
-                        style="width:100%;min-height:60vh;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical;"></textarea>
-                </div>
-                <div class="wiki-preview-pane" id="custom-wiki-preview"></div>
-            </div>
-        </div>`;
+    host.innerHTML = ui("m_375dba0b531416a0");
 
     const textarea = host.querySelector('#memoFallbackTextarea') as HTMLTextAreaElement;
     textarea.value = initialDoc;

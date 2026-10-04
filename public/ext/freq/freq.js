@@ -11,6 +11,7 @@
  *   {{freq:제목1|freq:제목2}}     — 제목2를 타겟 응답으로 사용 (비교/보정 옵션)
  */
 (function () {
+    const ui = (key, values) => window.VireoI18n.ui(key, values);
     'use strict';
 
     /** REW 텍스트 데이터를 파싱하여 { freq[], spl[], phase[], meta{}, hasPhase } 반환 */
@@ -104,7 +105,7 @@
         const parsed = _parseFreqData(extData.content);
 
         if (parsed.freq.length === 0) {
-            containerDiv.innerHTML = '<div class="alert alert-warning">⚠️ 주파수 데이터를 파싱할 수 없습니다.</div>';
+            containerDiv.innerHTML = ui("m_66a160f8042e2a21");
             return;
         }
 
@@ -121,24 +122,24 @@
             const titleAfterPrefix = targetArg.startsWith('freq:') ? targetArg.substring(5).trim() : '';
             if (!targetArg.startsWith('freq:') || !titleAfterPrefix) {
                 // freq: 네임스페이스가 아닌 문서 — 유효한 주파수응답 데이터가 아님
-                targetError = `"${targetArg}" 은(는) 유효한 주파수응답 데이터가 아닙니다. (freq: 문서만 타겟으로 사용 가능)`;
+                targetError = ui("m_e0c45ab49ad7a4b2", [targetArg]);
             } else {
                 const sec = (extData.secondary && extData.secondary[targetSlug]) || null;
                 if (!sec) {
-                    targetError = `타겟 응답(${titleAfterPrefix})을 불러올 수 없습니다.`;
+                    targetError = ui("m_940e6692b62ccb8f", [titleAfterPrefix]);
                 } else if (sec.disabled) {
-                    targetError = `타겟 응답(${titleAfterPrefix})의 익스텐션이 비활성화되어 있습니다.`;
+                    targetError = ui("m_d51302ae04a2e98e", [titleAfterPrefix]);
                 } else if (sec.error) {
-                    targetError = `타겟 응답(${titleAfterPrefix}): ${sec.error}`;
+                    targetError = ui("m_47a1317f9638980c", [titleAfterPrefix, sec.error]);
                 } else if (typeof sec.content === 'string') {
                     const tp = _parseFreqData(sec.content);
                     if (tp.freq.length === 0) {
-                        targetError = `타겟 응답(${titleAfterPrefix}) 데이터를 파싱할 수 없습니다.`;
+                        targetError = ui("m_334817d124fa7a8d", [titleAfterPrefix]);
                     } else {
                         targetParsed = tp;
                     }
                 } else {
-                    targetError = `타겟 응답(${titleAfterPrefix})이 유효하지 않습니다.`;
+                    targetError = ui("m_236de7316ec1347f", [titleAfterPrefix]);
                 }
             }
         }
@@ -194,14 +195,14 @@
         let compensateBtnHtml = '';
         let warningHtml = '';
         if (targetParsed) {
-            compensateBtnHtml = `<button class="wiki-freq-mode-btn" data-mode="compensate" title="타겟 기준으로 보정 (편차 표시)"><i class="bi bi-rulers"></i> 보정</button>`;
+            compensateBtnHtml = ui("m_976fe5361e847363");
         } else if (targetError) {
             warningHtml = `<div class="wiki-freq-target-warning">⚠️ ${escapeHtml(targetError)}</div>`;
         }
 
         const hasComments = parsed.meta.comments && parsed.meta.comments.length > 0;
         const infoBtnHtml = hasComments
-            ? '<button type="button" class="wiki-freq-info-btn" title="주석 전체 보기"><i class="bi bi-info-circle"></i></button>'
+            ? ui("m_b20a4b92c84c5f5f")
             : '';
 
         containerDiv.innerHTML = `
@@ -210,7 +211,7 @@
                     <span class="wiki-freq-title">${escapeHtml(docTitle)}${escapeHtml(metaLabel)}${infoBtnHtml}</span>
                     <div class="wiki-freq-controls">
                         ${compensateBtnHtml}
-                        ${parsed.hasPhase ? '<button class="wiki-freq-toggle-phase" title="위상 표시/숨기기"><i class="bi bi-activity"></i> Phase</button>' : ''}
+                        ${parsed.hasPhase ? ui("m_6c57a398a288e665") : ''}
                     </div>
                 </div>
                 ${warningHtml}
@@ -235,7 +236,7 @@
                     Swal.fire({
                         title: escapeHtml(docTitle),
                         html: `<div style="text-align:left; font-size:0.85rem; line-height:1.5; max-height:60vh; overflow:auto; font-family: var(--bs-font-monospace, monospace);">${commentsHtml}</div>`,
-                        confirmButtonText: '닫기',
+                        confirmButtonText: ui("m_1e8c10206f5b35bd"),
                         width: '600px',
                     });
                 }
@@ -287,7 +288,7 @@
 
             const datasets = [
                 {
-                    label: 'SPL (dB)',
+                    label: ui("m_aa297e7f66f93047"),
                     data: buildPrimaryData(),
                     borderColor: splColor,
                     backgroundColor: 'transparent',
@@ -302,7 +303,7 @@
             // Target 데이터셋 — 기본 표시 (점선 겹쳐보기). 보정/위상 모드에서는 숨김.
             if (targetFreq) {
                 datasets.push({
-                    label: `Target (${targetTitle})`,
+                    label: ui("m_80ac818ba5040aaa", [targetTitle]),
                     data: freq.map(f => ({ x: f, y: _interpolateAt(targetFreq, targetSpl, f) })),
                     borderColor: targetColor,
                     backgroundColor: 'transparent',
@@ -322,7 +323,7 @@
             const scales = {
                 x: {
                     type: 'logarithmic',
-                    title: { display: true, text: 'Frequency (Hz)', color: textColor },
+                    title: { display: true, text: ui("m_5f9597e24414b24b"), color: textColor },
                     min: Math.max(20, xLow),
                     max: Math.min(20000, xHigh),
                     grid: { color: gridColor },
@@ -340,7 +341,7 @@
                 },
                 y: {
                     type: 'linear',
-                    title: { display: true, text: 'SPL (dB)', color: splColor },
+                    title: { display: true, text: ui("m_aa297e7f66f93047"), color: splColor },
                     grid: { color: gridColor },
                     ticks: { color: splColor },
                     position: 'left',
@@ -350,7 +351,7 @@
             // Phase 데이터셋 (기본 숨김)
             if (parsed.hasPhase && phase.length > 0) {
                 datasets.push({
-                    label: 'Phase (°)',
+                    label: ui("m_fa2631f89de91520"),
                     data: freq.map((f, i) => ({ x: f, y: phase[i] })),
                     borderColor: phaseColor,
                     backgroundColor: 'transparent',
@@ -362,7 +363,7 @@
                 });
                 scales.yPhase = {
                     type: 'linear',
-                    title: { display: true, text: 'Phase (°)', color: phaseColor },
+                    title: { display: true, text: ui("m_fa2631f89de91520"), color: phaseColor },
                     grid: { drawOnChartArea: false },
                     ticks: { color: phaseColor },
                     position: 'right',
@@ -460,7 +461,7 @@
             // 교체/정리된 렌더의 늦은 실패는 무시(현재 활성 렌더 내용 보존).
             if (containerDiv._extGen !== renderGen) return;
             console.error('Chart.js load failed:', err);
-            containerDiv.innerHTML = '<div class="alert alert-danger">⚠️ 그래프 라이브러리 로드에 실패했습니다.</div>';
+            containerDiv.innerHTML = ui("m_bab8d4ce68ac49f0");
         });
     }
 

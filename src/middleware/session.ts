@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { createMiddleware } from 'hono/factory';
 import { getCookie } from 'hono/cookie';
 import { isSuperAdmin } from '../utils/auth';
@@ -95,7 +96,7 @@ export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
             // 브라우저에서 페이지 접근 시 강제 리다이렉트
             c.set('user', null);
             if (c.req.path.startsWith('/api/')) {
-                return c.json({ error: '탈퇴한 사용자입니다.' }, 403);
+                return c.json({ error: ui("m_02903fc13e99bba0") }, 403);
             }
             return c.redirect('/?error=deleted_account');
         }
@@ -123,10 +124,10 @@ export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
 export const requireAuth = createMiddleware<Env>(async (c, next) => {
     const user = c.get('user');
     if (!user) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     if (user.role === 'banned') {
-        return c.json({ error: '차단된 계정입니다. 이용하실 수 없습니다.' }, 403);
+        return c.json({ error: ui("m_6c866390a85ff79c") }, 403);
     }
     return next();
 });
@@ -138,7 +139,7 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
 export const requireAuthAllowBanned = createMiddleware<Env>(async (c, next) => {
     const user = c.get('user');
     if (!user) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     return next();
 });
@@ -150,7 +151,7 @@ export const requireAdmin = createMiddleware<Env>(async (c, next) => {
     const user = c.get('user');
     const rbac = c.get('rbac') as RBAC;
     if (!user || !rbac.can(user.role, 'admin:access')) {
-        return c.json({ error: '관리자 권한이 필요합니다.' }, 403);
+        return c.json({ error: ui("m_b432a12aeaf2ac59") }, 403);
     }
     return next();
 });
@@ -168,9 +169,9 @@ export function requirePermission(permission: string) {
 
         if (!rbac.can(role, permission)) {
             if (!user) {
-                return c.json({ error: '로그인이 필요합니다.' }, 401);
+                return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
             }
-            return c.json({ error: `권한이 부족합니다. (${permission})` }, 403);
+            return c.json({ error: ui("m_294eb6cfe8b5a1ea", [permission]) }, 403);
         }
         return next();
     });

@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { requireAuth } from '../middleware/session';
@@ -115,7 +116,7 @@ qrLogin.post('/qr-login/status', async (c) => {
     const token = body.token || '';
     const secret = body.secret || '';
     if (!token || !secret) {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 400);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 400);
     }
 
     const row = await loadSession(c.env.DB, token);
@@ -125,7 +126,7 @@ qrLogin.post('/qr-login/status', async (c) => {
     }
     const secretHash = await sha256Hex(secret);
     if (secretHash !== row.secret_hash) {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 403);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 403);
     }
 
     return c.json<QrLoginStatusResponse>({ status: effectiveStatus(row, nowSec()) });
@@ -140,12 +141,12 @@ qrLogin.get('/qr-login/info', requireAuth, async (c) => {
     const user = c.get('user')!;
     const token = c.req.query('token') || '';
     if (!token) {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 400);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 400);
     }
 
     const row = await loadSession(c.env.DB, token);
     if (!row) {
-        return c.json({ error: 'QR 코드를 찾을 수 없거나 만료되었습니다.' }, 404);
+        return c.json({ error: ui("m_0fb1ab813a38f51b") }, 404);
     }
 
     return c.json<QrLoginInfoResponse>({
@@ -173,7 +174,7 @@ qrLogin.post('/qr-login/approve', requireAuth, async (c) => {
     const body = await c.req.json<{ token?: string }>().catch(() => ({} as { token?: string }));
     const token = body.token || '';
     if (!token) {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 400);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 400);
     }
 
     const now = nowSec();
@@ -189,10 +190,10 @@ qrLogin.post('/qr-login/approve', requireAuth, async (c) => {
     if (!res.meta.changes) {
         // 실패 원인 구분 안내
         const row = await loadSession(c.env.DB, token);
-        if (!row) return c.json({ error: '만료되었거나 존재하지 않는 QR 코드입니다.' }, 404);
-        if (row.expires_at < now) return c.json({ error: 'QR 코드가 만료되었습니다.' }, 410);
-        if (row.status === 'cancelled') return c.json({ error: '취소된 요청입니다.' }, 409);
-        return c.json({ error: '이미 처리된 요청입니다.' }, 409);
+        if (!row) return c.json({ error: ui("m_beb955daeb37f6d4") }, 404);
+        if (row.expires_at < now) return c.json({ error: ui("m_2276c50e0e3b1fdd") }, 410);
+        if (row.status === 'cancelled') return c.json({ error: ui("m_faa2bb59f1d2a8f9") }, 409);
+        return c.json({ error: ui("m_e7fd0c8c21d6b744") }, 409);
     }
 
     return c.json({ success: true });
@@ -209,7 +210,7 @@ qrLogin.post('/qr-login/cancel', async (c) => {
         .catch(() => ({} as { token?: string; secret?: string }));
     const token = body.token || '';
     if (!token) {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 400);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 400);
     }
 
     const row = await loadSession(c.env.DB, token);
@@ -225,7 +226,7 @@ qrLogin.post('/qr-login/cancel', async (c) => {
     }
     if (!allowed && c.get('user')) allowed = true;
     if (!allowed) {
-        return c.json({ error: '권한이 없습니다.' }, 403);
+        return c.json({ error: ui("m_a20ccb3e6b01e324") }, 403);
     }
 
     await c.env.DB.prepare(
@@ -250,31 +251,31 @@ qrLogin.post('/qr-login/redeem', async (c) => {
     const token = body.token || '';
     const secret = body.secret || '';
     if (!token || !secret) {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 400);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 400);
     }
 
     const row = await loadSession(db, token);
     if (!row) {
-        return c.json({ error: '만료되었거나 존재하지 않는 요청입니다.' }, 404);
+        return c.json({ error: ui("m_8dfae4ccf5a6b9d1") }, 404);
     }
     const secretHash = await sha256Hex(secret);
     if (secretHash !== row.secret_hash) {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 403);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 403);
     }
 
     const now = nowSec();
     if (row.expires_at < now) {
-        return c.json({ error: '만료된 요청입니다.' }, 410);
+        return c.json({ error: ui("m_4454fea9ba8381bf") }, 410);
     }
     if (row.status !== 'approved') {
-        if (row.status === 'cancelled') return c.json({ error: '취소된 요청입니다.' }, 409);
-        if (row.status === 'consumed') return c.json({ error: '이미 사용된 요청입니다.' }, 409);
-        return c.json({ error: '아직 승인되지 않았습니다.' }, 409);
+        if (row.status === 'cancelled') return c.json({ error: ui("m_faa2bb59f1d2a8f9") }, 409);
+        if (row.status === 'consumed') return c.json({ error: ui("m_0ee746abfd9c27df") }, 409);
+        return c.json({ error: ui("m_c912235825f0e01c") }, 409);
     }
 
     const approvedUserId = row.approved_user_id;
     if (!approvedUserId) {
-        return c.json({ error: '승인 정보가 유효하지 않습니다.' }, 500);
+        return c.json({ error: ui("m_fe613f72a480159c") }, 500);
     }
 
     // 승인 계정이 여전히 유효한지 확인(승인 후 탈퇴/차단 방지). CAS 소진 전에 읽는다.
@@ -283,10 +284,10 @@ qrLogin.post('/qr-login/redeem', async (c) => {
         .bind(approvedUserId)
         .first<{ id: number; role: string; banned_until: number | null }>();
     if (!acct || acct.role === 'deleted') {
-        return c.json({ error: '계정을 사용할 수 없습니다.' }, 403);
+        return c.json({ error: ui("m_6bb9fa79146e2a5e") }, 403);
     }
     if (acct.banned_until && acct.banned_until > now) {
-        return c.json({ error: '차단된 계정입니다.' }, 403);
+        return c.json({ error: ui("m_ef7eea8f5740423e") }, 403);
     }
 
     // 원자적 approved → consumed (이중 redeem 으로 세션이 2개 발급되는 경합 방지).
@@ -295,7 +296,7 @@ qrLogin.post('/qr-login/redeem', async (c) => {
         .bind(now, token)
         .run();
     if (!upd.meta.changes) {
-        return c.json({ error: '이미 사용된 요청입니다.' }, 409);
+        return c.json({ error: ui("m_0ee746abfd9c27df") }, 409);
     }
 
     // 6시간짜리 임시 세션 발급 — createSession(remember=false) = SESSION_TTL_DEFAULT(6h).

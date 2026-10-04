@@ -1,10 +1,11 @@
+import { ui } from '../../../i18n/server';
 import type { Context } from 'hono';
 import type { Env } from '../../../types';
 import type { OAuthProvider, OAuthCallbackResult, OAuthStateData } from './base';
 
 export const discordProvider: OAuthProvider = {
     name: 'discord',
-    label: 'Discord',
+    label: ui("m_053bc65874ad6098"),
 
     async handleLogin(c: Context<Env>, stateData?: Partial<OAuthStateData>): Promise<Response> {
         if (!c.env.DISCORD_CLIENT_ID || !c.env.DISCORD_REDIRECT_URI) {
@@ -44,11 +45,11 @@ export const discordProvider: OAuthProvider = {
 
         // CSRF 검증
         if (!state) {
-            return c.redirect('/error?reason=' + encodeURIComponent('로그인 요청이 올바르지 않습니다. 다시 시도해주세요.'));
+            return c.redirect('/error?reason=' + encodeURIComponent(ui("m_c19f90377ab6e2c9")));
         }
         const storedRaw = await c.env.KV.get(`oauth_state:${state}`);
         if (!storedRaw) {
-            return c.redirect('/error?reason=' + encodeURIComponent('로그인 세션이 만료되었거나 유효하지 않습니다. 다시 시도해주세요.'));
+            return c.redirect('/error?reason=' + encodeURIComponent(ui("m_bbb52cca8cca84f1")));
         }
 
         // 구 포맷(단순 'discord' 문자열) 폴백: 배포 전환 시점에 이미 진행 중이던 로그인 호환용
@@ -60,12 +61,12 @@ export const discordProvider: OAuthProvider = {
                 stateData = JSON.parse(storedRaw) as OAuthStateData;
             } catch {
                 await c.env.KV.delete(`oauth_state:${state}`);
-                return c.redirect('/error?reason=' + encodeURIComponent('로그인 세션이 올바르지 않습니다. 다시 시도해주세요.'));
+                return c.redirect('/error?reason=' + encodeURIComponent(ui("m_fbfc48924eda24a4")));
             }
         }
         if (stateData.provider !== 'discord') {
             await c.env.KV.delete(`oauth_state:${state}`);
-            return c.redirect('/error?reason=' + encodeURIComponent('로그인 세션이 유효하지 않습니다. 다시 시도해주세요.'));
+            return c.redirect('/error?reason=' + encodeURIComponent(ui("m_dd3940b67e5e416c")));
         }
         await c.env.KV.delete(`oauth_state:${state}`);
 

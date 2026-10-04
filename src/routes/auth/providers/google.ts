@@ -1,10 +1,11 @@
+import { ui } from '../../../i18n/server';
 import type { Context } from 'hono';
 import type { Env } from '../../../types';
 import type { OAuthProvider, OAuthCallbackResult, OAuthStateData } from './base';
 
 export const googleProvider: OAuthProvider = {
     name: 'google',
-    label: 'Google',
+    label: ui("m_ce770667e5f9b0d8"),
 
     async handleLogin(c: Context<Env>, stateData?: Partial<OAuthStateData>): Promise<Response> {
         if (!c.env.GOOGLE_CLIENT_ID || !c.env.GOOGLE_REDIRECT_URI) {
@@ -45,11 +46,11 @@ export const googleProvider: OAuthProvider = {
 
         // CSRF 검증
         if (!state) {
-            return c.redirect('/error?reason=' + encodeURIComponent('로그인 요청이 올바르지 않습니다. 다시 시도해주세요.'));
+            return c.redirect('/error?reason=' + encodeURIComponent(ui("m_c19f90377ab6e2c9")));
         }
         const storedRaw = await c.env.KV.get(`oauth_state:${state}`);
         if (!storedRaw) {
-            return c.redirect('/error?reason=' + encodeURIComponent('로그인 세션이 만료되었거나 유효하지 않습니다. 다시 시도해주세요.'));
+            return c.redirect('/error?reason=' + encodeURIComponent(ui("m_bbb52cca8cca84f1")));
         }
 
         // 구 포맷(단순 'google' 문자열) 폴백: 배포 전환 시점에 이미 진행 중이던 로그인 호환용
@@ -61,12 +62,12 @@ export const googleProvider: OAuthProvider = {
                 stateData = JSON.parse(storedRaw) as OAuthStateData;
             } catch {
                 await c.env.KV.delete(`oauth_state:${state}`);
-                return c.redirect('/error?reason=' + encodeURIComponent('로그인 세션이 올바르지 않습니다. 다시 시도해주세요.'));
+                return c.redirect('/error?reason=' + encodeURIComponent(ui("m_fbfc48924eda24a4")));
             }
         }
         if (stateData.provider !== 'google') {
             await c.env.KV.delete(`oauth_state:${state}`);
-            return c.redirect('/error?reason=' + encodeURIComponent('로그인 세션이 유효하지 않습니다. 다시 시도해주세요.'));
+            return c.redirect('/error?reason=' + encodeURIComponent(ui("m_dd3940b67e5e416c")));
         }
         await c.env.KV.delete(`oauth_state:${state}`);
 

@@ -15,7 +15,8 @@
 //     revokeAllSessions / revokeAllMcpClients / deleteAccount / refreshProfilePicture /
 //     deleteDirectMessage / revokeSession / viewSentMessage)는 파일 끝에서 window.* 로 노출한다.
 
-        document.addEventListener('DOMContentLoaded', async () => {
+        import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
+document.addEventListener('DOMContentLoaded', async () => {
             await Promise.all([window.loadConfig(), window.checkAuth()]);
             if (!window.currentUser) {
                 window.location.href = '/login';
@@ -72,7 +73,7 @@
             if (updated === '1') {
                 Swal.fire({
                     icon: 'success',
-                    title: '프로필 사진이 갱신되었습니다.',
+                    title: ui("m_27527e27078055d3"),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
@@ -82,29 +83,29 @@
             }
 
             const errorMessages = {
-                provider_not_enabled: '현재 이 OAuth 공급자가 비활성화되어 있어 사진을 갱신할 수 없습니다.',
-                provider_not_supported: '이 계정의 OAuth 공급자는 프로필 사진 갱신을 지원하지 않습니다.',
-                session_mismatch: '세션 정보가 일치하지 않습니다. 다시 시도해주세요.',
-                account_mismatch: '재인증한 계정이 현재 로그인 계정과 일치하지 않습니다. 동일한 계정으로 다시 인증해주세요.',
-                invalid_state: '요청이 만료되었거나 올바르지 않습니다. 다시 시도해주세요.',
-                user_not_found: '사용자 정보를 찾을 수 없습니다.',
-                private: '프로필 사진이 비공개로 설정되어 있어 갱신할 수 없습니다. 먼저 비공개를 해제해주세요.',
+                provider_not_enabled: ui("m_e1ba9897a57875e1"),
+                provider_not_supported: ui("m_cb2c8eb9d217e614"),
+                session_mismatch: ui("m_92f4c2c45c2cecf5"),
+                account_mismatch: ui("m_da6631fb6e9f5b28"),
+                invalid_state: ui("m_c4587d89237f1f7c"),
+                user_not_found: ui("m_f273cf8123a33e79"),
+                private: ui("m_1e80a9a0d34e0f17"),
             };
             Swal.fire({
                 icon: 'error',
-                title: '프로필 사진 갱신 실패',
-                text: errorMessages[error] || '알 수 없는 오류가 발생했습니다.',
+                title: ui("m_0c2d48014638d633"),
+                text: errorMessages[error] || ui("m_7079d853cfb9f20e"),
             });
         }
 
         async function refreshProfilePicture() {
             const result = await Swal.fire({
-                title: '프로필 사진 갱신',
-                html: '현재 로그인된 OAuth 공급자로 재인증을 진행하여<br>프로필 사진을 해당 계정의 최신 이미지로 갱신합니다.<br><small class="text-muted">직접 업로드는 지원하지 않습니다.</small>',
+                title: ui("m_8b2608ed69d8ea5b"),
+                html: ui("m_62fa0a0e12f24b6f"),
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: '재인증 진행',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_a996ac181108fe08"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
             });
             if (!result.isConfirmed) return;
             window.location.href = '/auth/refresh-picture';
@@ -116,37 +117,32 @@
             let roleBadge = '';
             switch (window.currentUser.role) {
                 case 'super_admin':
-                    roleBadge = '<span class="badge bg-dark role-badge">超级管理员</span>';
+                    roleBadge = ui("m_a127fef3c25093f2");
                     break;
                 case 'admin':
-                    roleBadge = '<span class="badge bg-primary role-badge">관리자</span>';
+                    roleBadge = ui("m_b4ee5ef4979b6492");
                     break;
                 case 'banned':
-                    roleBadge = '<span class="badge bg-danger role-badge">차단됨</span>';
+                    roleBadge = ui("m_c7f888070d8663a4");
                     break;
                 default:
-                    roleBadge = '<span class="badge bg-secondary role-badge">普通用户</span>';
+                    roleBadge = ui("m_ecaa68da4df83496");
             }
 
             const joinDate = window.currentUser.created_at
-                ? new Date(window.currentUser.created_at * 1000).toLocaleDateString('zh-CN', {
+                ? new Date(window.currentUser.created_at * 1000).toLocaleDateString(getLocale(), {
                     year: 'numeric', month: 'long', day: 'numeric'
                 })
-                : '未知用户';
+                : ui("m_1ac13841ba2ea68b");
 
             const avatarInner = window.currentUser.picture
-                ? `<img src="${window.currentUser.picture}" class="profile-avatar" alt="프로필" loading="lazy">`
+                ? ui("m_ca7edd9b33f4259e", [window.currentUser.picture])
                 : `<div class="profile-avatar-placeholder">${window.escapeHtml(window.currentUser.name.charAt(0))}</div>`;
 
             // 사진 비공개 상태에서는 공급자 사진 갱신 버튼을 숨긴다(갱신이 서버에서 거부됨).
             const refreshBtn = window.currentUser.picture_private
                 ? ''
-                : `<button type="button" class="profile-avatar-refresh"
-                            onclick="refreshProfilePicture()"
-                            aria-label="프로필 사진 갱신"
-                            title="OAuth 재인증으로 프로필 사진 갱신">
-                        <i class="mdi mdi-refresh" aria-hidden="true"></i>
-                    </button>`;
+                : ui("m_f6e3ee80760f5dce");
 
             const avatarHtml = `
                 <div class="profile-avatar-wrap">
@@ -155,14 +151,7 @@
                 </div>
             `;
 
-            header.innerHTML = `
-                ${avatarHtml}
-                <div class="profile-info">
-                    <h2>${window.escapeHtml(window.currentUser.name)} ${roleBadge}</h2>
-                    <div class="text-muted"><i class="mdi mdi-email"></i> ${window.escapeHtml(window.currentUser.email)}</div>
-                    <div class="text-muted"><i class="mdi mdi-calendar"></i> ${joinDate} 가입</div>
-                </div>
-            `;
+            header.innerHTML = ui("m_2e19d5cf4fe6fa84", [avatarHtml, window.escapeHtml(window.currentUser.name), roleBadge, window.escapeHtml(window.currentUser.email), joinDate]);
 
             // 설정 섹션 표시
             document.getElementById('nameInput').value = window.currentUser.name;
@@ -187,7 +176,7 @@
                     body: JSON.stringify({ private: makePrivate })
                 });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '변경 실패');
+                if (!res.ok) throw new Error(data.error || ui("m_b8462c884b380729"));
 
                 window.currentUser.picture_private = data.private ? 1 : 0;
                 window.currentUser.picture = data.picture;
@@ -195,7 +184,7 @@
 
                 Swal.fire({
                     icon: 'success',
-                    title: makePrivate ? '프로필 사진을 비공개로 설정했습니다.' : '隐藏头像를 해제했습니다.',
+                    title: makePrivate ? ui("m_5770c3cfa9135fc2") : ui("m_9a28db229cbd2a2b"),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
@@ -203,7 +192,7 @@
                 });
             } catch (err) {
                 el.checked = !makePrivate; // 롤백
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             } finally {
                 el.disabled = false;
             }
@@ -219,7 +208,7 @@
                     body: JSON.stringify({ enabled })
                 });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '변경 실패');
+                if (!res.ok) throw new Error(data.error || ui("m_b8462c884b380729"));
 
                 window.currentUser.mcp_instant_apply = data.enabled ? 1 : 0;
                 // 즉시반영 설정에 따라 apply_edit 노출이 바뀌므로 도구 목록을 다시 불러온다.
@@ -227,8 +216,8 @@
 
                 Swal.fire({
                     icon: 'success',
-                    title: enabled ? 'MCP 편집 즉시반영을 허용했습니다.' : 'MCP 편집 즉시반영을 비활성화했습니다.',
-                    text: enabled ? '연결된 MCP 클라이언트를 새로고침하면 apply_edit 도구가 노출됩니다.' : '',
+                    title: enabled ? ui("m_a07962ab43adb597") : ui("m_d539c329fef1d5bf"),
+                    text: enabled ? ui("m_d6bd8f8ee6686b2f") : '',
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
@@ -236,7 +225,7 @@
                 });
             } catch (err) {
                 el.checked = !enabled; // 롤백
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             } finally {
                 el.disabled = false;
             }
@@ -252,12 +241,7 @@
                 // 통계 표시
                 const statsSection = document.getElementById('statsSection');
                 statsSection.style.display = '';
-                document.getElementById('statCards').innerHTML = `
-                    <div class="stat-card">
-                        <div class="stat-value">${contributions.length}</div>
-                        <div class="stat-label">편집한 문서</div>
-                    </div>
-                `;
+                document.getElementById('statCards').innerHTML = ui("m_21032b76eecc4919", [contributions.length]);
 
                 // 기여 목록
                 const section = document.getElementById('contributionsSection');
@@ -265,12 +249,12 @@
                 const listEl = document.getElementById('contributionsList');
 
                 if (contributions.length === 0) {
-                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-pencil-square', title: '아직 편집한 暂无页面' });
+                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-pencil-square', title: ui("m_e0a4e07542721ef4") });
                     return;
                 }
 
                 listEl.innerHTML = contributions.map(c => {
-                    const date = new Date(c.updated_at * 1000).toLocaleDateString('zh-CN');
+                    const date = new Date(c.updated_at * 1000).toLocaleDateString(getLocale());
                     const categoryBadge = c.category
                         ? `<span class="badge bg-secondary ms-1">${window.escapeHtml(c.category)}</span>`
                         : '';
@@ -287,7 +271,7 @@
 
             } catch (e) {
                 document.getElementById('contributionsList').innerHTML =
-                    window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '불러오기 실패' });
+                    window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_ebaf4022cf1aed6d") });
             }
         }
 
@@ -308,8 +292,8 @@
             } catch (e) {
                 pagesSection.style.display = '';
                 catsSection.style.display = '';
-                pagesList.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '불러오기 실패' });
-                catsList.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '불러오기 실패' });
+                pagesList.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_ebaf4022cf1aed6d") });
+                catsList.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_ebaf4022cf1aed6d") });
                 document.getElementById('watchedPagesCount').textContent = '0';
                 document.getElementById('watchedCategoriesCount').textContent = '0';
             }
@@ -320,7 +304,7 @@
             document.getElementById('watchedPagesCount').textContent = String(items.length);
 
             if (items.length === 0) {
-                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-eye', title: '주시 중인 暂无页面' });
+                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-eye', title: ui("m_38faa1c32a2667e2") });
                 return;
             }
 
@@ -329,38 +313,14 @@
             listEl.innerHTML = items.map(p => {
                 const slug = p.slug;
                 const scope = p.scope === 'subtree' ? 'subtree' : 'this';
-                const scopeLabel = scope === 'subtree' ? '하위 포함' : '이 문서만';
+                const scopeLabel = scope === 'subtree' ? ui("m_3440317c4c2a5ed6") : ui("m_b53a2c7425d91690");
                 const scopeBadgeColor = scope === 'subtree' ? 'bg-info text-dark' : 'bg-light text-dark border';
                 const otherScope = scope === 'subtree' ? 'this' : 'subtree';
-                const switchLabel = scope === 'subtree' ? '이 문서만' : '하위 포함';
+                const switchLabel = scope === 'subtree' ? ui("m_b53a2c7425d91690") : ui("m_3440317c4c2a5ed6");
                 const categoryBadge = p.category
                     ? `<span class="badge bg-secondary ms-1">${window.escapeHtml(p.category)}</span>`
                     : '';
-                return `
-                    <div class="contribution-item">
-                        <div class="flex-grow-1 me-2 text-truncate">
-                            <a href="/w/${encodeURIComponent(slug)}">${window.escapeHtml(slug)}</a>
-                            <span class="badge ${scopeBadgeColor} ms-1">${scopeLabel}</span>
-                            ${categoryBadge}
-                        </div>
-                        <div class="d-flex gap-1 flex-shrink-0">
-                            <button class="btn btn-sm btn-outline-secondary"
-                                data-watch-action="change-scope"
-                                data-slug="${window.escapeHtml(slug)}"
-                                data-target-scope="${otherScope}"
-                                title="주시 범위 변경">
-                                <i class="mdi mdi-swap-horizontal"></i> ${switchLabel}
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger"
-                                data-watch-action="unwatch-page"
-                                data-slug="${window.escapeHtml(slug)}"
-                                data-current-scope="${scope}"
-                                title="주시 해제">
-                                <i class="mdi mdi-eye-off-outline"></i> 해제
-                            </button>
-                        </div>
-                    </div>
-                `;
+                return ui("m_e81f2b4849927a47", [encodeURIComponent(slug), window.escapeHtml(slug), scopeBadgeColor, scopeLabel, categoryBadge, window.escapeHtml(slug), otherScope, switchLabel, window.escapeHtml(slug), scope]);
             }).join('');
 
             listEl.querySelectorAll('button[data-watch-action]').forEach(btn => {
@@ -373,7 +333,7 @@
             document.getElementById('watchedCategoriesCount').textContent = String(items.length);
 
             if (items.length === 0) {
-                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-folder', title: '주시 중인 카테고리가 없습니다' });
+                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-folder', title: ui("m_53844de98b375b14") });
                 return;
             }
 
@@ -381,22 +341,7 @@
             listEl.innerHTML = items.map(c => {
                 const cat = c.category;
                 const count = Number(c.page_count) || 0;
-                return `
-                    <div class="contribution-item">
-                        <div class="flex-grow-1 me-2 text-truncate">
-                            <a href="/w/category/${encodeURIComponent(cat)}">${window.escapeHtml(cat)}</a>
-                            <span class="badge bg-light text-dark border ms-1">${count} 문서</span>
-                        </div>
-                        <div class="d-flex gap-1 flex-shrink-0">
-                            <button class="btn btn-sm btn-outline-danger"
-                                data-watch-action="unwatch-category"
-                                data-category="${window.escapeHtml(cat)}"
-                                title="주시 해제">
-                                <i class="mdi mdi-eye-off-outline"></i> 해제
-                            </button>
-                        </div>
-                    </div>
-                `;
+                return ui("m_06fa2caf0ba9dd0b", [encodeURIComponent(cat), window.escapeHtml(cat), count, window.escapeHtml(cat)]);
             }).join('');
 
             listEl.querySelectorAll('button[data-watch-action]').forEach(btn => {
@@ -434,12 +379,12 @@
                 });
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
-                    throw new Error(data.error || '범위 변경에 실패했습니다.');
+                    throw new Error(data.error || ui("m_3f8d0f59a303ce72"));
                 }
                 await loadWatches();
             } catch (err) {
                 btn.disabled = false;
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             }
         }
 
@@ -453,12 +398,12 @@
                 });
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
-                    throw new Error(data.error || '주시 해제에 실패했습니다.');
+                    throw new Error(data.error || ui("m_4b589d20c184e3ee"));
                 }
                 await loadWatches();
             } catch (err) {
                 btn.disabled = false;
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             }
         }
 
@@ -470,12 +415,12 @@
                 });
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
-                    throw new Error(data.error || '카테고리 주시 해제에 실패했습니다.');
+                    throw new Error(data.error || ui("m_713e20aee3f5675b"));
                 }
                 await loadWatches();
             } catch (err) {
                 btn.disabled = false;
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             }
         }
 
@@ -504,7 +449,7 @@
                 }
             } catch (e) {
                 section.style.display = '';
-                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '불러오기 실패' });
+                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_ebaf4022cf1aed6d") });
             }
         }
 
@@ -520,16 +465,16 @@
             slugLink.textContent = s.slug;
             const actionBadge = document.createElement('span');
             actionBadge.className = 'badge ' + (s.action === 'create' ? 'bg-success' : 'bg-info text-dark');
-            actionBadge.textContent = s.action === 'create' ? '신규' : '编辑';
+            actionBadge.textContent = s.action === 'create' ? ui("m_113ce17492d363d2") : ui("m_051836569928a9f9");
             head.appendChild(slugLink);
             head.appendChild(actionBadge);
             if (s.has_conflict) {
                 const conflictBadge = document.createElement('span');
                 conflictBadge.className = 'badge bg-danger';
-                conflictBadge.textContent = s.conflict_reason === 'slug_taken' ? '제목 점거 충돌'
-                    : s.conflict_reason === 'slug_soft_deleted' ? '소프트 삭제된 동일 제목'
-                    : s.conflict_reason === 'page_missing' ? '문서 없음/삭제됨'
-                    : '동시 편집 충돌';
+                conflictBadge.textContent = s.conflict_reason === 'slug_taken' ? ui("m_0f16f08ba66b3989")
+                    : s.conflict_reason === 'slug_soft_deleted' ? ui("m_f1f9331cfbe8cf01")
+                    : s.conflict_reason === 'page_missing' ? ui("m_b82ac026ddfc7c58")
+                    : ui("m_b4ad5e963ae1e64d");
                 head.appendChild(conflictBadge);
             }
             wrap.appendChild(head);
@@ -543,15 +488,15 @@
 
             const meta = document.createElement('div');
             meta.className = 'mcp-sub-meta';
-            const ts = s.submitted_at ? new Date(s.submitted_at).toLocaleString('zh-CN') : '';
-            meta.textContent = `제출 ${ts} · 본문 ${s.content_length}자`;
+            const ts = s.submitted_at ? new Date(s.submitted_at).toLocaleString(getLocale()) : '';
+            meta.textContent = ui("m_3fd1d3d9c3c591d5", [ts, s.content_length]);
             wrap.appendChild(meta);
 
             const actions = document.createElement('div');
             actions.className = 'mcp-sub-actions';
             const reviewBtn = document.createElement('button');
             reviewBtn.className = 'btn btn-sm btn-wiki';
-            reviewBtn.innerHTML = '<i class="mdi mdi-eye-outline"></i> 검토';
+            reviewBtn.innerHTML = ui("m_56334feebefd2537");
             reviewBtn.addEventListener('click', () => openMcpSubmissionReview(s.id));
             actions.appendChild(reviewBtn);
 
@@ -566,16 +511,16 @@
                     ? 'btn btn-sm btn-wiki'
                     : 'btn btn-sm btn-wiki-outline';
                 editBtn.innerHTML = s.conflict_reason === 'concurrent_modification'
-                    ? '<i class="mdi mdi-source-merge"></i> 에디터에서 편집/병합'
-                    : '<i class="mdi mdi-pencil"></i> 편집';
-                editBtn.title = '에디터에서 제출안 본문을 수정한 뒤 직접 저장합니다.';
+                    ? ui("m_0873e5ce68261ba4")
+                    : ui("m_8882a651a6d49663");
+                editBtn.title = ui("m_a93f1bed839b31cb");
                 editBtn.addEventListener('click', () => openMcpSubmissionInEditor(s.id, s.slug));
                 actions.appendChild(editBtn);
             }
 
             const rejectBtn = document.createElement('button');
             rejectBtn.className = 'btn btn-sm btn-wiki btn-wiki-danger';
-            rejectBtn.innerHTML = '<i class="mdi mdi-close"></i> 거부';
+            rejectBtn.innerHTML = ui("m_cfb90109c73a9311");
             rejectBtn.addEventListener('click', () => rejectMcpSubmission(s.id, s.slug));
             actions.appendChild(rejectBtn);
 
@@ -589,12 +534,12 @@
                 const res = await fetch('/api/mcp-submissions/' + encodeURIComponent(id));
                 if (!res.ok) {
                     const errBody = await res.json().catch(() => ({}));
-                    Swal.fire('错误', errBody.error || '제출안을 加载失败.', 'error');
+                    Swal.fire(ui("m_0bc1fb72ae1be5c5"), errBody.error || ui("m_42301e79a8372937"), 'error');
                     return;
                 }
                 detail = await res.json();
             } catch {
-                Swal.fire('错误', '네트워크 오류', 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_0dd9df5c73a87e5c"), 'error');
                 return;
             }
 
@@ -605,13 +550,13 @@
                 && detail.conflict_reason === 'concurrent_modification';
             const conflictBanner = detail.has_conflict
                 ? `<div class="alert alert-danger py-2 mb-2 text-start"><i class="mdi mdi-alert"></i> ${
-                    detail.conflict_reason === 'slug_taken' ? '동일 제목의 다른 문서가 그 사이 생성되었습니다.'
-                    : detail.conflict_reason === 'slug_soft_deleted' ? '동일 제목의 소프트 삭제된 문서가 존재합니다. 먼저 복원하거나 永久删除하지 않으면 승인할 수 없습니다.'
-                    : detail.conflict_reason === 'page_missing' ? '문서가 삭제되었거나 존재하지 않습니다.'
-                    : '제출 이후 다른 사용자가 페이지를 수정했습니다. 그대로 승인하면 그 변경이 덮어쓰여집니다. <b>「에디터에서 편집/병합」</b> 으로 3-way merge UI 를 사용하세요.'
+                    detail.conflict_reason === 'slug_taken' ? ui("m_d3c771fe1631cf1b")
+                    : detail.conflict_reason === 'slug_soft_deleted' ? ui("m_e8ed0feee864094d")
+                    : detail.conflict_reason === 'page_missing' ? ui("m_67fcb7d30055dcde")
+                    : ui("m_8a1cc747cadace6e")
                   }</div>`
                 : '';
-            const ts = detail.submitted_at ? new Date(detail.submitted_at).toLocaleString('zh-CN') : '';
+            const ts = detail.submitted_at ? new Date(detail.submitted_at).toLocaleString(getLocale()) : '';
             const summaryDefault = detail.submitted_summary || '';
 
             // 슬러그가 익스텐션 데이터 네임스페이스(예: freq:foo) 면 렌더링 비교가 무의미.
@@ -619,20 +564,10 @@
             const enabledExts = (window.appConfig && window.appConfig.enabledExtensions) || [];
             const isExtensionDataDiff = enabledExts.some((ext) => detail.slug.startsWith(ext + ':'));
 
-            const extraTopHtml = `
-                ${conflictBanner}
-                <div class="text-start small text-muted mb-2">
-                    <div><b>${window.escapeHtml(detail.slug)}</b> · ${detail.action === 'create' ? '신규' : '编辑'} · 제출 ${window.escapeHtml(ts)}</div>
-                    <div>+${detail.lines_added}줄 / -${detail.lines_removed}줄</div>
-                </div>
-                <div class="mt-1 mb-2 text-start">
-                    <label class="form-label small mb-1">편집 요약 (저장 시 [MCP] 접두 자동 부여)</label>
-                    <input type="text" id="mcpApproveSummary" class="form-control form-control-sm" maxlength="200" value="${window.escapeHtml(summaryDefault)}">
-                </div>
-            `;
+            const extraTopHtml = ui("m_ac1576c5439edba3", [conflictBanner, window.escapeHtml(detail.slug), detail.action === 'create' ? ui("m_113ce17492d363d2") : ui("m_051836569928a9f9"), window.escapeHtml(ts), detail.lines_added, detail.lines_removed, window.escapeHtml(summaryDefault)]);
 
             const result = await window.showDiffModal({
-                title: 'MCP 편집안 검토',
+                title: ui("m_5813fcb389c06a44"),
                 oldText: detail.current_content || '',
                 newText: detail.proposed_content || '',
                 slug: detail.slug,
@@ -645,10 +580,10 @@
                     // 동시 편집 충돌인 경우 그대로 승인하면 다른 사용자 변경을 덮어쓰므로,
                     // 승인 버튼을 「에디터에서 해결」로 바꿔 3-way merge 화면으로 유도한다.
                     confirmButtonText: canMergeInEditor
-                        ? '<i class="mdi mdi-source-merge"></i> 에디터에서 편집/병합'
-                        : '<i class="mdi mdi-check"></i> 승인',
-                    denyButtonText: '<i class="mdi mdi-close"></i> 거부',
-                    cancelButtonText: '关闭',
+                        ? ui("m_0873e5ce68261ba4")
+                        : ui("m_9b032ce01b0808b9"),
+                    denyButtonText: ui("m_cfb90109c73a9311"),
+                    cancelButtonText: ui("m_3fd47edce45b3603"),
                     confirmButtonColor: canMergeInEditor ? '#F59E0B' : '#10B981',
                     denyButtonColor: '#EF4444',
                     preConfirm: () => {
@@ -687,15 +622,15 @@
                 const data = await res.json();
                 if (!res.ok) {
                     const msg = data.error === 'conflict'
-                        ? '충돌이 발생해 승인할 수 없습니다. 페이지 상태를 확인하세요.'
-                        : (data.message || data.error || '승인 실패');
-                    Swal.fire('승인 실패', msg, 'error');
+                        ? ui("m_6d593e06013994c1")
+                        : (data.message || data.error || ui("m_005c43cba2f22464"));
+                    Swal.fire(ui("m_005c43cba2f22464"), msg, 'error');
                     return;
                 }
                 await Swal.fire({
                     icon: 'success',
-                    title: '승인되었습니다.',
-                    text: `리비전 #${data.revision_id} 가 생성되었습니다. (+${data.lines_added ?? 0}줄 -${data.lines_removed ?? 0}줄)`,
+                    title: ui("m_0b9b1dc8130ee7de"),
+                    text: ui("m_ab36cd5ee239f175", [data.revision_id, data.lines_added ?? 0, data.lines_removed ?? 0]),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
@@ -703,18 +638,18 @@
                 });
                 loadMcpSubmissions();
             } catch {
-                Swal.fire('错误', '네트워크 오류', 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_0dd9df5c73a87e5c"), 'error');
             }
         }
 
         async function rejectMcpSubmission(id, slug) {
             const confirmRes = await Swal.fire({
                 icon: 'warning',
-                title: '제출안을 거부하시겠습니까?',
-                text: `"${slug}" 의 제출안을 폐기합니다. 되돌릴 수 없습니다.`,
+                title: ui("m_bbc536913a14a61f"),
+                text: ui("m_264ea9502c77e770", [slug]),
                 showCancelButton: true,
-                confirmButtonText: '거부',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_e3ecc00b93afe368"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
                 confirmButtonColor: '#EF4444',
             });
             if (!confirmRes.isConfirmed) return;
@@ -722,12 +657,12 @@
                 const res = await fetch('/api/mcp-submissions/' + encodeURIComponent(id) + '/reject', { method: 'POST' });
                 if (!res.ok) {
                     const errBody = await res.json().catch(() => ({}));
-                    Swal.fire('거부 실패', errBody.error || '거부에 실패했습니다.', 'error');
+                    Swal.fire(ui("m_f391645de813e345"), errBody.error || ui("m_917ad64954223a05"), 'error');
                     return;
                 }
                 loadMcpSubmissions();
             } catch {
-                Swal.fire('错误', '네트워크 오류', 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_0dd9df5c73a87e5c"), 'error');
             }
         }
 
@@ -736,11 +671,11 @@
         async function updateName() {
             const name = document.getElementById('nameInput').value.trim();
             if (!name) {
-                Swal.fire('错误', '이름을 입력해주세요.', 'warning');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_b6c1c96c52ea9de7"), 'warning');
                 return;
             }
             if (name.length > 20) {
-                Swal.fire('错误', '표시명은 20자 이내로 입력해주세요.', 'warning');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_404a4c8ee516dfa1"), 'warning');
                 return;
             }
 
@@ -751,7 +686,7 @@
                     body: JSON.stringify({ name })
                 });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '변경 실패');
+                if (!res.ok) throw new Error(data.error || ui("m_b8462c884b380729"));
 
                 window.currentUser.name = data.name;
                 renderProfile();
@@ -759,14 +694,14 @@
 
                 Swal.fire({
                     icon: 'success',
-                    title: '이름이 변경되었습니다!',
+                    title: ui("m_055bf1362f032041"),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
                     timer: 1500
                 });
             } catch (err) {
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             }
         }
 
@@ -786,7 +721,7 @@
                     input.disabled = true;
 
                     if (data.reason === 'disabled') {
-                        statusEl.innerHTML = '<div class="alert alert-secondary py-2 mb-0"><i class="mdi mdi-lock"></i> 표시명 변경이 비활성화되어 있습니다.</div>';
+                        statusEl.innerHTML = ui("m_c5be42bbabe606e9");
                         hintEl.style.display = 'none';
                     } else if (data.reason === 'cooldown') {
                         statusEl.innerHTML = `<div class="alert alert-warning py-2 mb-0"><i class="mdi mdi-clock-outline"></i> ${window.escapeHtml(data.message)}</div>`;
@@ -799,9 +734,9 @@
                     hintEl.style.display = '';
 
                     if (data.reason === 'first_change') {
-                        hintEl.textContent = '최초 1회 변경은 제한 없이 가능합니다.';
+                        hintEl.textContent = ui("m_469d5cd4d84d77a3");
                     } else {
-                        hintEl.textContent = '다른 유저에게 보이는 이름입니다.';
+                        hintEl.textContent = ui("m_8b0b4eb495c40277");
                     }
                 }
             } catch (e) {
@@ -829,7 +764,7 @@
                 const loadMoreBtn = document.getElementById('loadMoreMessagesBtn');
 
                 if (!isLoadMore && messages.length === 0) {
-                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'mdi mdi-inbox-outline', title: '받은 쪽지가 없습니다' });
+                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'mdi mdi-inbox-outline', title: ui("m_1a7e1616e9df4ae3") });
                     loadMoreBtn.classList.add('d-none');
                     return;
                 }
@@ -839,25 +774,12 @@
                 }
 
                 listEl.insertAdjacentHTML('beforeend', messages.map(m => {
-                    const date = new Date(m.created_at * 1000).toLocaleString('zh-CN');
+                    const date = new Date(m.created_at * 1000).toLocaleString(getLocale());
                     // title 형식으로 조금 잘라서 보여주기
                     const preview = m.content.length > 50 ? window.escapeHtml(m.content.substring(0, 50)) + '...' : window.escapeHtml(m.content);
-                    const senderName = m.sender_name || '未知用户';
+                    const senderName = m.sender_name || ui("m_1ac13841ba2ea68b");
 
-                    return `
-                        <div class="contribution-item" style="cursor:pointer;" onclick="viewMessage(${m.id})">
-                            <div class="flex-grow-1">
-                                <span class="fw-bold"><i class="mdi mdi-account-circle text-muted"></i> ${window.escapeHtml(senderName)}</span>
-                                <span class="text-muted ms-2">${preview}</span>
-                            </div>
-                            <div class="d-flex align-items-center gap-3">
-                                <span class="meta">${date}</span>
-                                <button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="event.stopPropagation(); deleteDirectMessage(${m.id})" title="보관함에서 삭제">
-                                    <i class="mdi mdi-delete"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
+                    return ui("m_c89bc3f1b9ffced1", [m.id, window.escapeHtml(senderName), preview, date, m.id]);
                 }).join(''));
 
                 currentMessageOffset += messages.length;
@@ -870,7 +792,7 @@
 
             } catch (e) {
                 if (!isLoadMore) {
-                    document.getElementById('messagesList').innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '쪽지를 加载失败' });
+                    document.getElementById('messagesList').innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_33efeadc734eb293") });
                 }
             }
         }
@@ -881,7 +803,7 @@
             btn.innerHTML = window.uiInlineLoading();
             await loadMessages(true);
             btn.disabled = false;
-            btn.innerHTML = '더보기 <i class="mdi mdi-chevron-down"></i>';
+            btn.innerHTML = ui("m_35180a50cfb0bb39");
         }
 
         // ── 알림 보관함 (마이페이지) ──
@@ -915,7 +837,7 @@
                 section.style.display = '';
 
                 if (!isLoadMore && notifs.length === 0) {
-                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'mdi mdi-inbox-outline', title: '보관된 暂无通知' });
+                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'mdi mdi-inbox-outline', title: ui("m_7ec6dc05f7203e73") });
                     loadMoreBtn?.classList.add('d-none');
                     if (unreadBadge) unreadBadge.classList.add('d-none');
                     return;
@@ -925,26 +847,9 @@
 
                 listEl.insertAdjacentHTML('beforeend', notifs.map(n => {
                     const icon = NOTIF_ICON_MAP[n.type] || 'mdi mdi-bell';
-                    const date = new Date(n.created_at * 1000).toLocaleString('zh-CN');
+                    const date = new Date(n.created_at * 1000).toLocaleString(getLocale());
                     const unreadCls = n.read_at ? '' : ' unread';
-                    return `
-                        <div class="contribution-item notif-archive-item${unreadCls}" style="cursor:pointer;"
-                             data-notif-id="${window.escapeHtml(String(n.id))}"
-                             data-notif-type="${window.escapeHtml(n.type)}"
-                             data-notif-ref="${window.escapeHtml(String(n.ref_id || ''))}"
-                             data-notif-link="${window.escapeHtml(n.link || '')}">
-                            <i class="${icon} text-muted me-1"></i>
-                            <div class="flex-grow-1 text-truncate">
-                                <span class="notif-archive-text">${window.escapeHtml(n.content)}</span>
-                            </div>
-                            <div class="d-flex align-items-center gap-3 flex-shrink-0">
-                                <span class="meta">${date}</span>
-                                <button class="btn btn-sm btn-outline-danger border-0 p-1" data-notif-delete="${window.escapeHtml(String(n.id))}" title="删除">
-                                    <i class="mdi mdi-delete"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
+                    return ui("m_a9497d89783fa535", [unreadCls, window.escapeHtml(String(n.id)), window.escapeHtml(n.type), window.escapeHtml(String(n.ref_id || '')), window.escapeHtml(n.link || ''), icon, window.escapeHtml(n.content), date, window.escapeHtml(String(n.id))]);
                 }).join(''));
 
                 currentNotifArchiveOffset += notifs.length;
@@ -982,7 +887,7 @@
             } catch (e) {
                 section.style.display = '';
                 if (!isLoadMore) {
-                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '알림을 加载失败' });
+                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_56e9d4367bc59f2e") });
                 }
             }
         }
@@ -1029,7 +934,7 @@
             const btn = document.getElementById('loadMoreNotifArchiveBtn');
             if (btn) { btn.disabled = true; btn.innerHTML = window.uiInlineLoading(); }
             await loadNotificationsArchive(true);
-            if (btn) { btn.disabled = false; btn.innerHTML = '더보기 <i class="mdi mdi-chevron-down"></i>'; }
+            if (btn) { btn.disabled = false; btn.innerHTML = ui("m_35180a50cfb0bb39"); }
         }
 
         async function deleteNotificationArchiveItem(id) {
@@ -1041,7 +946,7 @@
                 await loadNotificationsArchive();
                 if (typeof window.loadNotificationCount === 'function') window.loadNotificationCount();
             } catch (e) {
-                Swal.fire('错误', '删除通知失败。', 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_b9dfeed9394b41c2"), 'error');
             }
         }
 
@@ -1052,19 +957,19 @@
                 await loadNotificationsArchive();
                 if (typeof window.loadNotificationCount === 'function') window.loadNotificationCount();
             } catch (e) {
-                Swal.fire('错误', '标记已读失败。', 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_f8abee26e0bf27ae"), 'error');
             }
         }
 
         async function deleteAllNotificationsArchive() {
             const result = await Swal.fire({
-                title: '删除全部通知',
-                text: '보관된 将删除所有通知，此操作无法撤销。',
+                title: ui("m_22abbed26f07b173"),
+                text: ui("m_565173fe1c3d528e"),
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#dc3545',
-                confirmButtonText: '全部删除',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_9b2ccbb48e31d52a"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
             });
             if (!result.isConfirmed) return;
             try {
@@ -1073,24 +978,24 @@
                 await loadNotificationsArchive();
                 if (typeof window.loadNotificationCount === 'function') window.loadNotificationCount();
             } catch (e) {
-                Swal.fire('错误', '删除通知失败。', 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_b9dfeed9394b41c2"), 'error');
             }
         }
 
         async function deleteAccount() {
             const result = await Swal.fire({
-                title: '회원탈퇴',
-                html: '정말로 탈퇴하시겠습니까?<br><strong>탈퇴 후 동일 계정으로 재가입이 불가능합니다.</strong>',
+                title: ui("m_2147f510237d8c4c"),
+                html: ui("m_8db08afcb1258696"),
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#cf222e',
-                confirmButtonText: '已注销',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_958ece350af5369a"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
                 input: 'text',
-                inputPlaceholder: '확인을 위해 "탈퇴"를 입력해주세요',
+                inputPlaceholder: ui("m_72acf585a2071c4a"),
                 inputValidator: (value) => {
-                    if (value !== '已注销') {
-                        return '"탈퇴"를 정확히 입력해주세요.';
+                    if (value !== ui("m_958ece350af5369a")) {
+                        return ui("m_ecb7473079d9fd5c");
                     }
                 }
             });
@@ -1100,26 +1005,26 @@
                     const res = await fetch('/api/me/account', { method: 'DELETE' });
                     if (!res.ok) {
                         const data = await res.json();
-                        throw new Error(data.error || '탈퇴 처리에 실패했습니다.');
+                        throw new Error(data.error || ui("m_bd8278edb6ef160b"));
                     }
                     await Swal.fire({
                         icon: 'success',
-                        title: '탈퇴가 완료되었습니다.',
+                        title: ui("m_c3598be33bfa98e2"),
                         showConfirmButton: false,
                         timer: 2000
                     });
                     window.location.href = '/';
                 } catch (err) {
-                    Swal.fire('错误', err.message, 'error');
+                    Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
                 }
             }
         }
 
         function summarizeUserAgent(ua) {
-            if (!ua) return { label: '알 수 없는 기기', icon: 'mdi-help-circle-outline' };
+            if (!ua) return { label: ui("m_e30cf08f01887d26"), icon: 'mdi-help-circle-outline' };
             const s = ua;
 
-            let os = '기타 OS';
+            let os = ui("m_3142225dcaaaeeaf");
             if (/Windows NT 10\.0/.test(s)) os = 'Windows 10/11';
             else if (/Windows NT/.test(s)) os = 'Windows';
             else if (/Android/.test(s)) os = 'Android';
@@ -1127,7 +1032,7 @@
             else if (/Mac OS X/.test(s)) os = 'macOS';
             else if (/Linux/.test(s)) os = 'Linux';
 
-            let browser = '알 수 없는 브라우저';
+            let browser = ui("m_9641023ed5efef93");
             if (/Edg\//.test(s)) browser = 'Edge';
             else if (/OPR\//.test(s)) browser = 'Opera';
             else if (/Chrome\//.test(s) && !/Chromium/.test(s)) browser = 'Chrome';
@@ -1153,7 +1058,7 @@
                 section.style.display = '';
 
                 if (sessions.length === 0) {
-                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-shield-lock', title: '활성 세션이 없습니다' });
+                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-shield-lock', title: ui("m_b186ecaf2c743610") });
                     return;
                 }
 
@@ -1163,88 +1068,74 @@
                 listEl.innerHTML = sessions.map(s => {
                     const info = summarizeUserAgent(s.user_agent);
                     const created = s.created_at
-                        ? new Date(s.created_at * 1000).toLocaleString('zh-CN')
-                        : '未知用户';
+                        ? new Date(s.created_at * 1000).toLocaleString(getLocale())
+                        : ui("m_1ac13841ba2ea68b");
                     const expires = s.expires_at
-                        ? new Date(s.expires_at * 1000).toLocaleString('zh-CN')
-                        : '未知用户';
+                        ? new Date(s.expires_at * 1000).toLocaleString(getLocale())
+                        : ui("m_1ac13841ba2ea68b");
                     const currentBadge = s.current
-                        ? '<span class="badge bg-primary session-current-badge">현재 세션</span>'
+                        ? ui("m_29fdb31b1e452aa6")
                         : '';
                     const action = s.current
-                        ? '<a href="/auth/logout" class="btn btn-sm btn-outline-secondary"><i class="mdi mdi-logout"></i> 退出登录</a>'
-                        : `<button class="btn btn-sm btn-outline-danger" onclick="revokeSession('${encodeURIComponent(s.id)}')"><i class="mdi mdi-close-circle"></i> 종료</button>`;
+                        ? ui("m_c2118b28d5065c33")
+                        : ui("m_83f84bccf8d92120", [encodeURIComponent(s.id)]);
                     const uaRaw = s.user_agent
                         ? `<div class="session-ua-raw">${window.escapeHtml(s.user_agent)}</div>`
-                        : '<div class="session-ua-raw text-muted">User-Agent 정보 없음</div>';
+                        : ui("m_9dfd8a5de2861a42");
 
-                    return `
-                        <div class="session-item ${s.current ? 'current' : ''}">
-                            <div class="session-meta">
-                                <div class="session-ua">
-                                    <i class="mdi ${info.icon}"></i> ${window.escapeHtml(info.label)} ${currentBadge}
-                                </div>
-                                ${uaRaw}
-                                <div class="session-times">
-                                    <span><i class="mdi mdi-clock-outline"></i> 로그인: ${created}</span>
-                                    <span><i class="mdi mdi-timer-sand"></i> 만료: ${expires}</span>
-                                </div>
-                            </div>
-                            <div class="flex-shrink-0">${action}</div>
-                        </div>
-                    `;
+                    return ui("m_202deb88e53c152b", [s.current ? 'current' : '', info.icon, window.escapeHtml(info.label), currentBadge, uaRaw, created, expires, action]);
                 }).join('');
             } catch (e) {
                 section.style.display = '';
-                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '세션 목록을 加载失败' });
+                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_60b41aea9afe9c82") });
             }
         }
 
         async function revokeSession(encodedId) {
             const id = decodeURIComponent(encodedId);
             const result = await Swal.fire({
-                title: '세션 종료',
-                text: '이 기기의 로그인을 즉시 종료합니다. 계속하시겠습니까?',
+                title: ui("m_8ec2cbebcc9cc4f6"),
+                text: ui("m_1de7a3190bf39881"),
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#cf222e',
-                confirmButtonText: '종료',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_086bb5335d174a9a"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
             });
             if (!result.isConfirmed) return;
 
             try {
                 const res = await fetch(`/api/me/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || '세션 종료에 실패했습니다.');
+                if (!res.ok) throw new Error(data.error || ui("m_ad5dc76c902c2b3f"));
 
-                Swal.fire({ icon: 'success', title: '세션이 종료되었습니다.', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                Swal.fire({ icon: 'success', title: ui("m_13fd3a417559e343"), toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
                 loadSessions();
             } catch (err) {
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             }
         }
 
         async function revokeAllSessions() {
             const result = await Swal.fire({
-                title: '다른 세션 모두 종료',
-                text: '현재 세션을 제외한 모든 로그인 세션을 종료합니다. 계속하시겠습니까?',
+                title: ui("m_6149b21806576267"),
+                text: ui("m_2ed8bd42b9302cc0"),
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#cf222e',
-                confirmButtonText: '모두 종료',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_25f4a04d23374c3e"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
             });
             if (!result.isConfirmed) return;
 
             try {
                 const res = await fetch('/api/me/sessions', { method: 'DELETE' });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || '세션 종료에 실패했습니다.');
+                if (!res.ok) throw new Error(data.error || ui("m_ad5dc76c902c2b3f"));
 
                 Swal.fire({
                     icon: 'success',
-                    title: `${data.count || 0}개의 세션이 종료되었습니다.`,
+                    title: ui("m_94349b07c0c4fa72", [data.count || 0]),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
@@ -1252,23 +1143,23 @@
                 });
                 loadSessions();
             } catch (err) {
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             }
         }
 
         function formatMcpTime(epochSec) {
-            if (!epochSec) return '未知用户';
-            return new Date(epochSec * 1000).toLocaleString('zh-CN');
+            if (!epochSec) return ui("m_1ac13841ba2ea68b");
+            return new Date(epochSec * 1000).toLocaleString(getLocale());
         }
 
         function formatMcpRelative(epochSec) {
-            if (!epochSec) return '없음';
+            if (!epochSec) return ui("m_72ea3d64ace5bc94");
             const diff = Math.floor(Date.now() / 1000) - epochSec;
-            if (diff < 60) return '刚刚';
-            if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
-            if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
-            if (diff < 86400 * 30) return `${Math.floor(diff / 86400)} 天前`;
-            return new Date(epochSec * 1000).toLocaleDateString('zh-CN');
+            if (diff < 60) return ui("m_de6785d99e028971");
+            if (diff < 3600) return ui("m_2f10882d8db32301", [Math.floor(diff / 60)]);
+            if (diff < 86400) return ui("m_13d9a4afbbd1b91f", [Math.floor(diff / 3600)]);
+            if (diff < 86400 * 30) return ui("m_dd30752bcdb324d3", [Math.floor(diff / 86400)]);
+            return new Date(epochSec * 1000).toLocaleDateString(getLocale());
         }
 
         async function loadMcpClients() {
@@ -1304,7 +1195,7 @@
                 section.style.display = '';
 
                 if (clients.length === 0) {
-                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-plug', title: '연결된 MCP 클라이언트가 없습니다' });
+                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-plug', title: ui("m_aecc81aff22fb659") });
                     document.getElementById('revokeAllMcpClientsBtn').disabled = true;
                     return;
                 }
@@ -1315,44 +1206,28 @@
                 listEl.innerHTML = clients.map(client => {
                     const isActive = client.status === 'active';
                     const statusBadge = isActive
-                        ? '<span class="badge bg-success">연결됨</span>'
-                        : '<span class="badge bg-secondary">해제됨</span>';
+                        ? ui("m_06fa809366390ebd")
+                        : ui("m_28fcfd44062c4b23");
                     const clientLabel = client.client_name
                         ? window.escapeHtml(client.client_name)
-                        : '<span class="text-muted">(이름 미등록 클라이언트)</span>';
+                        : ui("m_6890bda750171370");
                     const clientIdShort = window.escapeHtml((client.client_id || '').slice(0, 12)) + '…';
                     const scopeList = Array.isArray(client.scopes) && client.scopes.length
                         ? client.scopes
                         : ['mcp'];
                     const scopeLabel = scopeList.map(s => window.escapeHtml(s)).join(', ');
-                    const lastUsed = client.last_used_at ? formatMcpRelative(client.last_used_at) : '미사용';
+                    const lastUsed = client.last_used_at ? formatMcpRelative(client.last_used_at) : ui("m_f54a75428c8c17df");
                     const revokedAt = client.last_revoked_at ? formatMcpTime(client.last_revoked_at) : null;
 
                     const action = isActive
-                        ? `<button class="btn btn-sm btn-outline-danger" data-revoke-client-id="${window.escapeHtml(client.client_id)}"><i class="mdi mdi-close-circle"></i> 연결 해제</button>`
+                        ? ui("m_5bc4519c664e15cc", [window.escapeHtml(client.client_id)])
                         : '';
 
                     const lastLine = revokedAt
-                        ? `<span><i class="mdi mdi-cancel"></i> 해제: ${window.escapeHtml(revokedAt)}</span>`
+                        ? ui("m_120954a7eb16049f", [window.escapeHtml(revokedAt)])
                         : '';
 
-                    return `
-                        <div class="session-item ${isActive ? '' : 'opacity-75'}">
-                            <div class="session-meta">
-                                <div class="session-ua">
-                                    <i class="mdi mdi-application-brackets-outline"></i> ${clientLabel} ${statusBadge}
-                                </div>
-                                <div class="session-ua-raw text-muted">
-                                    client_id: <code>${clientIdShort}</code> · scope: <code>${scopeLabel}</code>
-                                </div>
-                                <div class="session-times">
-                                    <span><i class="mdi mdi-history"></i> 마지막 사용: ${window.escapeHtml(lastUsed)}</span>
-                                    ${lastLine}
-                                </div>
-                            </div>
-                            <div class="flex-shrink-0">${action}</div>
-                        </div>
-                    `;
+                    return ui("m_f9807363ea95980a", [isActive ? '' : 'opacity-75', clientLabel, statusBadge, clientIdShort, scopeLabel, window.escapeHtml(lastUsed), lastLine, action]);
                 }).join('');
 
                 listEl.querySelectorAll('button[data-revoke-client-id]').forEach(btn => {
@@ -1362,73 +1237,73 @@
                 });
             } catch (e) {
                 section.style.display = '';
-                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: 'MCP 클라이언트 목록을 加载失败' });
+                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_246750384dc87eb1") });
             }
         }
 
         function copyWikiMcpEndpoint() {
             const url = (document.getElementById('wikiMcpEndpointUrl') as HTMLElement)?.textContent || '';
             navigator.clipboard.writeText(url).then(() => {
-                Swal.fire({ icon: 'success', title: '복사됨', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                Swal.fire({ icon: 'success', title: ui("m_9693e1eb3edb1291"), toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             }).catch(() => {
-                Swal.fire({ icon: 'error', title: '복사 실패', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                Swal.fire({ icon: 'error', title: ui("m_0642e2d15469a319"), toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             });
         }
 
         function copyMcpApiKeyJsonSnippet() {
             const text = (document.getElementById('mcpApiKeyJsonSnippet') as HTMLElement)?.textContent || '';
             navigator.clipboard.writeText(text).then(() => {
-                Swal.fire({ icon: 'success', title: '복사됨', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                Swal.fire({ icon: 'success', title: ui("m_9693e1eb3edb1291"), toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             }).catch(() => {
-                Swal.fire({ icon: 'error', title: '복사 실패', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                Swal.fire({ icon: 'error', title: ui("m_0642e2d15469a319"), toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             });
         }
 
         async function revokeMcpClient(clientId) {
             if (!clientId) return;
             const result = await Swal.fire({
-                title: 'MCP 클라이언트 연결 해제',
-                text: '이 클라이언트가 보유한 모든 토큰을 즉시 무효화합니다. 해당 클라이언트는 재인증해야 다시 접근할 수 있습니다. 계속하시겠습니까?',
+                title: ui("m_532eaa910b0a036e"),
+                text: ui("m_8acf0d63f4ee22b7"),
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#cf222e',
-                confirmButtonText: '연결 해제',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_085132af55f23f84"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
             });
             if (!result.isConfirmed) return;
 
             try {
                 const res = await fetch(`/api/me/mcp-clients/${encodeURIComponent(clientId)}`, { method: 'DELETE' });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || 'MCP 클라이언트 연결 해제에 실패했습니다.');
+                if (!res.ok) throw new Error(data.error || ui("m_421f1d9fd7c7d721"));
 
-                Swal.fire({ icon: 'success', title: '연결이 해제되었습니다.', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                Swal.fire({ icon: 'success', title: ui("m_b4afd2a1e5683593"), toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
                 loadMcpClients();
             } catch (err) {
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             }
         }
 
         async function revokeAllMcpClients() {
             const result = await Swal.fire({
-                title: '모든 MCP 클라이언트 연결 해제',
-                text: '본 계정에 연결된 모든 활성 MCP 클라이언트의 토큰을 일괄 무효화합니다. 외부 MCP 클라이언트는 재인증해야 합니다. 계속하시겠습니까?',
+                title: ui("m_67a27833741f508b"),
+                text: ui("m_d50dcdc0f072e26d"),
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#cf222e',
-                confirmButtonText: '모두 해제',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_f3a7c846a6aa057d"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
             });
             if (!result.isConfirmed) return;
 
             try {
                 const res = await fetch('/api/me/mcp-clients', { method: 'DELETE' });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || 'MCP 클라이언트 연결 해제에 실패했습니다.');
+                if (!res.ok) throw new Error(data.error || ui("m_421f1d9fd7c7d721"));
 
                 Swal.fire({
                     icon: 'success',
-                    title: `${data.count || 0}개의 토큰이 무효화되었습니다.`,
+                    title: ui("m_141c46cf1ef286aa", [data.count || 0]),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
@@ -1436,7 +1311,7 @@
                 });
                 loadMcpClients();
             } catch (err) {
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             }
         }
 
@@ -1455,29 +1330,20 @@
                 if (section) section.style.display = '';
 
                 if (!apiKey) {
-                    container.innerHTML = '<div class="text-center text-muted py-2">발급된 API 키가 없습니다.</div>';
+                    container.innerHTML = ui("m_0ac2f0a3bf1b8405");
                     deleteBtn.classList.add('d-none');
                     return;
                 }
 
-                const createdDate = new Date(apiKey.created_at * 1000).toLocaleString('zh-CN');
-                const expiresDate = new Date(apiKey.expires_at * 1000).toLocaleString('zh-CN');
+                const createdDate = new Date(apiKey.created_at * 1000).toLocaleString(getLocale());
+                const expiresDate = new Date(apiKey.expires_at * 1000).toLocaleString(getLocale());
                 const diffDays = Math.max(0, Math.ceil((apiKey.expires_at - Date.now() / 1000) / 86400));
 
-                container.innerHTML = `
-                    <div class="d-flex flex-column gap-1">
-                        <div><strong>현재 API 키:</strong> <code style="color: var(--wiki-primary); background: transparent; padding: 0; font-family: var(--wiki-code-font);">${window.escapeHtml(apiKey.masked_key)}</code></div>
-                        <div class="small text-muted"><i class="mdi mdi-clock-outline"></i> 발급일: ${createdDate}</div>
-                        <div class="small text-muted">
-                            <i class="mdi mdi-timer-sand"></i> 만료일: ${expiresDate} 
-                            <span class="badge ${diffDays <= 7 ? 'bg-danger' : 'bg-secondary'}">${diffDays}일 남음</span>
-                        </div>
-                    </div>
-                `;
+                container.innerHTML = ui("m_928aa141bfcd12cf", [window.escapeHtml(apiKey.masked_key), createdDate, expiresDate, diffDays <= 7 ? 'bg-danger' : 'bg-secondary', diffDays]);
                 deleteBtn.classList.remove('d-none');
             } catch (e) {
                 if (section) section.style.display = '';
-                container.innerHTML = '<div class="text-center text-danger py-2">API 키 정보를 加载失败.</div>';
+                container.innerHTML = ui("m_bf18c1f4ba92956d");
             }
         }
 
@@ -1490,13 +1356,13 @@
             } : undefined;
 
             const result = await Swal.fire({
-                title: 'MCP API 키 발급/갱신',
-                text: '새로운 API 키를 발급하시겠습니까? 기존에 발급된 API 키가 있는 경우 즉시 무효화됩니다. 계속하시겠습니까?',
+                title: ui("m_538bad51ad98c047"),
+                text: ui("m_f0fbbf11a8dc2a99"),
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: confirmColor,
-                confirmButtonText: '발급',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_fc0aec8efc9cf743"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
                 didOpen: swalDidOpen,
             });
             if (!result.isConfirmed) return;
@@ -1505,32 +1371,17 @@
                 const res = await fetch('/api/me/mcp-api-key', { method: 'POST' });
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
-                    throw new Error(data.error || 'API 키 발급에 실패했습니다.');
+                    throw new Error(data.error || ui("m_f3cf0ac2b18602e3"));
                 }
                 const data = await res.json();
                 
                 await Swal.fire({
-                    title: 'API 키 발급 완료',
-                    html: `
-                        <div class="text-start">
-                            <p class="text-danger fw-bold"><i class="mdi mdi-alert"></i> 중요: 이 키는 보안을 위해 지금 단 한 번만 표시됩니다! 반드시 안전한 곳에 즉시 복사해 두십시오.</p>
-                            <div class="p-3 border rounded mb-3 text-center" style="font-family: var(--wiki-code-font); font-size: 1.1rem; word-break: break-all; background: var(--wiki-toc-bg); border: 1px solid var(--wiki-border); color: var(--wiki-text);">
-                                <code id="rawApiKeyText" style="color: var(--wiki-primary); background: transparent; padding: 0;">${window.escapeHtml(data.rawKey)}</code>
-                            </div>
-                            <div class="text-center">
-                                <button class="btn btn-wiki btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('rawApiKeyText')?.textContent||'').then(() => {
-                                    Swal.showValidationMessage('클립보드에 복사되었습니다.');
-                                    setTimeout(() => Swal.resetValidationMessage(), 2000);
-                                })">
-                                    <i class="mdi mdi-content-copy"></i> 복사하기
-                                </button>
-                            </div>
-                        </div>
-                    `,
+                    title: ui("m_89413a4acf981a61"),
+                    html: ui("m_53772e874af1ee0c", [window.escapeHtml(data.rawKey)]),
                     icon: 'success',
                     width: 550,
                     confirmButtonColor: confirmColor,
-                    confirmButtonText: '확인 및 닫기',
+                    confirmButtonText: ui("m_893ad42623329e42"),
                     didOpen: swalDidOpen,
                 });
 
@@ -1538,7 +1389,7 @@
             } catch (err) {
                 Swal.fire({
                     icon: 'error',
-                    title: '错误',
+                    title: ui("m_0bc1fb72ae1be5c5"),
                     text: err.message,
                     confirmButtonColor: confirmColor,
                     didOpen: swalDidOpen,
@@ -1548,24 +1399,24 @@
 
         async function deleteMcpApiKey() {
             const result = await Swal.fire({
-                title: 'MCP API 키 삭제',
-                text: '발급된 API 키를 삭제하시겠습니까? 이 키를 사용하는 모든 외부 MCP 클라이언트의 접근이 즉시 차단됩니다. 계속하시겠습니까?',
+                title: ui("m_b56016d872713ccf"),
+                text: ui("m_493258fb8b412f6b"),
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#cf222e',
-                confirmButtonText: '删除',
-                cancelButtonText: '取消',
+                confirmButtonText: ui("m_2f9daa828907b93f"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c"),
             });
             if (!result.isConfirmed) return;
 
             try {
                 const res = await fetch('/api/me/mcp-api-key', { method: 'DELETE' });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || 'API 키 삭제에 실패했습니다.');
+                if (!res.ok) throw new Error(data.error || ui("m_6b80155c7299cd4e"));
 
                 Swal.fire({
                     icon: 'success',
-                    title: 'API 키가 삭제되었습니다.',
+                    title: ui("m_7b1448a5c7c6c56d"),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
@@ -1581,7 +1432,7 @@
                 } : undefined;
                 Swal.fire({
                     icon: 'error',
-                    title: '错误',
+                    title: ui("m_0bc1fb72ae1be5c5"),
                     text: err.message,
                     confirmButtonColor: confirmColor,
                     didOpen: swalDidOpen,
@@ -1591,12 +1442,12 @@
 
         // ─── MCP 도구 On/Off ───────────────────────────────────────────
         const MCP_TOOL_GROUP_LABELS = {
-            shared: '읽기·검색',
-            user_read: '편집 보조 읽기',
-            user_edit: '편집 (draft)',
-            instant_apply: '즉시 적용',
-            admin_read: '관리자 읽기',
-            admin_edit: '관리자 편집',
+            shared: ui("m_1c148ed1dcc6243e"),
+            user_read: ui("m_86041d952f56428c"),
+            user_edit: ui("m_26f560cba82df77e"),
+            instant_apply: ui("m_af33709404ad7fea"),
+            admin_read: ui("m_b5b2f5ac52b90edb"),
+            admin_edit: ui("m_33ec19976faab2af"),
         };
         const MCP_TOOL_GROUP_ORDER = ['shared', 'user_read', 'user_edit', 'instant_apply', 'admin_read', 'admin_edit'];
 
@@ -1627,7 +1478,7 @@
                 renderMcpTools(data.tools || [], data.hidden_disabled || []);
             } catch (e) {
                 if (mySeq !== mcpToolsSeq) return;
-                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '불러오기 실패' });
+                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_ebaf4022cf1aed6d") });
             }
         }
 
@@ -1635,7 +1486,7 @@
             const listEl = document.getElementById('mcpToolsList');
             if (!listEl) return;
             if (!tools.length) {
-                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-plug', title: '제공된 MCP 도구가 없습니다' });
+                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-plug', title: ui("m_4fe14a71cc020847") });
                 return;
             }
             const grouped = new Map();
@@ -1651,22 +1502,12 @@
                 for (const t of items) {
                     const checked = t.enabled ? 'checked' : '';
                     const offCls = t.enabled ? '' : ' is-off';
-                    html += `
-                        <div class="mcp-tool-item${offCls}">
-                            <div class="tool-meta">
-                                <div class="tool-name">${window.escapeHtml(t.name)}</div>
-                                <div class="tool-desc" title="${window.escapeHtml(t.description || '')}">${window.escapeHtml(t.description || '')}</div>
-                            </div>
-                            <div class="form-check form-switch flex-shrink-0 mt-1">
-                                <input class="form-check-input" type="checkbox" role="switch" ${checked}
-                                    data-mcp-tool-toggle="${window.escapeHtml(t.name)}" aria-label="${window.escapeHtml(t.name)} 사용 여부">
-                            </div>
-                        </div>`;
+                    html += ui("m_2b31bd535fde6c1e", [offCls, window.escapeHtml(t.name), window.escapeHtml(t.description || ''), window.escapeHtml(t.description || ''), checked, window.escapeHtml(t.name), window.escapeHtml(t.name)]);
                 }
             }
-            html += `<small class="text-muted d-block mt-1">Off된 도구는 다음에 MCP 클라이언트가 다시 연결(tools/list)할 때 목록에서 제외됩니다.</small>`;
+            html += ui("m_90c4c19e61f4d198");
             if (hiddenDisabled && hiddenDisabled.length) {
-                html += `<small class="text-muted d-block mt-1">현재 조건(RAG 비활성·즉시반영 OFF)에서는 표시되지 않지만 꺼져 있는 도구 ${hiddenDisabled.length}개: <code>${hiddenDisabled.map(n => window.escapeHtml(n)).join('</code>, <code>')}</code></small>`;
+                html += ui("m_5f7ca95661ec202e", [hiddenDisabled.length, hiddenDisabled.map(n => window.escapeHtml(n)).join('</code>, <code>')]);
             }
             listEl.innerHTML = html;
             listEl.querySelectorAll('[data-mcp-tool-toggle]').forEach(input => {
@@ -1689,14 +1530,14 @@
                     body: JSON.stringify({ tool, enabled })
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || '변경 실패');
+                if (!res.ok) throw new Error(data.error || ui("m_b8462c884b380729"));
                 mcpToolsSeq++; // 진행 중 loadMcpTools 가 있으면 무효화 — PUT 응답 렌더가 최신이다.
                 renderMcpTools(data.tools || [], data.hidden_disabled || []);
                 Swal.fire({
                     icon: 'success',
                     // Swal title 은 HTML 렌더링이므로 도구명을 이스케이프한다.
-                    title: enabled ? `${window.escapeHtml(tool)} 도구를 켰습니다.` : `${window.escapeHtml(tool)} 도구를 껐습니다.`,
-                    text: 'MCP 클라이언트를 새로고침하면 반영됩니다.',
+                    title: enabled ? ui("m_ebe206ebca2d2538", [window.escapeHtml(tool)]) : ui("m_ac9d1feaa6f2c2bf", [window.escapeHtml(tool)]),
+                    text: ui("m_64e0cea2b5b3d497"),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
@@ -1704,7 +1545,7 @@
                 });
             } catch (err) {
                 input.checked = !enabled;
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             } finally {
                 setMcpToolsSaving(false);
             }
@@ -1723,20 +1564,20 @@
                     body: JSON.stringify({ all: enabled })
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || '변경 실패');
+                if (!res.ok) throw new Error(data.error || ui("m_b8462c884b380729"));
                 mcpToolsSeq++; // 진행 중 loadMcpTools 가 있으면 무효화 — PUT 응답 렌더가 최신이다.
                 renderMcpTools(data.tools || [], data.hidden_disabled || []);
                 Swal.fire({
                     icon: 'success',
-                    title: enabled ? '모든 MCP 도구를 켰습니다.' : '모든 MCP 도구를 껐습니다.',
-                    text: 'MCP 클라이언트를 새로고침하면 반영됩니다.',
+                    title: enabled ? ui("m_6a599d422eb8cd96") : ui("m_75014dab18ae7bd9"),
+                    text: ui("m_64e0cea2b5b3d497"),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
                     timer: 2000,
                 });
             } catch (err) {
-                Swal.fire('错误', err.message, 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
             } finally {
                 setMcpToolsSaving(false);
             }
@@ -1744,20 +1585,20 @@
 
         async function deleteDirectMessage(id) {
             Swal.fire({
-                title: '쪽지 삭제',
-                text: "이 쪽지를 보관함에서 지우시겠습니까?",
+                title: ui("m_6667a8cd66f25800"),
+                text: ui("m_1164e3f65c948f93"),
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#cf222e',
-                confirmButtonText: '删除',
-                cancelButtonText: '取消'
+                confirmButtonText: ui("m_2f9daa828907b93f"),
+                cancelButtonText: ui("m_2cd0f3be8738a86c")
             }).then(async (result) => {
                 if (result.isConfirmed) {
                     try {
                         const res = await fetch(`/api/messages/${id}`, { method: 'DELETE' });
                         if (!res.ok) throw new Error();
 
-                        Swal.fire({ icon: 'success', title: '已删除', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                        Swal.fire({ icon: 'success', title: ui("m_077a6d37719a0e21"), toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
                         // 목록 리로드
                         loadMessages(false);
                         // 헤더 알림 뱃지도 갱신 가능성 있음
@@ -1765,7 +1606,7 @@
                             window.loadNotificationCount();
                         }
                     } catch (e) {
-                        Swal.fire('错误', '쪽지 삭제에 실패했습니다.', 'error');
+                        Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_abd5f58e92d55980"), 'error');
                     }
                 }
             });
@@ -1790,7 +1631,7 @@
                 const loadMoreBtn = document.getElementById('loadMoreSentMessagesBtn');
 
                 if (!isLoadMore && messages.length === 0) {
-                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-send', title: '보낸 쪽지가 없습니다' });
+                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-send', title: ui("m_e70ce6ed3505d412") });
                     loadMoreBtn.classList.add('d-none');
                     return;
                 }
@@ -1798,9 +1639,9 @@
                 if (!isLoadMore) listEl.innerHTML = '';
 
                 listEl.insertAdjacentHTML('beforeend', messages.map(m => {
-                    const date = new Date(m.created_at * 1000).toLocaleString('zh-CN');
+                    const date = new Date(m.created_at * 1000).toLocaleString(getLocale());
                     const preview = m.content.length > 50 ? window.escapeHtml(m.content.substring(0, 50)) + '...' : window.escapeHtml(m.content);
-                    const receiverName = m.receiver_name || '未知用户';
+                    const receiverName = m.receiver_name || ui("m_1ac13841ba2ea68b");
                     return `
                         <div class="contribution-item" style="cursor:pointer;" onclick="viewSentMessage(${m.id})">
                             <div class="flex-grow-1">
@@ -1817,7 +1658,7 @@
             } catch (e) {
                 if (!isLoadMore) {
                     document.getElementById('sentMessagesSection').style.display = '';
-                    document.getElementById('sentMessagesList').innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '불러오기 실패' });
+                    document.getElementById('sentMessagesList').innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_ebaf4022cf1aed6d") });
                 }
             }
         }
@@ -1828,7 +1669,7 @@
             btn.innerHTML = window.uiInlineLoading();
             await loadSentMessages(true);
             btn.disabled = false;
-            btn.innerHTML = '더보기 <i class="mdi mdi-chevron-down"></i>';
+            btn.innerHTML = ui("m_35180a50cfb0bb39");
         }
 
         async function viewSentMessage(messageId) {
@@ -1837,33 +1678,21 @@
                 if (!res.ok) throw new Error();
                 const msg = await res.json();
 
-                const date = new Date(msg.created_at * 1000).toLocaleString('zh-CN');
-                const receiverName = msg.receiver_name || '未知用户';
+                const date = new Date(msg.created_at * 1000).toLocaleString(getLocale());
+                const receiverName = msg.receiver_name || ui("m_1ac13841ba2ea68b");
                 const receiverPic = msg.receiver_picture && window.isSafeUrl(msg.receiver_picture)
                     ? `<img src="${window.escapeHtml(msg.receiver_picture)}" class="rounded-circle me-2" width="28" height="28" loading="lazy">`
                     : '<i class="mdi mdi-account-circle fs-4 me-2 text-muted"></i>';
 
                 Swal.fire({
-                    title: '<i class="mdi mdi-email-send-outline text-primary"></i> 보낸 쪽지',
-                    html: `
-                        <div class="text-start">
-                            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
-                                ${receiverPic}
-                                <div>
-                                    <span class="text-muted small">받는 사람</span><br>
-                                    <strong>${window.escapeHtml(receiverName)}</strong>
-                                    <div class="text-muted small">${date}</div>
-                                </div>
-                            </div>
-                            <div style="white-space: pre-wrap; word-break: break-word;">${window.escapeHtml(msg.content)}</div>
-                        </div>
-                    `,
+                    title: ui("m_979faa03ef1263ac"),
+                    html: ui("m_b81de0ce01802810", [receiverPic, window.escapeHtml(receiverName), date, window.escapeHtml(msg.content)]),
                     showConfirmButton: true,
-                    confirmButtonText: '关闭',
+                    confirmButtonText: ui("m_3fd47edce45b3603"),
                     width: 480,
                 });
             } catch (e) {
-                Swal.fire('错误', '쪽지를 加载失败.', 'error');
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_c5c7bbba883e6f86"), 'error');
             }
         }
 
@@ -1886,7 +1715,7 @@
                 const loadMoreBtn = document.getElementById('loadMoreDiscussionsBtn');
 
                 if (!isLoadMore && discussions.length === 0) {
-                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-chat-left-text', title: '작성한 暂无讨论' });
+                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-chat-left-text', title: ui("m_fb8fff7a33b98612") });
                     loadMoreBtn.classList.add('d-none');
                     return;
                 }
@@ -1894,10 +1723,10 @@
                 if (!isLoadMore) listEl.innerHTML = '';
 
                 listEl.insertAdjacentHTML('beforeend', discussions.map(d => {
-                    const date = new Date(d.updated_at * 1000).toLocaleDateString('zh-CN');
+                    const date = new Date(d.updated_at * 1000).toLocaleDateString(getLocale());
                     const statusBadge = d.status === 'open'
-                        ? '<span class="badge bg-success ms-1">진행중</span>'
-                        : '<span class="badge bg-secondary ms-1">종료</span>';
+                        ? ui("m_ce98a29d178f27ea")
+                        : ui("m_f0a1f93064d8493b");
                     const discUrl = d.page_slug
                         ? `/w/${encodeURIComponent(d.page_slug)}?mode=discussions&id=${encodeURIComponent(d.id)}`
                         : null;
@@ -1907,17 +1736,7 @@
                     const pageLink = d.page_slug
                         ? `<a href="/w/${encodeURIComponent(d.page_slug)}" class="badge bg-light text-dark border text-decoration-none ms-1">${window.escapeHtml(d.page_slug)}</a>`
                         : '';
-                    return `
-                        <div class="contribution-item">
-                            <div class="flex-grow-1 text-truncate me-2">
-                                ${titleEl}
-                                ${statusBadge}
-                                ${pageLink}
-                                <span class="text-muted ms-1" style="font-size:0.8rem;">댓글 ${d.comment_count || 0}</span>
-                            </div>
-                            <span class="meta flex-shrink-0">${date}</span>
-                        </div>
-                    `;
+                    return ui("m_5c03c21fd037173c", [titleEl, statusBadge, pageLink, d.comment_count || 0, date]);
                 }).join(''));
 
                 currentDiscussionsOffset += discussions.length;
@@ -1925,7 +1744,7 @@
             } catch (e) {
                 if (!isLoadMore) {
                     document.getElementById('myDiscussionsSection').style.display = '';
-                    document.getElementById('myDiscussionsList').innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '불러오기 실패' });
+                    document.getElementById('myDiscussionsList').innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_ebaf4022cf1aed6d") });
                 }
             }
         }
@@ -1936,11 +1755,11 @@
             btn.innerHTML = window.uiInlineLoading();
             await loadMyDiscussions(true);
             btn.disabled = false;
-            btn.innerHTML = '더보기 <i class="mdi mdi-chevron-down"></i>';
+            btn.innerHTML = ui("m_35180a50cfb0bb39");
         }
 
         // ─── 내 티켓 목록 ────────────────────────────────────────────────
-        const TICKET_TYPE_LABELS = { general: '普通', document: '页面', discussion: '讨论', account: '账号' };
+        const TICKET_TYPE_LABELS = { general: ui("m_de907d10df98b498"), document: ui("m_452c7b10d57a86a7"), discussion: ui("m_3cef912ce8819fff"), account: ui("m_311bb313fdeca6aa") };
 
         async function loadMyTickets() {
             const section = document.getElementById('myTicketsSection');
@@ -1954,16 +1773,16 @@
                 section.style.display = '';
 
                 if (tickets.length === 0) {
-                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-ticket-perforated', title: '문의한 티켓이 없습니다' });
+                    listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-ticket-perforated', title: ui("m_bb05b8e0fa4f2424") });
                     return;
                 }
 
                 listEl.innerHTML = tickets.map(t => {
-                    const date = new Date(t.updated_at * 1000).toLocaleDateString('zh-CN');
+                    const date = new Date(t.updated_at * 1000).toLocaleDateString(getLocale());
                     const typeBadge = `<span class="badge bg-secondary ms-1">${TICKET_TYPE_LABELS[t.type] || t.type}</span>`;
                     const statusBadge = t.status === 'open'
-                        ? '<span class="badge bg-warning text-dark ms-1">처리중</span>'
-                        : '<span class="badge bg-success ms-1">완료</span>';
+                        ? ui("m_f099c821b6c85a06")
+                        : ui("m_bb7f163622726846");
                     return `
                         <div class="contribution-item">
                             <div class="flex-grow-1 text-truncate me-2">
@@ -1976,7 +1795,7 @@
                 }).join('');
             } catch (e) {
                 section.style.display = '';
-                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '불러오기 실패' });
+                listEl.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_ebaf4022cf1aed6d") });
             }
         }
 

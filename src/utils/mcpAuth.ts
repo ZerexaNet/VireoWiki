@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import type { Context } from 'hono';
 import type { Env, User } from '../types';
 import { isSuperAdmin } from './auth';
@@ -30,7 +31,7 @@ export function mcpUnauthorized(c: Context<Env>, description: string): Response 
         'WWW-Authenticate',
         `Bearer realm="mcp", error="invalid_token", error_description="${description}", resource_metadata="${resourceMetadata}"`,
     );
-    return c.json({ error: 'invalid_token', error_description: description }, 401);
+    return c.json({ error: "invalid_token", error_description: description }, 401);
 }
 
 /**

@@ -10,10 +10,11 @@
  *   - 에러 응답(`!res.ok`)은 일반 Error 로 throw — 호출자가 try/catch.
  *     상세 ApiError 클래스는 실제 사용처가 늘어날 때 도입한다.
  */
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 export async function apiGet<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(path, { credentials: 'same-origin', ...init });
     if (!res.ok) {
-        throw new Error(`API ${res.status} ${res.statusText} ${path}`);
+        throw new Error(ui("m_a44caa375edfe9f9", [res.status, res.statusText, path]));
     }
     return res.json() as Promise<T>;
 }

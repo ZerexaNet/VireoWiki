@@ -11,6 +11,7 @@
  * QR 렌더는 esm.sh 의 qrcode-generator 를 필요 시에만 동적 로드하며, 실패 시 URL 텍스트로 폴백한다.
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import type { QrLoginStartResponse, QrLoginStatusResponse } from '../../shared/api/qr-login';
 
 interface QrCode {
@@ -65,19 +66,12 @@ function setStatusText(msg: string): void {
     if (el) el.textContent = msg;
 }
 
-const QR_BODY_SKELETON = `
-    <div style="display:flex; flex-direction:column; align-items:center; gap:0.85rem;">
-        <div id="qrGuestCode" style="width:230px; height:230px; display:flex; align-items:center; justify-content:center; background:#ffffff; padding:12px; border-radius:14px; border:1px solid #e5e7eb;">
-            <span class="spinner-border text-secondary" role="status" aria-hidden="true"></span>
-        </div>
-        <div id="qrGuestStatus" style="font-size:0.9rem; color:var(--wiki-text-muted); text-align:center; min-height:1.2rem;">QR 코드를 준비하는 중…</div>
-        <div id="qrGuestRetryWrap"></div>
-    </div>`;
+const QR_BODY_SKELETON = ui("m_dec763746e2bf83b");
 
 function renderRetryButton(): void {
     const wrap = popupEl()?.querySelector('#qrGuestRetryWrap');
     if (!wrap) return;
-    wrap.innerHTML = '<button type="button" id="qrGuestRetry" class="btn btn-sm btn-primary">새 QR 코드 발급</button>';
+    wrap.innerHTML = ui("m_c430706bebcd4c60");
     wrap.querySelector('#qrGuestRetry')?.addEventListener('click', () => {
         startFlow();
     });
@@ -97,14 +91,14 @@ function renderQrCode(url: string): void {
                 svg.style.width = '100%';
                 svg.style.height = '100%';
                 svg.setAttribute('role', 'img');
-                svg.setAttribute('aria-label', 'QR 로그인 코드');
+                svg.setAttribute('aria-label', ui("m_52ad5a1cb43fd593"));
             }
         })
         .catch(() => {
             // 라이브러리 로드 실패 → URL 텍스트 폴백.
             codeEl.innerHTML =
                 '<div style="font-size:0.7rem; color:#333; word-break:break-all; text-align:center; padding:8px;">' +
-                'QR 표시 실패. 다른 기기에서 아래 주소로 접속하세요:<br><br>' +
+                ui("m_12bcdee453c023ec") +
                 escapeText(url) +
                 '</div>';
         });
@@ -121,7 +115,7 @@ async function startFlow(): Promise<void> {
     active = true;
     errorStreak = 0;
     setBody(QR_BODY_SKELETON);
-    setStatusText('QR 코드를 준비하는 중…');
+    setStatusText(ui("m_d137adaabd16ba07"));
 
     let start: QrLoginStartResponse;
     try {
@@ -130,7 +124,7 @@ async function startFlow(): Promise<void> {
         start = (await res.json()) as QrLoginStartResponse;
     } catch {
         if (!active) return;
-        setStatusText('QR 코드 발급에 실패했습니다. 다시 시도해주세요.');
+        setStatusText(ui("m_99d69a7ccfd6fc10"));
         renderRetryButton();
         return;
     }
@@ -141,7 +135,7 @@ async function startFlow(): Promise<void> {
     pollIntervalMs = start.poll_interval_ms || 2000;
 
     renderQrCode(start.approve_url);
-    setStatusText('다른 기기로 QR 코드를 스캔하세요.');
+    setStatusText(ui("m_9b13c60f73a97c95"));
 
     scheduleNextPoll();
 }
@@ -170,7 +164,7 @@ async function poll(): Promise<void> {
         // 일시적 네트워크 오류 → 몇 번까지는 계속 폴링.
         errorStreak++;
         if (errorStreak >= 5) {
-            setStatusText('연결이 불안정합니다. 다시 시도해주세요.');
+            setStatusText(ui("m_b9824cfb644211bf"));
             renderRetryButton();
             stopFlow();
             return;
@@ -191,17 +185,17 @@ async function poll(): Promise<void> {
     }
     // cancelled / expired / consumed → 종료 + 재시도 안내
     const messages: Record<string, string> = {
-        cancelled: '다른 기기에서 로그인을 취소했습니다.',
-        expired: 'QR 코드가 만료되었습니다.',
-        consumed: '이미 사용된 QR 코드입니다.',
+        cancelled: ui("m_3fbf5ab6fb7856f2"),
+        expired: ui("m_2276c50e0e3b1fdd"),
+        consumed: ui("m_de7c3d878f5e82c9"),
     };
-    setStatusText(messages[status] || '요청을 처리할 수 없습니다.');
+    setStatusText(messages[status] || ui("m_d58aaf028427dd8d"));
     renderRetryButton();
     stopFlow();
 }
 
 async function redeem(): Promise<void> {
-    setStatusText('로그인 중…');
+    setStatusText(ui("m_c5e408a98fcff5ee"));
     try {
         const res = await fetch('/api/qr-login/redeem', {
             method: 'POST',
@@ -211,7 +205,7 @@ async function redeem(): Promise<void> {
         });
         if (res.ok) {
             stopFlow();
-            setStatusText('로그인되었습니다. 이동 중…');
+            setStatusText(ui("m_b962efbd7193f3fb"));
             window.location.href = getSafeRedirect();
             return;
         }
@@ -221,11 +215,11 @@ async function redeem(): Promise<void> {
         } catch {
             // ignore
         }
-        setStatusText(data?.error || '로그인에 실패했습니다. 다시 시도해주세요.');
+        setStatusText(data?.error || ui("m_f9426ed57766679c"));
         renderRetryButton();
         stopFlow();
     } catch {
-        setStatusText('네트워크 오류로 로그인에 실패했습니다.');
+        setStatusText(ui("m_6284f4d1f05c1e1f"));
         renderRetryButton();
         stopFlow();
     }
@@ -234,7 +228,7 @@ async function redeem(): Promise<void> {
 function openQrModal(): void {
     if (!window.Swal) return;
     window.Swal.fire({
-        title: 'QR 코드로 로그인',
+        title: ui("m_abd39a7fc1d21fb6"),
         html: `<div id="qrGuestBody">${QR_BODY_SKELETON}</div>`,
         showConfirmButton: false,
         showCloseButton: true,

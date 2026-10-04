@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import type { Env } from '../types';
 import { RBAC } from '../utils/role';
 import { buildLinksOnlyStatements, movePage } from '../routes/wiki';
@@ -210,7 +211,7 @@ export class AdminJobDO {
     private async handleStart(req: Request): Promise<Response> {
         const s = await this.loadMeta();
         if (s.status === 'running') {
-            return json({ ok: false, reason: 'already_running', state: s }, 409);
+            return json({ ok: false, reason: "already_running", state: s }, 409);
         }
 
         const body = (await req.json().catch(() => ({}))) as {
@@ -220,7 +221,7 @@ export class AdminJobDO {
         };
         const type = body.type;
         if (type !== 'reindex-backlinks' && type !== 'bulk-move' && type !== 'bulk-delete' && type !== 'rag-backfill') {
-            return json({ ok: false, reason: 'invalid_type' }, 400);
+            return json({ ok: false, reason: "invalid_type" }, 400);
         }
 
         // resume: 직전 error 또는 stop(idle) 상태에서, 같은 type 일 때만 커서·카운터를
@@ -275,7 +276,7 @@ export class AdminJobDO {
         if (type === 'rag-backfill') {
             // RAG 미러링이 가능한 환경(플러그인 ON + RAG_BUCKET 구성)이어야 한다.
             if (!isRagMirrorEnabled(this.env)) {
-                return json({ ok: false, reason: 'rag_disabled' }, 400);
+                return json({ ok: false, reason: "rag_disabled" }, 400);
             }
             const total = await this.countRagBackfillTargets();
             const result: RagBackfillResult = { mirrored: 0, skipped: 0 };
@@ -284,7 +285,7 @@ export class AdminJobDO {
         if (type === 'bulk-delete') {
             const p = payload as BulkDeletePayload | undefined;
             if (!p || !Array.isArray(p.ids) || p.ids.length === 0 || (p.mode !== 'soft' && p.mode !== 'hard') || !p.actor) {
-                return json({ ok: false, reason: 'invalid_payload' }, 400);
+                return json({ ok: false, reason: "invalid_payload" }, 400);
             }
             const result: BulkDeleteResult = {
                 requested: p.ids.length,
@@ -298,7 +299,7 @@ export class AdminJobDO {
         // bulk-move
         const p = payload as BulkMovePayload | undefined;
         if (!p || !Array.isArray(p.items) || p.items.length === 0 || !p.find || !p.actor) {
-            return json({ ok: false, reason: 'invalid_payload' }, 400);
+            return json({ ok: false, reason: "invalid_payload" }, 400);
         }
         const result: BulkMoveResult = {
             requested: p.items.length,
@@ -408,7 +409,7 @@ export class AdminJobDO {
     //  - 활성 익스텐션 네임스페이스(`freq:`/`stock:` 등)는 `pages.content` 가 빈 문자열이라
     //    포함하면 빈 content 로 재인덱싱돼 역링크가 전부 삭제된다(데이터 손실). 모두 제외한다.
     private reindexExclusion(): { clause: string; binds: string[] } {
-        const namespaces = ['이미지', 'map', ...getEnabledExtensions(this.env)];
+        const namespaces = [ui("m_302bae1279382d2b"), 'map', ...getEnabledExtensions(this.env)];
         const uniq = [...new Set(namespaces.filter((n) => n))];
         const clause = uniq.map(() => "slug NOT LIKE ? ESCAPE '\\'").join(' AND ');
         const binds = uniq.map((ns) => `${ns.replace(/[\\%_]/g, '\\$&')}:%`);
@@ -563,7 +564,7 @@ export class AdminJobDO {
     private async tickRagBackfill(s: JobState): Promise<void> {
         if (!isRagMirrorEnabled(this.env)) {
             s.status = 'error';
-            s.error = 'RAG 미러링이 비활성화되어 있습니다(RAG_SEARCH_ENABLED / RAG_BUCKET 확인).';
+            s.error = ui("m_3c3b850c761f6668");
             await this.saveMeta(s);
             await this.state.storage.deleteAlarm();
             return;
@@ -783,7 +784,7 @@ export class AdminJobDO {
                     .prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
                     .bind(
                         payload.mode === 'hard' ? 'bulk_hard_delete' : 'bulk_soft_delete',
-                        `문서 대량 ${payload.mode === 'hard' ? '영구 ' : ''}삭제: ${result.deleted}/${result.requested}건`,
+                        ui("m_d7b5091b60eaed7f", [payload.mode === 'hard' ? ui("m_a5e69871d2934498") : '', result.deleted, result.requested]),
                         payload.actor.id,
                     )
                     .run()
@@ -821,7 +822,7 @@ export class AdminJobDO {
                     .first<{ id: number; slug: string; deleted_at: number | null }>();
 
                 if (!page) {
-                    this.recordMoveSkip(result, item.slug || `#${item.id}`, '문서를 찾을 수 없습니다.');
+                    this.recordMoveSkip(result, item.slug || `#${item.id}`, ui("m_f4afd431e04afffc"));
                     s.cursor += 1;
                     s.processed += 1;
                     handled += 1;
@@ -832,7 +833,7 @@ export class AdminJobDO {
                     continue;
                 }
                 if (page.deleted_at != null) {
-                    this.recordMoveSkip(result, page.slug, '삭제된 문서는 이동할 수 없습니다.');
+                    this.recordMoveSkip(result, page.slug, ui("m_30df89932df3ca90"));
                     s.cursor += 1;
                     s.processed += 1;
                     handled += 1;
@@ -850,7 +851,7 @@ export class AdminJobDO {
                 // 나므로, 현재 slug 가 기대한 원본과 다르면(=이미 이동됐거나 외부에서 변경됨)
                 // 재처리하지 않고 skip 한다. 정상 1회 처리 시엔 page.slug === item.slug 라 무영향.
                 if (page.slug !== item.slug) {
-                    this.recordMoveSkip(result, page.slug, '이미 이동됨 또는 외부에서 변경됨 (건너뜀)');
+                    this.recordMoveSkip(result, page.slug, ui("m_b9f524a9254f2af5"));
                     s.cursor += 1;
                     s.processed += 1;
                     handled += 1;
@@ -863,7 +864,7 @@ export class AdminJobDO {
 
                 const newSlug = page.slug.split(payload.find).join(payload.replace);
                 if (newSlug === page.slug) {
-                    this.recordMoveSkip(result, page.slug, '변경 없음 (찾을 내용 미포함)');
+                    this.recordMoveSkip(result, page.slug, ui("m_3ad19aa46150f9af"));
                     s.cursor += 1;
                     s.processed += 1;
                     handled += 1;
@@ -878,7 +879,7 @@ export class AdminJobDO {
                     updateBacklinks: payload.updateBacklinks,
                 });
                 if (!outcome.ok) {
-                    this.recordMoveSkip(result, page.slug, outcome.error || '이동 실패');
+                    this.recordMoveSkip(result, page.slug, outcome.error || ui("m_2ac5f029a8308b3b"));
                 } else {
                     const blUpdated = outcome.backlinks?.updated ?? 0;
                     const blSkipped = outcome.backlinks?.skipped?.length ?? 0;
@@ -921,9 +922,9 @@ export class AdminJobDO {
                     .prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
                     .bind(
                         'bulk_move',
-                        `문서 대량 이동(제목 변경): "${payload.find}" → "${payload.replace}" (${result.moved}/${result.requested}건 이동, 역링크 ${result.backlinks_updated}건 갱신` +
-                            `${result.backlink_errors.length ? `, 역링크 실패 ${result.backlink_errors.length}건` : ''}` +
-                            `${partialTotal ? `, 역링크 미갱신 ${partialTotal}건` : ''})`,
+                        ui("m_a735020dc7ef9e76", [payload.find, payload.replace, result.moved, result.requested, result.backlinks_updated]) +
+                            `${result.backlink_errors.length ? ui("m_f46d2d3743a134e5", [result.backlink_errors.length]) : ''}` +
+                            `${partialTotal ? ui("m_8ec8a2a90281dd1a", [partialTotal]) : ''})`,
                         payload.actor.id,
                     )
                     .run()

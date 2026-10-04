@@ -17,6 +17,7 @@
 // 변했거나, 페이지가 삭제되었으면 409 Conflict 와 함께 거부한다 — 같은 정책을 MCP 즉시 적용
 // (apply_edit) 과 공유한다. 실제 확정 로직은 utils/mcpDraftApply.ts 의 applyDraftMutation 단일 소스.
 
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env, User } from '../types';
 import { requireAuth } from '../middleware/session';
@@ -177,10 +178,10 @@ mcpSubmissionsRoutes.get('/mcp-submissions/:id', requireAuth, async (c) => {
     const user = c.get('user')!;
     const draftId = Number(c.req.param('id'));
     if (!Number.isFinite(draftId) || draftId <= 0) {
-        return c.json({ error: 'invalid id' }, 400);
+        return c.json({ error: ui("m_b5121d5901351eee") }, 400);
     }
     const draft = await loadSubmittedDraftForUser(c.env, user, draftId);
-    if (!draft) return c.json({ error: 'not found' }, 404);
+    if (!draft) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
 
     const page = await c.env.DB.prepare(
         `SELECT id, version, is_private, content, last_revision_id, deleted_at,
@@ -296,16 +297,16 @@ mcpSubmissionsRoutes.post('/mcp-submissions/:id/approve', requireAuth, async (c)
     // 제출 시점 이후 사용자의 권한이 박탈되었을 가능성 — commit_edit 와 동일하게 wiki:edit
     // 권한을 재검증해 권한 변경이 곧바로 반영되도록 한다 (제출 자체는 통과했더라도 승인 시점에 차단).
     if (!rbac.can(user.role, 'wiki:edit')) {
-        return c.json({ error: 'forbidden', message: 'wiki:edit 권한이 필요합니다.' }, 403);
+        return c.json({ error: "forbidden", message: ui("m_1ca486cacad6b85c") }, 403);
     }
     const draftId = Number(c.req.param('id'));
-    if (!Number.isFinite(draftId) || draftId <= 0) return c.json({ error: 'invalid id' }, 400);
+    if (!Number.isFinite(draftId) || draftId <= 0) return c.json({ error: ui("m_b5121d5901351eee") }, 400);
 
     const body = await c.req.json<{ summary?: string }>().catch(() => ({} as { summary?: string }));
     // 유저가 명시적으로 빈 문자열을 보내면 AI summary 도 적용하지 않는다 ('' !== undefined).
     // 키 자체가 누락된 경우에만 AI summary 로 폴백 — 의도적인 빈 요약 의사를 보존하기 위함.
     const draft = await loadSubmittedDraftForUser(c.env, user, draftId);
-    if (!draft) return c.json({ error: 'not found' }, 404);
+    if (!draft) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
 
     const finalSummaryRaw = (typeof body.summary === 'string')
         ? body.summary
@@ -330,9 +331,9 @@ mcpSubmissionsRoutes.post('/mcp-submissions/:id/approve', requireAuth, async (c)
 mcpSubmissionsRoutes.post('/mcp-submissions/:id/resolve', requireAuth, async (c) => {
     const user = c.get('user')!;
     const draftId = Number(c.req.param('id'));
-    if (!Number.isFinite(draftId) || draftId <= 0) return c.json({ error: 'invalid id' }, 400);
+    if (!Number.isFinite(draftId) || draftId <= 0) return c.json({ error: ui("m_b5121d5901351eee") }, 400);
     const draft = await loadSubmittedDraftForUser(c.env, user, draftId);
-    if (!draft) return c.json({ error: 'not found' }, 404);
+    if (!draft) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
 
     await c.env.DB.batch([
         c.env.DB.prepare("DELETE FROM notifications WHERE type = 'mcp_submission' AND ref_id = ?").bind(draft.id),
@@ -353,9 +354,9 @@ mcpSubmissionsRoutes.post('/mcp-submissions/:id/resolve', requireAuth, async (c)
 mcpSubmissionsRoutes.post('/mcp-submissions/:id/reject', requireAuth, async (c) => {
     const user = c.get('user')!;
     const draftId = Number(c.req.param('id'));
-    if (!Number.isFinite(draftId) || draftId <= 0) return c.json({ error: 'invalid id' }, 400);
+    if (!Number.isFinite(draftId) || draftId <= 0) return c.json({ error: ui("m_b5121d5901351eee") }, 400);
     const draft = await loadSubmittedDraftForUser(c.env, user, draftId);
-    if (!draft) return c.json({ error: 'not found' }, 404);
+    if (!draft) return c.json({ error: ui("m_907ba78b4545338d") }, 404);
 
     await c.env.DB.batch([
         c.env.DB.prepare("DELETE FROM notifications WHERE type = 'mcp_submission' AND ref_id = ?").bind(draft.id),

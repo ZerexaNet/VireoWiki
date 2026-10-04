@@ -31,6 +31,7 @@
  *    selectedIconsOnly=false → 라이브러리 직접 검색 (bi, mdi 문법 사용)
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import './types';
 import { escapeHtml } from '../utils/html';
 import type { CMSelection } from './types';
@@ -119,7 +120,7 @@ async function openSelectedIconsPicker(): Promise<void> {
     const emptyEl = document.getElementById('iconPickerEmpty');
     if (!titleEl || !typeIconEl || !gridEl || !spinner || !searchInput || !emptyEl) return;
 
-    titleEl.textContent = '选择图标';
+    titleEl.textContent = ui("m_6d8adad124d0987f");
     typeIconEl.className = 'mdi mdi-vector-square me-2';
 
     const modalEl = document.getElementById('iconPickerModal');
@@ -232,10 +233,10 @@ async function openIconPicker(type: 'bi' | 'mdi'): Promise<void> {
     if (!titleEl || !typeIconEl || !gridEl || !spinner || !searchInput || !emptyEl) return;
 
     if (type === 'bi') {
-        titleEl.textContent = 'Bootstrap Icons 선택';
+        titleEl.textContent = ui("m_9c6c669c47481aa1");
         typeIconEl.className = 'bi bi-bootstrap me-2';
     } else {
-        titleEl.textContent = 'Material Design Icons 선택';
+        titleEl.textContent = ui("m_36bdb068c44b81a8");
         typeIconEl.className = 'mdi mdi-material-design me-2';
     }
 
@@ -343,23 +344,16 @@ function setupTableInsertPopover(tableBtn: HTMLElement): void {
 
     let activeRow = 1;
     let activeCol = 1;
-    let gridHTML = '<div class="table-insert-grid" role="grid" aria-label="표 크기 선택">';
+    let gridHTML = ui("m_0ca868255f76b256");
     for (let r = 1; r <= MAX_ROWS; r++) {
         for (let c = 1; c <= MAX_COLS; c++) {
             const tabIndex = (r === 1 && c === 1) ? '0' : '-1';
-            gridHTML += `<button type="button" class="table-insert-cell" role="gridcell" data-row="${r}" data-col="${c}" tabindex="${tabIndex}" aria-label="${r}행 ${c}열 표 삽입"></button>`;
+            gridHTML += ui("m_b2c53b9650b29f9d", [r, c, tabIndex, r, c]);
         }
     }
     gridHTML += '</div>';
 
-    popup.innerHTML = `
-                <div class="table-insert-label"><span class="table-insert-label-text">크기 선택</span></div>
-                ${gridHTML}
-                <button type="button" class="table-insert-csv-btn">
-                    <i class="mdi mdi-file-delimited-outline"></i>
-                    <span>CSV로 삽입</span>
-                </button>
-            `;
+    popup.innerHTML = ui("m_c3951dc60bf96486", [gridHTML]);
     document.body.appendChild(popup);
 
     const grid = popup.querySelector<HTMLElement>('.table-insert-grid')!;
@@ -395,7 +389,7 @@ function setupTableInsertPopover(tableBtn: HTMLElement): void {
 
     function clearHighlight() {
         cells.forEach(cell => cell.classList.remove('highlighted'));
-        labelText.textContent = '크기 선택';
+        labelText.textContent = ui("m_49b37c4e3f471e7d");
     }
 
     function insertSelectedTable(rows: number, cols: number) {
@@ -516,7 +510,7 @@ interface SpecialCharGroup {
 
 const SPECIAL_CHAR_GROUPS: SpecialCharGroup[] = [
     {
-        name: '그리스 문자',
+        name: ui("m_ffcc35339312833b"),
         chars: [
             'α', 'β', 'γ', 'δ', 'ε', 'ζ', 'η', 'θ', 'ι', 'κ', 'λ', 'μ',
             'ν', 'ξ', 'ο', 'π', 'ρ', 'σ', 'τ', 'υ', 'φ', 'χ', 'ψ', 'ω',
@@ -525,38 +519,38 @@ const SPECIAL_CHAR_GROUPS: SpecialCharGroup[] = [
         ]
     },
     {
-        name: '수학 기호',
+        name: ui("m_ccc8d833af3fed83"),
         chars: ['±', '×', '÷', '∓', '⋅', '∘', '≠', '≈', '≃', '≅', '≡', '≤', '≥', '≪', '≫',
                 '∞', '∝', '∑', '∏', '∫', '∮', '√', '∛', '∂', '∇', '∆', 'π', '∅',
                 '∈', '∉', '∋', '⊂', '⊃', '⊆', '⊇', '∪', '∩', '∖', '∀', '∃', '∄',
                 '∧', '∨', '¬', '⊕', '⊗', '⊥', '∥', 'ℝ', 'ℕ', 'ℤ', 'ℚ', 'ℂ']
     },
     {
-        name: '화살표',
+        name: ui("m_2785ce58df740e52"),
         chars: ['←', '→', '↑', '↓', '↔', '↕', '↖', '↗', '↘', '↙',
                 '⇐', '⇒', '⇑', '⇓', '⇔', '⇕', '⟵', '⟶', '⟷', '⟹', '⟺',
                 '↩', '↪', '⤴', '⤵', '↺', '↻', '➜', '➤', '➥', '➦']
     },
     {
-        name: '통화',
+        name: ui("m_1566f907a6cafa98"),
         chars: ['₩', '€', '£', '¥', '¢', '$', '₿', '₽', '₹', '₺', '₪', '₫', '฿', '₱', '₴', '₦', '₡', '₲', '₵']
     },
     {
-        name: '문장 부호',
+        name: ui("m_7ac690f892035c00"),
         chars: ['§', '¶', '†', '‡', '•', '·', '…', '–', '—', '‒', '⁓',
                 '“', '”', '‘', '’', '«', '»', '‹', '›', '„', '‚',
                 '『', '』', '「', '」', '〔', '〕', '【', '】', '《', '》',
                 '¡', '¿', '©', '®', '™', '℠', '№', '⁂', '⁕', '※']
     },
     {
-        name: '숫자/단위',
+        name: ui("m_39c739b867eef4ab"),
         chars: ['½', '⅓', '⅔', '¼', '¾', '⅕', '⅖', '⅗', '⅘', '⅙', '⅚', '⅛', '⅜', '⅝', '⅞',
                 '⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹', 'ⁿ',
                 '₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉',
                 '°', '′', '″', '‰', '‱', '℃', '℉', 'Å', 'Ω', 'µ', 'ℓ']
     },
     {
-        name: '도형/기타',
+        name: ui("m_2a1ab0fc433fe4a3"),
         chars: ['★', '☆', '✦', '✧', '✪', '✯', '♥', '♡', '♦', '♢', '♣', '♠', '♪', '♫', '♬',
                 '✓', '✔', '✗', '✘', '☑', '☒', '☐',
                 '▲', '△', '▶', '▷', '▼', '▽', '◀', '◁',
@@ -574,13 +568,7 @@ function setupSpecialCharPicker(triggerBtn: HTMLElement): void {
         return `<button type="button" class="special-char-tab${active}" data-group="${i}">${escapeHtml(g.name)}</button>`;
     }).join('');
 
-    popup.innerHTML = `
-        <div class="special-char-header">
-            <span class="special-char-title"><span class="special-char-omega">Ω</span> 특수문자</span>
-        </div>
-        <div class="special-char-tabs">${tabsHtml}</div>
-        <div class="special-char-grid" id="specialCharGrid"></div>
-    `;
+    popup.innerHTML = ui("m_ce91402873043528", [tabsHtml]);
     document.body.appendChild(popup);
 
     const grid = popup.querySelector<HTMLElement>('#specialCharGrid')!;
@@ -680,11 +668,11 @@ function openTimestampInsertModal(): void {
 
     interface TimestampType { id: string; label: string; desc: string; icon: string; }
     const TYPES: TimestampType[] = [
-        { id: 'dday', label: 'D-Day', desc: '남은/지난 날짜', icon: 'mdi mdi-calendar-clock' },
-        { id: 'age', label: '만 나이', desc: '생년월일 기준', icon: 'mdi mdi-cake-variant-outline' },
-        { id: 'time', label: '표시 시간', desc: '고정 시각 표시', icon: 'mdi mdi-clock-outline' },
-        { id: 'timer', label: '타이머', desc: '남은/지난 시간', icon: 'mdi mdi-timer-outline' },
-        { id: 'calendar', label: '캘린더', desc: '날짜를 달력으로', icon: 'mdi mdi-calendar-month' },
+        { id: 'dday', label: ui("m_563d700698b2e153"), desc: ui("m_4389adee0f33fa83"), icon: 'mdi mdi-calendar-clock' },
+        { id: 'age', label: ui("m_57b8d86c7074f30c"), desc: ui("m_ad2a021727ba5006"), icon: 'mdi mdi-cake-variant-outline' },
+        { id: 'time', label: ui("m_e8e55f63b04c532c"), desc: ui("m_1272d20262a7297f"), icon: 'mdi mdi-clock-outline' },
+        { id: 'timer', label: ui("m_39434f4dbd6aa9ad"), desc: ui("m_995d13c173849c77"), icon: 'mdi mdi-timer-outline' },
+        { id: 'calendar', label: ui("m_74b26fc4e214ba84"), desc: ui("m_1649005aa08afe3f"), icon: 'mdi mdi-calendar-month' },
     ];
 
     const state = {
@@ -708,33 +696,23 @@ function openTimestampInsertModal(): void {
         const inputStyle = 'background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);';
         if (state.type === 'time' || state.type === 'timer') {
             const help = state.type === 'time'
-                ? '선택한 시각이 고정된 날짜/시간 문자열로 표시됩니다.'
-                : '선택한 시각까지 남은/지난 시간이 실시간으로 표시됩니다.';
-            return `
-                <div class="timestamp-insert-field">
-                    <label class="form-label" for="timestampInsertDatetime">날짜 및 시각</label>
-                    <input type="datetime-local" id="timestampInsertDatetime" class="form-control form-control-sm"
-                        step="1" value="${escapeHtml(state.datetime)}" style="${inputStyle}">
-                    <div class="timestamp-insert-help">${help}</div>
-                </div>`;
+                ? ui("m_139e9bf69e8e8a27")
+                : ui("m_1d03cb185f79e003");
+            return ui("m_95d1a4bc0f3a1f4e", [escapeHtml(state.datetime), inputStyle, help]);
         }
         const supportsOmitYear = (state.type === 'dday' || state.type === 'calendar');
-        const label = state.type === 'age' ? '생년월일' : '날짜';
+        const label = state.type === 'age' ? ui("m_f7ea9e331f809359") : ui("m_09f76a1b7a6712ee");
         const help = state.type === 'age'
-            ? '오늘 기준의 만 나이를 표시합니다.'
+            ? ui("m_b6306b0c0739bba6")
             : state.type === 'dday'
-                ? '입력한 날짜까지 남은/지난 일수를 표시합니다. 연도를 생략하면 매년 반복됩니다.'
-                : '입력한 날짜를 달력 모양으로 표시합니다. 연도를 생략하면 연도가 표시되지 않습니다.';
+                ? ui("m_1441cf3cc6d86041")
+                : ui("m_1f8b9e640386d7ad");
         return `
             <div class="timestamp-insert-field">
                 <label class="form-label" for="timestampInsertDate">${label}</label>
                 <input type="date" id="timestampInsertDate" class="form-control form-control-sm"
                     value="${escapeHtml(state.date)}" style="${inputStyle}">
-                ${supportsOmitYear ? `
-                <div class="form-check timestamp-insert-checkbox">
-                    <input type="checkbox" id="timestampInsertOmitYear" class="form-check-input" ${state.omitYear ? 'checked' : ''}>
-                    <label class="form-check-label" for="timestampInsertOmitYear">연도 생략 (MM-DD)</label>
-                </div>` : ''}
+                ${supportsOmitYear ? ui("m_56f38475c09e90ed", [state.omitYear ? 'checked' : '']) : ''}
                 <div class="timestamp-insert-help">${help}</div>
             </div>`;
     }
@@ -761,7 +739,7 @@ function openTimestampInsertModal(): void {
         if (!preview) return;
         const token = buildToken();
         if (!token) {
-            preview.innerHTML = `<span class="timestamp-insert-preview-empty">필수 입력을 채우면 미리보기가 표시됩니다.</span>`;
+            preview.innerHTML = ui("m_95f164c4fa1c981a");
             return;
         }
         try {
@@ -769,7 +747,7 @@ function openTimestampInsertModal(): void {
             if (typeof proc === 'function') {
                 const rendered = proc(token);
                 if (rendered === token) {
-                    preview.innerHTML = `<span class="timestamp-insert-preview-empty">입력 값이 올바르지 않습니다.</span>`;
+                    preview.innerHTML = ui("m_b3e62163fc465b9d");
                 } else {
                     preview.innerHTML = rendered;
                 }
@@ -785,10 +763,10 @@ function openTimestampInsertModal(): void {
         const err = document.getElementById('timestampInsertValidation');
         let message = '';
         if (state.type === 'time' || state.type === 'timer') {
-            if (!state.datetime) message = '날짜와 시각을 입력해주세요.';
-            else if (isNaN(Date.parse(state.datetime))) message = '올바른 날짜/시각을 입력해주세요.';
+            if (!state.datetime) message = ui("m_a03bcaac1008e846");
+            else if (isNaN(Date.parse(state.datetime))) message = ui("m_6d63e624c20eba5c");
         } else {
-            if (!state.date) message = '날짜를 입력해주세요.';
+            if (!state.date) message = ui("m_487739cecc25e679");
         }
         if (err) err.textContent = message;
         return message === '';
@@ -797,20 +775,7 @@ function openTimestampInsertModal(): void {
     function render() {
         const root = document.getElementById('timestampInsertRoot');
         if (!root) return;
-        root.innerHTML = `
-            <div class="timestamp-insert-form text-start">
-                <div class="mb-3">
-                    <label class="form-label">종류</label>
-                    <div class="timestamp-insert-type-tabs">${typeTabsHtml()}</div>
-                </div>
-                <div id="timestampInsertFields" class="mb-3">${fieldsHtml()}</div>
-                <div class="mb-2">
-                    <label class="form-label">미리보기</label>
-                    <div id="timestampInsertPreview" class="timestamp-insert-preview"></div>
-                </div>
-                <div id="timestampInsertValidation" class="timestamp-insert-validation"></div>
-            </div>
-        `;
+        root.innerHTML = ui("m_9a45d8beac2b662c", [typeTabsHtml(), fieldsHtml()]);
 
         root.querySelectorAll<HTMLElement>('.timestamp-insert-type-tab').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -855,12 +820,12 @@ function openTimestampInsertModal(): void {
     }
 
     Swal.fire<string>({
-        title: '<i class="mdi mdi-calendar-clock me-2"></i>타임스탬프 삽입',
+        title: ui("m_70bd191952fc71c7"),
         width: 560,
         html: '<div id="timestampInsertRoot"></div>',
         showCancelButton: true,
-        confirmButtonText: '삽입',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_0d635eda295a08c8"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         focusConfirm: false,
         didOpen: () => {
             render();
@@ -870,7 +835,7 @@ function openTimestampInsertModal(): void {
             const token = buildToken();
             if (!token) {
                 const err = document.getElementById('timestampInsertValidation');
-                if (err) err.textContent = '필수 입력을 채워주세요.';
+                if (err) err.textContent = ui("m_c8de9972319654a0");
                 return false;
             }
             return token;
@@ -890,13 +855,13 @@ function openTimestampInsertModal(): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function insertMarkdownTable(rows: number, cols: number): void {
-    const headerCells = Array.from({ length: cols }, (_, i) => `标题${i + 1}`);
+    const headerCells = Array.from({ length: cols }, (_, i) => ui("m_7ba89c363a3a76a9", [i + 1]));
     const headerLine = '| ' + headerCells.join(' | ') + ' |';
     const sepLine = '|' + ' --- |'.repeat(cols);
     const bodyLines: string[] = [];
     const bodyRows = Math.max(0, rows - 1);
     for (let r = 0; r < bodyRows; r++) {
-        const rowCells = Array.from({ length: cols }, (_, i) => `内容${i + 1}`);
+        const rowCells = Array.from({ length: cols }, (_, i) => ui("m_0ab884b9ab2c7a09", [i + 1]));
         bodyLines.push('| ' + rowCells.join(' | ') + ' |');
     }
     const table = '\n' + [headerLine, sepLine, ...bodyLines].join('\n') + '\n';
@@ -947,18 +912,18 @@ function parseCsvRecords(text: string): string[][] {
 function convertCsvToMarkdownTable(csv: string): string {
     let text = csv.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     text = text.replace(/^\s+|\s+$/g, '');
-    if (!text) throw new Error('내용이 비어있습니다');
-    if (text.indexOf(',') === -1) throw new Error('쉼표 구분자를 찾을 수 없습니다');
+    if (!text) throw new Error(ui("m_4f39790bfd22c8c0"));
+    if (text.indexOf(',') === -1) throw new Error(ui("m_7f697abbf2047c77"));
 
     const parsed = parseCsvRecords(text);
-    if (parsed.length === 0) throw new Error('유효한 행이 없습니다');
+    if (parsed.length === 0) throw new Error(ui("m_dcddd4797bbccfca"));
 
     const colCount = parsed[0].length;
-    if (colCount < 2) throw new Error('열이 2개 이상이어야 합니다');
+    if (colCount < 2) throw new Error(ui("m_d39f7108d58e7acd"));
 
     const mismatchIdx = parsed.findIndex(r => r.length !== colCount);
     if (mismatchIdx !== -1) {
-        throw new Error(`${mismatchIdx + 1}번째 행의 열 개수(${parsed[mismatchIdx].length})가 헤더(${colCount})와 다릅니다`);
+        throw new Error(ui("m_392832a675bf3e47", [mismatchIdx + 1, parsed[mismatchIdx].length, colCount]));
     }
 
     const escapeCell = (s: string | null | undefined) => (s == null ? '' : String(s))
@@ -978,21 +943,12 @@ function openCsvTableModal(): void {
     const Swal = window.Swal;
     if (!Swal) return;
     Swal.fire<string>({
-        title: '<i class="mdi mdi-file-delimited-outline me-2"></i>CSV 표 삽입',
+        title: ui("m_fdf04f03e0b2c942"),
         width: 620,
-        html: `
-                    <div class="text-start">
-                        <p style="font-size:0.85rem;color:var(--wiki-text-muted);margin-bottom:8px;">
-                            CSV 데이터를 붙여넣으세요. 첫 번째 행이 표 헤더로 사용됩니다.
-                        </p>
-                        <textarea id="swal-csv-input" class="form-control"
-                            placeholder="제목1,제목2,제목3&#10;내용1,내용2,내용3"
-                            style="font-size:0.85rem;height:220px;font-family:monospace;resize:vertical;width:100%;box-sizing:border-box;background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);"></textarea>
-                    </div>
-                `,
+        html: ui("m_7d683b4d01ff4ada"),
         showCancelButton: true,
-        confirmButtonText: '삽입',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_0d635eda295a08c8"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         didOpen: () => {
             const el = document.getElementById('swal-csv-input') as HTMLTextAreaElement | null;
             if (el) el.focus();
@@ -1001,14 +957,14 @@ function openCsvTableModal(): void {
             const inputEl = document.getElementById('swal-csv-input') as HTMLTextAreaElement | null;
             const input = inputEl?.value ?? '';
             if (!input || !input.trim()) {
-                Swal.showValidationMessage('CSV 데이터를 입력해주세요.');
+                Swal.showValidationMessage(ui("m_8abb941adbc7997a"));
                 return false;
             }
             try {
                 return convertCsvToMarkdownTable(input);
             } catch (err) {
-                const msg = err instanceof Error ? err.message : '알 수 없는 오류';
-                Swal.showValidationMessage('CSV 형식이 아닙니다: ' + msg);
+                const msg = err instanceof Error ? err.message : ui("m_6a72b554a7c28caf");
+                Swal.showValidationMessage(ui("m_894d2755019c74bc") + msg);
                 return false;
             }
         }
@@ -1028,21 +984,12 @@ function openGoogleMapsEmbedModal(): void {
     const Swal = window.Swal;
     if (!Swal) return;
     Swal.fire<string>({
-        title: '<i class="mdi mdi-google-maps me-2"></i>구글 지도 삽입',
+        title: ui("m_ffbbd93f310f6250"),
         width: 580,
-        html: `
-                    <div class="text-start">
-                        <p style="font-size:0.85rem;color:var(--wiki-text-muted);margin-bottom:12px;">
-                            구글 지도 → 공유 → <b>지도 퍼가기</b>에서 복사한 HTML을 붙여넣으세요.
-                        </p>
-                        <textarea id="swal-maps-input" class="form-control"
-                            placeholder='&lt;iframe src="https://www.google.com/maps/embed?pb=..." ...&gt;&lt;/iframe&gt;'
-                            style="font-size:0.82rem;height:160px;font-family:monospace;resize:vertical;width:100%;box-sizing:border-box;background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);"></textarea>
-                    </div>
-                `,
+        html: ui("m_8c1df1d5a0dfba80"),
         showCancelButton: true,
-        confirmButtonText: '삽입',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_0d635eda295a08c8"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         didOpen: () => {
             (document.getElementById('swal-maps-input') as HTMLTextAreaElement | null)?.focus();
         },
@@ -1050,12 +997,12 @@ function openGoogleMapsEmbedModal(): void {
             const inputEl = document.getElementById('swal-maps-input') as HTMLTextAreaElement | null;
             const input = (inputEl?.value ?? '').trim();
             if (!input) {
-                Swal.showValidationMessage('iframe HTML을 입력해주세요.');
+                Swal.showValidationMessage(ui("m_82ff6e1e38dd2f4c"));
                 return false;
             }
             const match = input.match(/src=["']([^"']+)["']/);
             if (!match) {
-                Swal.showValidationMessage('유효한 iframe 코드가 아닙니다.');
+                Swal.showValidationMessage(ui("m_480b6590ee92d485"));
                 return false;
             }
             const src = match[1];
@@ -1064,11 +1011,11 @@ function openGoogleMapsEmbedModal(): void {
                 const h = srcUrl.hostname;
                 const validHost = (h === 'www.google.com' || h === 'google.com' || h === 'maps.google.com') && srcUrl.pathname.startsWith('/maps');
                 if (!validHost) {
-                    Swal.showValidationMessage('구글 지도 URL이 아닙니다.');
+                    Swal.showValidationMessage(ui("m_4ac094a75c8ed4f0"));
                     return false;
                 }
             } catch (e) {
-                Swal.showValidationMessage('유효하지 않은 URL입니다.');
+                Swal.showValidationMessage(ui("m_e46f9e192d1f7d11"));
                 return false;
             }
             return src;
@@ -1101,9 +1048,7 @@ function openCardInsertModal(): void {
 
     function paletteSwatchHtml(containerId: string): string {
         let html = `<div id="${containerId}" class="card-insert-palette-swatches">`;
-        html += `<button type="button" class="card-insert-palette-swatch" data-palette="" title="선택 안 함">
-                    <span class="card-insert-palette-swatch-none">없음</span>
-                </button>`;
+        html += ui("m_7647e729130059dc");
         for (const p of palettes) {
             html += `<button type="button" class="card-insert-palette-swatch" data-palette="${escapeHtml(p.name)}" title="${escapeHtml(p.name)}" style="${paletteSwatchStyle(p)}">${escapeHtml(p.name)}</button>`;
         }
@@ -1112,12 +1057,12 @@ function openCardInsertModal(): void {
     }
 
     const CALLOUT_TYPES = [
-        { id: 'info',    label: '정보', icon: 'mdi mdi-information-outline' },
-        { id: 'tip',     label: '팁',   icon: 'mdi mdi-lightbulb-on-outline' },
-        { id: 'success', label: '成功', icon: 'mdi mdi-check-circle-outline' },
-        { id: 'warning', label: '주의', icon: 'mdi mdi-alert-outline' },
-        { id: 'danger',  label: '위험', icon: 'mdi mdi-alert-octagon-outline' },
-        { id: 'note',    label: '노트', icon: 'mdi mdi-note-text-outline' }
+        { id: 'info',    label: ui("m_b8cf07ac906c8124"), icon: 'mdi mdi-information-outline' },
+        { id: 'tip',     label: ui("m_d9fcd43cf85293f6"),   icon: 'mdi mdi-lightbulb-on-outline' },
+        { id: 'success', label: ui("m_053461ce86d26572"), icon: 'mdi mdi-check-circle-outline' },
+        { id: 'warning', label: ui("m_acc90fbf66686d20"), icon: 'mdi mdi-alert-outline' },
+        { id: 'danger',  label: ui("m_baaff05e434f85e3"), icon: 'mdi mdi-alert-octagon-outline' },
+        { id: 'note',    label: ui("m_a34b4d0aafc9ecfd"), icon: 'mdi mdi-note-text-outline' }
     ];
     const calloutChipsHtml = CALLOUT_TYPES.map((c, i) => `
         <button type="button" class="card-insert-callout-chip${i === 0 ? ' active' : ''}" data-callout="${c.id}">
@@ -1126,49 +1071,12 @@ function openCardInsertModal(): void {
         </button>`).join('');
 
     Swal.fire<CardInsertResult>({
-        title: '<i class="bi bi-card-heading me-2"></i>카드 / 임베드 / 콜아웃 블록 삽입',
+        title: ui("m_a983c6b83bb1ecf8"),
         width: 560,
-        html: `
-                    <div class="text-start card-insert-form">
-                        <div class="mb-3">
-                            <label class="form-label">블록 종류</label>
-                            <input type="hidden" id="cardInsertType" value="card">
-                            <div class="btn-group w-100" role="group" id="cardInsertTypeToggle">
-                                <button type="button" class="btn btn-outline-primary active" data-type="card">카드</button>
-                                <button type="button" class="btn btn-outline-primary" data-type="embed">임베드</button>
-                                <button type="button" class="btn btn-outline-primary" data-type="callout">콜아웃</button>
-                            </div>
-                        </div>
-                        <div class="mb-3" id="cardInsertCalloutTypeGroup" style="display:none;">
-                            <label class="form-label">콜아웃 타입</label>
-                            <input type="hidden" id="cardInsertCalloutType" value="info">
-                            <div class="card-insert-callout-chips" id="cardInsertCalloutChips">
-                                ${calloutChipsHtml}
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label" for="cardInsertTitle" id="cardInsertTitleLabel">标题</label>
-                            <input type="text" id="cardInsertTitle" class="form-control"
-                                placeholder="标题" autocomplete="off"
-                                style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                        </div>
-                        <div class="mb-3" id="cardInsertTitlePaletteGroup">
-                            <label class="form-label" id="cardInsertTitlePaletteLabel">제목 팔레트</label>
-                            <input type="hidden" id="cardInsertTitlePalette" value="">
-                            ${paletteSwatchHtml('cardInsertTitleSwatches')}
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label" for="cardInsertBody">内容</label>
-                            <textarea id="cardInsertBody" class="form-control"
-                                placeholder="비워두면 '내용'이 자리표시자로 들어갑니다."
-                                rows="5"
-                                style="font-size:0.88rem;font-family:inherit;resize:vertical;background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);"></textarea>
-                        </div>
-                    </div>
-                `,
+        html: ui("m_2246fddc05d573ac", [calloutChipsHtml, paletteSwatchHtml('cardInsertTitleSwatches')]),
         showCancelButton: true,
-        confirmButtonText: '삽입',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_0d635eda295a08c8"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         didOpen: () => {
             const titleInput = document.getElementById('cardInsertTitle') as HTMLInputElement | null;
             if (titleInput) titleInput.focus();
@@ -1202,7 +1110,7 @@ function openCardInsertModal(): void {
             const titleInputEl = document.getElementById('cardInsertTitle') as HTMLInputElement | null;
             const calloutGroup = document.getElementById('cardInsertCalloutTypeGroup');
             const bodyInputEl = document.getElementById('cardInsertBody') as HTMLTextAreaElement | null;
-            const DEFAULT_BODY_PLACEHOLDER = "비워두면 '내용'이 자리표시자로 들어갑니다.";
+            const DEFAULT_BODY_PLACEHOLDER = ui("m_7df2e1f129e0c26b");
 
             function applyType(t: string) {
                 typeHidden.value = t;
@@ -1210,26 +1118,26 @@ function openCardInsertModal(): void {
                 if (bodyInputEl) {
                     // 임베드 블록은 본문에 URL 을 넣으면 그 자리에서 미디어 뷰어로 승격된다.
                     bodyInputEl.placeholder = t === 'embed'
-                        ? '임베드할 미디어 URL (YouTube · 니코동 · Spotify · 지도) 을 한 줄에 하나씩'
+                        ? ui("m_7c9d19d16fab0f77")
                         : DEFAULT_BODY_PLACEHOLDER;
                 }
                 if (t === 'embed') {
                     if (titlePaletteGroup) titlePaletteGroup.style.display = '';
                     if (calloutGroup) calloutGroup.style.display = 'none';
-                    if (titlePaletteLabel) titlePaletteLabel.textContent = '왼쪽 테두리 팔레트';
-                    if (titleLabel) titleLabel.textContent = '제목 (선택)';
-                    if (titleInputEl) titleInputEl.placeholder = '임베드 제목';
+                    if (titlePaletteLabel) titlePaletteLabel.textContent = ui("m_47af9e15b60b97a5");
+                    if (titleLabel) titleLabel.textContent = ui("m_80d5305b067475b9");
+                    if (titleInputEl) titleInputEl.placeholder = ui("m_5fdab11e30cecaea");
                 } else if (t === 'callout') {
                     if (titlePaletteGroup) titlePaletteGroup.style.display = 'none';
                     if (calloutGroup) calloutGroup.style.display = '';
-                    if (titleLabel) titleLabel.textContent = '제목 (선택, 비우면 기본 제목)';
-                    if (titleInputEl) titleInputEl.placeholder = '예: 백업 필수';
+                    if (titleLabel) titleLabel.textContent = ui("m_f457a2ac27592fb5");
+                    if (titleInputEl) titleInputEl.placeholder = ui("m_f6ebefaf89ab40e4");
                 } else {
                     if (titlePaletteGroup) titlePaletteGroup.style.display = '';
                     if (calloutGroup) calloutGroup.style.display = 'none';
-                    if (titlePaletteLabel) titlePaletteLabel.textContent = '제목 팔레트';
-                    if (titleLabel) titleLabel.textContent = '标题';
-                    if (titleInputEl) titleInputEl.placeholder = '카드 제목';
+                    if (titlePaletteLabel) titlePaletteLabel.textContent = ui("m_01ac2b0c6f4e158f");
+                    if (titleLabel) titleLabel.textContent = ui("m_c3405f8c7d9d392a");
+                    if (titleInputEl) titleInputEl.placeholder = ui("m_92ab0fddb7f04da5");
                 }
             }
             applyType('card');
@@ -1260,7 +1168,7 @@ function openCardInsertModal(): void {
                 .replace(/\r\n/g, '\n')
                 .replace(/\r/g, '\n');
             if (bodyRaw.split('\n').some(l => /^\s*:::/.test(l))) {
-                Swal.showValidationMessage('본문에 :::로 시작하는 줄은 블록을 닫아버려 사용할 수 없습니다.');
+                Swal.showValidationMessage(ui("m_4cdf202c9558f2c5"));
                 return false;
             }
             const body = bodyRaw.replace(/^\n+|\n+$/g, '');
@@ -1284,7 +1192,7 @@ function openCardInsertModal(): void {
         const titlePart = titleTokens && title ? `${titleTokens} ${title}` : (titleTokens || title);
         const header = titlePart ? `:::${blockType} ${titlePart}` : `:::${blockType}`;
 
-        let body = bodyContent || '内容';
+        let body = bodyContent || ui("m_7a688306423bec17");
         if (type === 'embed' && bodyContent) {
             // 렌더러는 breaks:true 라 인접한 두 줄이 <br> 로 한 문단에 묶이고, 임베드 패스는
             // 링크가 문단의 유일한 콘텐츠일 때만 승격하므로 한 문단에 URL 이 둘이면 아무것도
@@ -1321,53 +1229,9 @@ function openPaletteColorModal(): void {
     }
     paletteHtml += `</div>`;
 
-    const customHtml = `
-                <div class="d-flex gap-3 text-start">
-                    <div class="flex-grow-1" style="width: 50%;">
-                        <label class="form-label fw-bold">背景色</label>
-                        <div id="modalBgSwatches" class="color-modal-swatches mb-2"></div>
-                        <canvas id="modalBgCanvas" width="220" height="120" class="color-palette-canvas mt-1" style="width:100%; border:1px solid var(--wiki-border); border-radius:4px;"></canvas>
-                        <canvas id="modalBgHue" width="220" height="16" class="color-hue-slider mt-2" style="width:100%; border-radius:4px;"></canvas>
-                        <input type="text" id="modalBgHex" class="form-control form-control-sm mt-2" maxlength="7" value="#000000" style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                    </div>
-                    <div class="flex-grow-1" style="width: 50%;">
-                        <div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-1">
-                            <label class="form-label fw-bold mb-0">글자색</label>
-                            <div class="form-check form-switch mb-0" style="font-size:0.8rem;">
-                                <input class="form-check-input" type="checkbox" id="modalAutoContrast" checked>
-                                <label class="form-check-label" for="modalAutoContrast" style="cursor:pointer;">自动对比度</label>
-                            </div>
-                        </div>
-                        <div id="modalColorSwatches" class="color-modal-swatches mb-2"></div>
-                        <canvas id="modalColorCanvas" width="220" height="120" class="color-palette-canvas mt-1" style="width:100%; border:1px solid var(--wiki-border); border-radius:4px;"></canvas>
-                        <canvas id="modalColorHue" width="220" height="16" class="color-hue-slider mt-2" style="width:100%; border-radius:4px;"></canvas>
-                        <input type="text" id="modalColorHex" class="form-control form-control-sm mt-2" maxlength="7" value="#FFFFFF" style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                    </div>
-                </div>
-                <div class="mt-4 text-center">
-                    <div id="modalColorPreview" style="display:inline-block; padding: 12px 24px; font-size: 1.2rem; font-weight: bold; border-radius: 4px; border: 1px solid var(--wiki-border); background-color: #000000; color: #FFFFFF; transition: all 0.2s;">ABC</div>
-                </div>
-            `;
+    const customHtml = ui("m_494d6529da346053");
 
-    const modalHtml = `
-                <ul class="nav nav-tabs" id="colorModalTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="palette-tab" data-bs-toggle="tab" data-bs-target="#palette-pane" type="button" role="tab">选择调色板</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="custom-tab" data-bs-toggle="tab" data-bs-target="#custom-pane" type="button" role="tab">커스텀 색상</button>
-                    </li>
-                </ul>
-                <div class="tab-content mt-3" id="colorModalTabsContent">
-                    <div class="tab-pane fade show active text-start" id="palette-pane" role="tabpanel">
-                        <p class="text-muted mb-3" style="font-size: 0.85rem;">원하는 팔레트를 클릭하면 에디터에 삽입됩니다.</p>
-                        ${paletteHtml}
-                    </div>
-                    <div class="tab-pane fade" id="custom-pane" role="tabpanel">
-                        ${customHtml}
-                    </div>
-                </div>
-            `;
+    const modalHtml = ui("m_fa106cabdda26e90", [paletteHtml, customHtml]);
 
     interface ColorState { hue: number; saturation: number; brightness: number; hex: string; dragging: string | null; }
     const modalColorState: { bg: ColorState; color: ColorState } = {
@@ -1480,12 +1344,12 @@ function openPaletteColorModal(): void {
     ];
 
     Swal.fire<string>({
-        title: '<i class="mdi mdi-palette-outline me-2"></i>색상 삽입',
+        title: ui("m_6146c4ffc51735d5"),
         width: 650,
         html: modalHtml,
         showCancelButton: true,
-        confirmButtonText: '삽입',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_0d635eda295a08c8"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         didOpen: () => {
             const confirmBtn = Swal.getConfirmButton();
             if (confirmBtn) confirmBtn.style.display = 'none';
@@ -1642,7 +1506,7 @@ function openPaletteColorModal(): void {
             const colorHex = ((document.getElementById('modalColorHex') as HTMLInputElement | null)?.value || '').trim();
 
             if (!/^#[0-9A-Fa-f]{6}$/.test(bgHex) || !/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
-                Swal.showValidationMessage('유효한 색상 코드(Hex)를 입력하세요.');
+                Swal.showValidationMessage(ui("m_ca905f2e8dad44e5"));
                 return false;
             }
 
@@ -1698,16 +1562,14 @@ function openComponentInsertModal(): void {
     };
 
     const TYPE_META: Record<string, { label: string; icon: string }> = {
-        badge: { label: '배지', icon: 'mdi mdi-label-outline' },
-        tag: { label: '태그', icon: 'mdi mdi-tag-outline' },
-        stat: { label: '스탯', icon: 'mdi mdi-chart-box-outline' },
-        button: { label: '버튼', icon: 'mdi mdi-gesture-tap-button' },
+        badge: { label: ui("m_57ff1b60f5b9be4b"), icon: 'mdi mdi-label-outline' },
+        tag: { label: ui("m_e24f8f799a09913f"), icon: 'mdi mdi-tag-outline' },
+        stat: { label: ui("m_c9f511c1c9221959"), icon: 'mdi mdi-chart-box-outline' },
+        button: { label: ui("m_605632038f49400b"), icon: 'mdi mdi-gesture-tap-button' },
     };
 
     function paletteSwatchesHtml(): string {
-        let html = `<button type="button" class="badge-insert-palette-swatch" data-palette="" title="선택 안 함">
-                    <span class="badge-insert-palette-swatch-none">없음</span>
-                </button>`;
+        let html = ui("m_03a581e6686dde00");
         for (const p of palettes) {
             html += `<button type="button" class="badge-insert-palette-swatch" data-palette="${escapeHtml(p.name)}" title="${escapeHtml(p.name)}" style="${paletteSwatchStyle(p)}">${escapeHtml(p.name)}</button>`;
         }
@@ -1730,69 +1592,20 @@ function openComponentInsertModal(): void {
             ? (state.icon.type === 'bi'
                 ? `<i class="bi bi-${escapeHtml(state.icon.name)}"></i>`
                 : `<span class="mdi mdi-${escapeHtml(state.icon.name)}"></span>`)
-            : `<span class="badge-insert-icon-placeholder">없음</span>`;
-        const iconLabel = hasIcon && state.icon ? `${state.icon.type}:${state.icon.name}` : '选择图标 안 함';
-        return `
-                        <div class="badge-insert-field">
-                            <label class="form-label">图标</label>
-                            <div class="badge-insert-icon-row">
-                                <div class="badge-insert-icon-preview" aria-hidden="true">${iconPreview}</div>
-                                <div class="badge-insert-icon-label">${escapeHtml(iconLabel)}</div>
-                                <button type="button" id="badgeInsertIconPickBtn" class="badge-insert-icon-btn">
-                                    <i class="mdi mdi-vector-square"></i>
-                                    <span>${hasIcon ? '변경' : '선택'}</span>
-                                </button>
-                                ${hasIcon ? `<button type="button" id="badgeInsertIconClearBtn" class="badge-insert-icon-btn badge-insert-icon-btn-ghost" title="아이콘 제거">
-                                    <i class="mdi mdi-close"></i>
-                                </button>` : ''}
-                            </div>
-                        </div>`;
+            : ui("m_43879d12b6623841");
+        const iconLabel = hasIcon && state.icon ? `${state.icon.type}:${state.icon.name}` : ui("m_30ec4d8c6534a85a");
+        return ui("m_1b8575f36b9b08c7", [iconPreview, escapeHtml(iconLabel), hasIcon ? ui("m_16f64fe47b163b81") : ui("m_8d1a750c9351d1b8"), hasIcon ? ui("m_88cdc26b4350f44b") : '']);
     }
 
     function fieldsHtml(): string {
         if (state.type === 'stat') {
-            return `
-                        <div class="badge-insert-field-row">
-                            <div class="badge-insert-field">
-                                <label class="form-label" for="badgeInsertText">값</label>
-                                <input type="text" id="badgeInsertText" class="form-control form-control-sm"
-                                    placeholder="예: 42" autocomplete="off" value="${escapeHtml(state.text)}"
-                                    style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                            </div>
-                            <div class="badge-insert-field">
-                                <label class="form-label" for="badgeInsertLabel">라벨</label>
-                                <input type="text" id="badgeInsertLabel" class="form-control form-control-sm"
-                                    placeholder="예: 완료" autocomplete="off" value="${escapeHtml(state.label)}"
-                                    style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                            </div>
-                        </div>
-                        ${iconFieldHtml()}`;
+            return ui("m_ba152dbc0c19e004", [escapeHtml(state.text), escapeHtml(state.label), iconFieldHtml()]);
         }
         if (state.type === 'button') {
-            return `
-                        <div class="badge-insert-field">
-                            <label class="form-label" for="badgeInsertText">标题</label>
-                            <input type="text" id="badgeInsertText" class="form-control form-control-sm"
-                                placeholder="버튼 제목" autocomplete="off" value="${escapeHtml(state.text)}"
-                                style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                        </div>
-                        <div class="badge-insert-field">
-                            <label class="form-label" for="badgeInsertUrl">링크</label>
-                            <input type="text" id="badgeInsertUrl" class="form-control form-control-sm"
-                                placeholder="https://example.com 또는 /w/문서이름" autocomplete="off" value="${escapeHtml(state.url)}"
-                                style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                        </div>
-                        ${iconFieldHtml()}`;
+            return ui("m_7217405d546156e8", [escapeHtml(state.text), escapeHtml(state.url), iconFieldHtml()]);
         }
-        const placeholder = state.type === 'tag' ? '예: Beta' : '예: NEW';
-        return `
-                    <div class="badge-insert-field">
-                        <label class="form-label" for="badgeInsertText">텍스트</label>
-                        <input type="text" id="badgeInsertText" class="form-control form-control-sm"
-                            placeholder="${placeholder}" autocomplete="off" value="${escapeHtml(state.text)}"
-                            style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                    </div>
-                    ${iconFieldHtml()}`;
+        const placeholder = state.type === 'tag' ? ui("m_95bd08c478861f89") : ui("m_2c48e443bb1d8825");
+        return ui("m_97c94ee5e5a838e6", [placeholder, escapeHtml(state.text), iconFieldHtml()]);
     }
 
     function buildToken(): string {
@@ -1827,7 +1640,7 @@ function openComponentInsertModal(): void {
         if (!preview) return;
         const token = buildToken();
         if (!token) {
-            preview.innerHTML = `<span class="badge-insert-preview-empty">필수 입력을 채우면 미리보기가 표시됩니다.</span>`;
+            preview.innerHTML = ui("m_dafe247453aa7693");
             return;
         }
         try {
@@ -1849,18 +1662,18 @@ function openComponentInsertModal(): void {
         let message = '';
 
         if (state.type === 'badge' || state.type === 'tag') {
-            if (!text) message = '텍스트를 입력해주세요.';
-            else if (invalidChars.test(text)) message = '텍스트에 {, }, |, 줄바꿈 문자를 사용할 수 없습니다.';
+            if (!text) message = ui("m_e035a3de4da7d35c");
+            else if (invalidChars.test(text)) message = ui("m_6b9a6d3b336e2d71");
         } else if (state.type === 'stat') {
             const lbl = (state.label || '').trim();
-            if (!text) message = '값을 입력해주세요.';
-            else if (invalidChars.test(text) || invalidChars.test(lbl)) message = '값/라벨에 {, }, |, 줄바꿈 문자를 사용할 수 없습니다.';
+            if (!text) message = ui("m_003ab5d5618f9c91");
+            else if (invalidChars.test(text) || invalidChars.test(lbl)) message = ui("m_9f3e59080fdd2350");
         } else if (state.type === 'button') {
             const url = (state.url || '').trim();
-            if (!text) message = '제목을 입력해주세요.';
-            else if (!url) message = '링크를 입력해주세요.';
-            else if (invalidChars.test(text)) message = '제목에 {, }, |, 줄바꿈 문자를 사용할 수 없습니다.';
-            else if (invalidChars.test(url)) message = '링크에 {, }, |, 줄바꿈 문자를 사용할 수 없습니다. (|는 %7C로 URL 인코딩하세요)';
+            if (!text) message = ui("m_c5348ab5543850dd");
+            else if (!url) message = ui("m_94581cc7585ca7f4");
+            else if (invalidChars.test(text)) message = ui("m_daab054698e34b49");
+            else if (invalidChars.test(url)) message = ui("m_c6cee464c464112c");
         }
 
         if (err) err.textContent = message;
@@ -1870,24 +1683,7 @@ function openComponentInsertModal(): void {
     function renderFormView() {
         const root = document.getElementById('badgeInsertRoot');
         if (!root) return;
-        root.innerHTML = `
-                    <div class="badge-insert-form text-start">
-                        <div class="mb-3">
-                            <label class="form-label">종류</label>
-                            <div class="badge-insert-type-tabs">${typeTabsHtml()}</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">팔레트</label>
-                            <div id="badgeInsertPaletteSwatches" class="badge-insert-palette-swatches"></div>
-                        </div>
-                        <div id="badgeInsertFields" class="mb-3">${fieldsHtml()}</div>
-                        <div class="mb-2">
-                            <label class="form-label">미리보기</label>
-                            <div id="badgeInsertPreview" class="badge-insert-preview"></div>
-                        </div>
-                        <div id="badgeInsertValidation" class="badge-insert-validation"></div>
-                    </div>
-                `;
+        root.innerHTML = ui("m_c20801f40b7d2560", [typeTabsHtml(), fieldsHtml()]);
 
         root.querySelectorAll<HTMLElement>('.badge-insert-type-tab').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -2060,27 +1856,7 @@ function openComponentInsertModal(): void {
         const onlyIcons = window.selectedIconsOnly ?? false;
 
         if (!onlyIcons && !state.iconType) {
-            root.innerHTML = `
-                        <div class="badge-insert-icon-view text-start">
-                            <div class="badge-insert-icon-toolbar" style="margin-bottom: 24px;">
-                                <button type="button" id="badgeInsertIconBackType" class="badge-insert-back-btn">
-                                    <i class="mdi mdi-arrow-left"></i>
-                                    <span>돌아가기</span>
-                                </button>
-                            </div>
-                            <h5 class="text-center mb-4" style="color:var(--wiki-text);">图标库 선택</h5>
-                            <div class="d-flex gap-3 justify-content-center pb-4">
-                                <button type="button" class="btn btn-outline-secondary d-flex flex-column align-items-center p-4 badge-insert-type-select-btn" data-type="mdi" style="width:160px; border-color:var(--wiki-border); color:var(--wiki-text); background:var(--wiki-bg);">
-                                    <i class="mdi mdi-material-design" style="font-size:2.5rem; margin-bottom:8px;"></i>
-                                    <span>MDI 아이콘</span>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary d-flex flex-column align-items-center p-4 badge-insert-type-select-btn" data-type="bi" style="width:160px; border-color:var(--wiki-border); color:var(--wiki-text); background:var(--wiki-bg);">
-                                    <i class="bi bi-bootstrap-fill" style="font-size:2.5rem; margin-bottom:8px;"></i>
-                                    <span>Bootstrap 아이콘</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
+            root.innerHTML = ui("m_c48c43adb05aebfd");
             document.getElementById('badgeInsertIconBackType')?.addEventListener('click', (e) => {
                 e.preventDefault();
                 renderFormView();
@@ -2096,28 +1872,7 @@ function openComponentInsertModal(): void {
             return;
         }
 
-        root.innerHTML = `
-                    <div class="badge-insert-icon-view text-start">
-                        <div class="badge-insert-icon-toolbar">
-                            <button type="button" id="badgeInsertIconBack" class="badge-insert-back-btn">
-                                <i class="mdi mdi-arrow-left"></i>
-                                <span>${!onlyIcons ? '라이브러리 변경' : '돌아가기'}</span>
-                            </button>
-                            <input type="text" id="badgeInsertIconSearch" class="form-control form-control-sm"
-                                placeholder="搜索图标名称..." value="${escapeHtml(state.iconQuery)}"
-                                style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                        </div>
-                        <div id="badgeInsertIconLoading" class="text-center py-4" style="display:none;">
-                            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
-                            <p class="mt-2 text-muted small mb-0">正在加载图标...</p>
-                        </div>
-                        <div id="badgeInsertIconGrid" class="icon-grid-modal badge-insert-icon-grid"></div>
-                        <div id="badgeInsertIconEmpty" class="text-center text-muted py-3" style="display:none;">
-                            <i class="mdi mdi-magnify-close" style="font-size:1.6rem;"></i>
-                            <p class="mt-1 mb-0 small">没有搜索结果.</p>
-                        </div>
-                    </div>
-                `;
+        root.innerHTML = ui("m_caf6dd4efb1f43e7", [!onlyIcons ? ui("m_7961a83384d35efe") : ui("m_f090ebd527130a04"), escapeHtml(state.iconQuery)]);
 
         const backBtn = document.getElementById('badgeInsertIconBack');
         if (backBtn) {
@@ -2156,12 +1911,12 @@ function openComponentInsertModal(): void {
     }
 
     Swal.fire<string>({
-        title: '<i class="mdi mdi-label-multiple-outline me-2"></i>배지 삽입',
+        title: ui("m_699cde60d54b4dc9"),
         width: 640,
         html: '<div id="badgeInsertRoot"></div>',
         showCancelButton: true,
-        confirmButtonText: '삽입',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_0d635eda295a08c8"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         focusConfirm: false,
         didOpen: () => {
             renderFormView();
@@ -2171,7 +1926,7 @@ function openComponentInsertModal(): void {
             const token = buildToken();
             if (!token) {
                 const err = document.getElementById('badgeInsertValidation');
-                if (err) err.textContent = '필수 입력을 채워주세요.';
+                if (err) err.textContent = ui("m_c8de9972319654a0");
                 return false;
             }
             return token;
@@ -2213,33 +1968,12 @@ async function openSubdocInsertModal(): Promise<void> {
         && window.currentUser.permissions['wiki:private']);
 
     const result = await Swal.fire<string>({
-        title: '<i class="bi bi-diagram-3-fill me-2"></i>하위 문서 구조 삽입',
-        html: `
-                <div class="text-start">
-                    <label class="form-label">搜索页面</label>
-                    <input type="text" id="subdocSearchInput" class="form-control"
-                        placeholder="문서 제목 입력..." autocomplete="off">
-                    <ul id="subdocSuggestions" class="list-unstyled mt-1 mb-0 border rounded"
-                        style="display:none; padding:4px 0; max-height:none; background: var(--wiki-card-bg); border-color: var(--wiki-border) !important;"></ul>
-                    ${canSeePrivate ? `
-                    <div class="form-check mt-2">
-                        <input class="form-check-input" type="checkbox" id="subdocPublicOnly">
-                        <label class="form-check-label small text-muted" for="subdocPublicOnly">
-                            普通用户 권한 기준으로 보기 (私有页面 제외)
-                        </label>
-                    </div>` : ''}
-                    <div id="subdocPreview" class="mt-3" style="display:none;">
-                        <label class="form-label text-muted small">미리보기</label>
-                        <pre id="subdocPreviewContent"
-                            class="border rounded p-2 small"
-                            style="max-height:200px;overflow-y:auto;font-size:0.85rem;margin:0;text-align:left; background: var(--wiki-code-bg); border-color: var(--wiki-border) !important; color: var(--wiki-text);"></pre>
-                        </div>
-                        </div>
-                        `,
+        title: ui("m_4ef3cdd6efbba5c3"),
+        html: ui("m_1194ddd41eefe131", [canSeePrivate ? ui("m_8e1cef6dc6337762") : '']),
         width: 600,
         showCancelButton: true,
-        cancelButtonText: '取消',
-        confirmButtonText: '삽입',
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
+        confirmButtonText: ui("m_0d635eda295a08c8"),
         didOpen: () => {
             const confirmBtn = Swal.getConfirmButton();
             if (confirmBtn) confirmBtn.disabled = true;
@@ -2467,16 +2201,8 @@ async function openTemplateModal(): Promise<void> {
     if (!Swal) return;
     try {
         Swal.fire({
-            title: '템플릿 불러오기',
-            html: `
-                <div class="input-group mb-3">
-                    <input type="text" id="templateSearchInput" class="form-control" placeholder="템플릿 검색어 입력">
-                    <button class="btn btn-primary" id="templateSearchBtn" type="button"><i class="mdi mdi-magnify"></i> 搜索</button>
-                </div>
-                <div id="templateList" class="list-group text-start" style="max-height: 300px; overflow-y: auto;">
-                    <!-- Templates will be rendered here -->
-                </div>
-            `,
+            title: ui("m_123bd246e01133e0"),
+            html: ui("m_aa0589ba34de4380"),
             showConfirmButton: false,
             didOpen: async () => {
                 const searchInput = document.getElementById('templateSearchInput') as HTMLInputElement | null;
@@ -2487,7 +2213,7 @@ async function openTemplateModal(): Promise<void> {
                 const renderTemplates = (templates: TemplateItem[] | undefined) => {
                     listContainer.innerHTML = '';
                     if (!templates || templates.length === 0) {
-                        listContainer.innerHTML = '<div class="p-3 text-center text-muted">没有搜索结果.</div>';
+                        listContainer.innerHTML = ui("m_c00e6c626e710688");
                         return;
                     }
 
@@ -2505,14 +2231,14 @@ async function openTemplateModal(): Promise<void> {
                 };
 
                 const fetchTemplates = async (query: string = '') => {
-                    listContainer.innerHTML = '<div class="p-3 text-center"><span class="spinner-border spinner-border-sm text-primary" role="status"></span> 正在加载...</div>';
+                    listContainer.innerHTML = ui("m_7a62c8ac8f4eada2");
                     try {
                         const res = await fetch(`/api/w/templates${query ? `?q=${encodeURIComponent(query)}` : ''}`);
-                        if (!res.ok) throw new Error('템플릿 목록을 불러올 수 없습니다.');
+                        if (!res.ok) throw new Error(ui("m_31d2191b2eb19131"));
                         const data = await res.json() as { templates?: TemplateItem[] };
                         renderTemplates(data.templates);
                     } catch (err) {
-                        const msg = err instanceof Error ? err.message : '错误';
+                        const msg = err instanceof Error ? err.message : ui("m_0bc1fb72ae1be5c5");
                         listContainer.innerHTML = `<div class="p-3 text-center text-danger">${escapeHtml(msg)}</div>`;
                     }
                 };
@@ -2534,18 +2260,18 @@ async function openTemplateModal(): Promise<void> {
             if (!Swal) return;
             try {
                 const tRes = await fetch(`/api/w/${encodeURIComponent(selectedSlug)}`);
-                if (!tRes.ok) throw new Error('템플릿 내용을 불러올 수 없습니다.');
+                if (!tRes.ok) throw new Error(ui("m_56d861199a9955aa"));
                 const tPage = await tRes.json() as { content?: string };
 
                 const editor = window.editor;
                 if (editor && (editor.getMarkdown?.() ?? '').trim()) {
                     const confirm = await Swal.fire({
-                        title: '내용 덮어쓰기',
-                        text: '현재 작성 중인 내용이 사라집니다. 계속하시겠습니까?',
+                        title: ui("m_7ecb1aab70dc86ae"),
+                        text: ui("m_dfd24654e5de4b83"),
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonText: '예, 덮어씁니다',
-                        cancelButtonText: '아니오'
+                        confirmButtonText: ui("m_9408082561e0727e"),
+                        cancelButtonText: ui("m_4c490f1ca1d756f8")
                     });
                     if (!confirm.isConfirmed) return;
                 }
@@ -2560,15 +2286,15 @@ async function openTemplateModal(): Promise<void> {
                     editor.setMarkdown?.(tContent);
                 }
                 window.scrollToBottom?.();
-                Swal.fire({ icon: 'success', title: '템플릿을 불러왔습니다.', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: ui("m_bb0ef12c864f932d"), toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
             } catch (err) {
-                const msg = err instanceof Error ? err.message : '错误';
-                Swal.fire('错误', msg, 'error');
+                const msg = err instanceof Error ? err.message : ui("m_0bc1fb72ae1be5c5");
+                Swal.fire(ui("m_0bc1fb72ae1be5c5"), msg, 'error');
             }
         }
     } catch (err) {
-        const msg = err instanceof Error ? err.message : '错误';
-        Swal.fire('错误', msg, 'error');
+        const msg = err instanceof Error ? err.message : ui("m_0bc1fb72ae1be5c5");
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), msg, 'error');
     }
 }
 
@@ -2642,11 +2368,11 @@ function escapeTemplateArgValue(value: string): string {
 
 /** 파라미터 기본값을 placeholder 문구로 정리한다(중괄호 포함 복잡 기본값은 요약). */
 function templateParamPlaceholder(def: string | undefined): string {
-    if (def === undefined) return '값 입력 (선택)';
+    if (def === undefined) return ui("m_6d920f20af1fbb93");
     const clean = def.trim();
-    if (clean === '') return '기본값: (빈 값)';
-    if (/[{}]/.test(clean)) return '기본값 있음';
-    return `기본값: ${clean}`;
+    if (clean === '') return ui("m_92dd5ec930a5f047");
+    if (/[{}]/.test(clean)) return ui("m_ffcc8ccfea24a0bc");
+    return ui("m_21084b6c308bfc4c", [clean]);
 }
 
 async function openTemplateInsertModal(): Promise<void> {
@@ -2663,19 +2389,8 @@ async function openTemplateInsertModal(): Promise<void> {
     let detailGen = 0;
 
     await Swal.fire({
-        title: '<i class="mdi mdi-shape-plus-outline me-2"></i>틀 삽입',
-        html: `
-            <div class="text-start">
-                <div id="tplInsSearchView">
-                    <div class="input-group mb-2">
-                        <input type="text" id="tplInsSearchInput" class="form-control" placeholder="틀 搜索页面 (예: 정보상자)" autocomplete="off">
-                        <button class="btn btn-primary" id="tplInsSearchBtn" type="button"><i class="mdi mdi-magnify"></i></button>
-                    </div>
-                    <div id="tplInsList" class="list-group" style="max-height: 320px; overflow-y: auto;"></div>
-                </div>
-                <div id="tplInsDetailView" style="display:none;"></div>
-            </div>
-        `,
+        title: ui("m_41ba8a4a77de8ea9"),
+        html: ui("m_18af8e11855e7194"),
         width: 680,
         showConfirmButton: false,
         showCloseButton: true,
@@ -2692,7 +2407,7 @@ async function openTemplateInsertModal(): Promise<void> {
             const renderList = (templates: TemplateItem[] | undefined) => {
                 listEl.innerHTML = '';
                 if (!templates || templates.length === 0) {
-                    listEl.innerHTML = '<div class="p-3 text-center text-muted">没有搜索结果.</div>';
+                    listEl.innerHTML = ui("m_c00e6c626e710688");
                     return;
                 }
                 templates.forEach(t => {
@@ -2709,19 +2424,19 @@ async function openTemplateInsertModal(): Promise<void> {
 
             const fetchTemplates = async (query: string) => {
                 const gen = ++searchGen;
-                listEl.innerHTML = '<div class="p-3 text-center"><span class="spinner-border spinner-border-sm text-primary" role="status"></span> 正在加载...</div>';
+                listEl.innerHTML = ui("m_7a62c8ac8f4eada2");
                 try {
                     // inline=1: 인라인 틀 삽입용으로 틀 네임스페이스 3종을 모두 검색한다
                     // (문서 전체 교체용 openTemplateModal 과 달리 partial 틀까지 포함).
                     const res = await fetch(`/api/w/templates?inline=1${query ? `&q=${encodeURIComponent(query)}` : ''}`);
                     if (gen !== searchGen) return;
-                    if (!res.ok) throw new Error('틀 목록을 불러올 수 없습니다.');
+                    if (!res.ok) throw new Error(ui("m_a1a80a460199fb2e"));
                     const data = await res.json() as { templates?: TemplateItem[] };
                     if (gen !== searchGen) return;
                     renderList(data.templates);
                 } catch (err) {
                     if (gen !== searchGen) return;
-                    const msg = err instanceof Error ? err.message : '错误';
+                    const msg = err instanceof Error ? err.message : ui("m_0bc1fb72ae1be5c5");
                     listEl.innerHTML = `<div class="p-3 text-center text-danger">${escapeHtml(msg)}</div>`;
                 }
             };
@@ -2754,21 +2469,21 @@ async function openTemplateInsertModal(): Promise<void> {
                 clearTimeout(previewDebounce); // 이전 상세 뷰의 대기 중 프리뷰 렌더 취소
                 searchView.style.display = 'none';
                 detailView.style.display = '';
-                detailView.innerHTML = '<div class="p-4 text-center"><span class="spinner-border spinner-border-sm text-primary" role="status"></span> 틀 내용을 正在加载...</div>';
+                detailView.innerHTML = ui("m_a3888c0ffc458644");
 
                 let content = '';
                 try {
                     const res = await fetch(`/api/w/${encodeURIComponent(slug)}`);
                     if (gen !== detailGen) return;
-                    if (!res.ok) throw new Error('틀 내용을 불러올 수 없습니다.');
+                    if (!res.ok) throw new Error(ui("m_70ddbabf318bc9f4"));
                     const data = await res.json() as { content?: string };
                     if (gen !== detailGen) return;
                     content = data.content || '';
                 } catch (err) {
                     if (gen !== detailGen) return;
-                    const msg = err instanceof Error ? err.message : '错误';
+                    const msg = err instanceof Error ? err.message : ui("m_0bc1fb72ae1be5c5");
                     detailView.innerHTML = `<div class="alert alert-danger">${escapeHtml(msg)}</div>`
-                        + `<button type="button" class="btn btn-outline-secondary btn-sm" id="tplInsBackErr"><i class="mdi mdi-arrow-left"></i> 返回</button>`;
+                        + ui("m_808bca7b24c1ef11");
                     document.getElementById('tplInsBackErr')?.addEventListener('click', backToSearch);
                     return;
                 }
@@ -2778,7 +2493,7 @@ async function openTemplateInsertModal(): Promise<void> {
 
                 const paramRows = params.map((p, i) => {
                     const label = /^[1-9]\d*$/.test(p.name)
-                        ? `위치 인자 <code>${escapeHtml(p.name)}</code>`
+                        ? ui("m_02e46a21c00368ef", [escapeHtml(p.name)])
                         : `<code>${escapeHtml(p.name)}</code>`;
                     return `
                         <div class="mb-2">
@@ -2788,24 +2503,7 @@ async function openTemplateInsertModal(): Promise<void> {
                         </div>`;
                 }).join('');
 
-                detailView.innerHTML = `
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="tplInsBack" title="검색으로 돌아가기"><i class="mdi mdi-arrow-left"></i></button>
-                        <strong class="flex-grow-1 text-truncate" title="${escapeHtml(slug)}">${escapeHtml(templateDisplayTitle(slug))}</strong>
-                    </div>
-                    ${params.length > 0 ? `
-                    <div class="mb-2">
-                        <div class="fw-semibold small mb-2"><i class="mdi mdi-tune-variant"></i> 파라미터 (${params.length}개)</div>
-                        <div id="tplInsParams" style="max-height: 220px; overflow-y: auto;">${paramRows}</div>
-                    </div>` : '<div class="text-muted small mb-2">이 틀에는 채울 파라미터가 없습니다.</div>'}
-                    <div class="fw-semibold small mb-1"><i class="mdi mdi-eye-outline"></i> 미리보기</div>
-                    <div id="tplInsPreview-${gen}" class="wiki-content border rounded p-2 mb-3"
-                        style="max-height: 260px; overflow-y: auto; background: var(--wiki-card-bg); border-color: var(--wiki-border) !important;"></div>
-                    <div class="d-flex justify-content-end gap-2">
-                        <button type="button" class="btn btn-secondary" id="tplInsCancel">取消</button>
-                        <button type="button" class="btn btn-primary" id="tplInsConfirm"><i class="mdi mdi-plus"></i> 삽입</button>
-                    </div>
-                `;
+                detailView.innerHTML = ui("m_e5b4ba4c5b5849b5", [escapeHtml(slug), escapeHtml(templateDisplayTitle(slug)), params.length > 0 ? ui("m_81b5029b153b5b67", [params.length, paramRows]) : ui("m_f508b82ec73b32de"), gen]);
 
                 // 채워진 값으로 args 객체(키: "1"/"2"/이름)를 만든다. 빈 값은 제외해 기본값이 적용되게 한다.
                 // 최상위 `|` 는 이스케이프해 미리보기(_substituteTemplateParams)와 삽입 호출이 일치하게 한다.
@@ -2933,15 +2631,15 @@ function openStructureBlockInsertModal(): void {
     const palettes = window.getAllPalettesForEditor?.() ?? [];
 
     const TYPE_META: Record<StructureType, { label: string; icon: string }> = {
-        tabs:      { label: '탭',         icon: 'mdi mdi-tab' },
-        accordion: { label: '아코디언',   icon: 'mdi mdi-format-list-group' },
-        progress:  { label: '진행상황',   icon: 'mdi mdi-progress-check' },
+        tabs:      { label: ui("m_28badb093c233e15"),         icon: 'mdi mdi-tab' },
+        accordion: { label: ui("m_9a076cf23c023e1a"),   icon: 'mdi mdi-format-list-group' },
+        progress:  { label: ui("m_8fbd5bc575ef6641"),   icon: 'mdi mdi-progress-check' },
     };
 
     const STATUS_META: Record<StepStatus, { label: string; icon: string }> = {
-        todo:    { label: '대기', icon: 'bi bi-circle' },
-        current: { label: '진행', icon: 'bi bi-circle-fill' },
-        done:    { label: '완료', icon: 'bi bi-check-circle-fill' },
+        todo:    { label: ui("m_2a73ed53178ab6fe"), icon: 'bi bi-circle' },
+        current: { label: ui("m_52e94db6f68c7bdf"), icon: 'bi bi-circle-fill' },
+        done:    { label: ui("m_727333ab0740d7d8"), icon: 'bi bi-check-circle-fill' },
     };
 
     const state = {
@@ -2969,22 +2667,12 @@ function openStructureBlockInsertModal(): void {
     function progressModeHtml(): string {
         const stepsActive = state.progressMode === 'steps' ? ' active' : '';
         const barActive   = state.progressMode === 'bar' ? ' active' : '';
-        return `
-            <div class="btn-group w-100" role="group" id="structureInsertProgressMode">
-                <button type="button" class="btn btn-outline-primary${stepsActive}" data-mode="steps">
-                    <i class="mdi mdi-stairs"></i> 단계별 진행
-                </button>
-                <button type="button" class="btn btn-outline-primary${barActive}" data-mode="bar">
-                    <i class="mdi mdi-progress-helper"></i> 진행 바
-                </button>
-            </div>`;
+        return ui("m_f8f8aa0ea86fa2cb", [stepsActive, barActive]);
     }
 
     function paletteSwatchHtml(containerId: string, hiddenId: string, current: string): string {
         let html = `<div id="${containerId}" class="card-insert-palette-swatches">`;
-        html += `<button type="button" class="card-insert-palette-swatch${!current ? ' active' : ''}" data-palette="" title="선택 안 함">
-                    <span class="card-insert-palette-swatch-none">없음</span>
-                </button>`;
+        html += ui("m_7af33c647f3fa845", [!current ? ' active' : '']);
         for (const p of palettes) {
             const active = current === p.name ? ' active' : '';
             html += `<button type="button" class="card-insert-palette-swatch${active}" data-palette="${escapeHtml(p.name)}" title="${escapeHtml(p.name)}" style="${paletteSwatchStyle(p)}">${escapeHtml(p.name)}</button>`;
@@ -3008,106 +2696,45 @@ function openStructureBlockInsertModal(): void {
     function itemRowHtml(idx: number, item: StructureItem): string {
         const isAccordion = state.type === 'accordion';
         const isSteps = state.type === 'progress' && state.progressMode === 'steps';
-        const titleLabel = isSteps ? `${idx + 1}단계 제목` : `항목 ${idx + 1} 제목`;
+        const titleLabel = isSteps ? ui("m_fc96c86388ff353c", [idx + 1]) : ui("m_e998dd3e6ab1ea90", [idx + 1]);
         const titlePlaceholder = state.type === 'tabs'
-            ? `예: 탭 ${idx + 1}`
+            ? ui("m_67422b9f36e16f6f", [idx + 1])
             : isSteps
-                ? `예: ${idx + 1}단계`
-                : `예: 항목 ${idx + 1}`;
+                ? ui("m_c604372f2450c30e", [idx + 1])
+                : ui("m_5ee122a59e94bed2", [idx + 1]);
 
         const accordionOpen = isAccordion
-            ? `<label class="structure-insert-row-flag">
-                    <input type="checkbox" data-row="${idx}" class="structure-insert-row-open" ${item.open ? 'checked' : ''}>
-                    <span>기본 펼침</span>
-                </label>`
+            ? ui("m_75602484d2d2d49b", [idx, item.open ? 'checked' : ''])
             : '';
 
         const stepsStatus = isSteps
             ? `<div class="structure-insert-status-chips" data-row="${idx}">${statusChipsHtml(idx, item.status)}</div>`
             : '';
 
-        return `
-            <div class="structure-insert-row" data-row="${idx}">
-                <div class="structure-insert-row-head">
-                    <span class="structure-insert-row-num">${idx + 1}</span>
-                    <input type="text" class="form-control form-control-sm structure-insert-row-title"
-                        data-row="${idx}"
-                        placeholder="${titlePlaceholder}"
-                        value="${escapeHtml(item.title)}"
-                        aria-label="${titleLabel}"
-                        style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                    <button type="button" class="structure-insert-row-remove" data-row="${idx}" title="이 항목 삭제" aria-label="이 항목 삭제">
-                        <i class="mdi mdi-close"></i>
-                    </button>
-                </div>
-                ${accordionOpen || stepsStatus
+        return ui("m_b000bfeac043e63a", [idx, idx + 1, idx, titlePlaceholder, escapeHtml(item.title), titleLabel, idx, accordionOpen || stepsStatus
                     ? `<div class="structure-insert-row-meta">${accordionOpen}${stepsStatus}</div>`
-                    : ''}
-                <textarea class="form-control structure-insert-row-body"
-                    data-row="${idx}"
-                    rows="3"
-                    placeholder="비워두면 '내용'이 자리표시자로 들어갑니다."
-                    style="font-size:0.86rem;font-family:inherit;resize:vertical;background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">${escapeHtml(item.body)}</textarea>
-            </div>`;
+                    : '', idx, escapeHtml(item.body)]);
     }
 
     function topOptionsHtml(): string {
         if (state.type === 'accordion') {
-            return `
-                <div class="mb-3">
-                    <label class="structure-insert-row-flag">
-                        <input type="checkbox" id="structureInsertAccordionMultiple" ${state.accordionMultiple ? 'checked' : ''}>
-                        <span>동시 다중 펼침 허용</span>
-                    </label>
-                </div>`;
+            return ui("m_cc35839126f937d2", [state.accordionMultiple ? 'checked' : '']);
         }
         return '';
     }
 
     function progressBarFormHtml(): string {
-        return `
-            <div class="mb-3">
-                <label class="form-label" for="structureInsertBarValue">값</label>
-                <input type="text" id="structureInsertBarValue" class="form-control"
-                    placeholder="예: 50  /  3/10  /  75%"
-                    value="${escapeHtml(state.barValue)}" autocomplete="off"
-                    style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-                <div class="form-text" style="font-size:0.78rem;">0–100 사이의 숫자, 또는 a/b 형태(b ≥ a) 분수.</div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label" for="structureInsertBarLabel">라벨 (선택)</label>
-                <input type="text" id="structureInsertBarLabel" class="form-control"
-                    placeholder="예: 다운로드"
-                    value="${escapeHtml(state.barLabel)}" autocomplete="off"
-                    style="background:var(--wiki-bg);color:var(--wiki-text);border-color:var(--wiki-border);">
-            </div>
-            <div class="mb-2">
-                <label class="form-label">팔레트 (선택)</label>
-                ${paletteSwatchHtml('structureInsertBarPaletteSwatches', 'structureInsertBarPalette', state.barPalette)}
-            </div>`;
+        return ui("m_706815de4845ba5c", [escapeHtml(state.barValue), escapeHtml(state.barLabel), paletteSwatchHtml('structureInsertBarPaletteSwatches', 'structureInsertBarPalette', state.barPalette)]);
     }
 
     function itemsListHtml(): string {
         const rows = state.items.map((it, i) => itemRowHtml(i, it)).join('');
-        return `
-            <div class="structure-insert-items" id="structureInsertItems">${rows}</div>
-            <button type="button" class="structure-insert-add-row" id="structureInsertAddRow">
-                <i class="mdi mdi-plus"></i> 항목 추가
-            </button>`;
+        return ui("m_f98ff92c3b517d9d", [rows]);
     }
 
     function bodyHtml(): string {
         const isProgressBar = state.type === 'progress' && state.progressMode === 'bar';
-        return `
-            <div class="text-start structure-insert-form">
-                <div class="mb-3">
-                    <label class="form-label">컴포넌트 종류</label>
-                    <div class="structure-insert-type-tabs" id="structureInsertTypeTabs">${typeTabsHtml()}</div>
-                </div>
-                ${state.type === 'progress' ? `<div class="mb-3" id="structureInsertProgressModeWrap">${progressModeHtml()}</div>` : ''}
-                ${topOptionsHtml()}
-                ${isProgressBar ? progressBarFormHtml() : itemsListHtml()}
-            </div>`;
+        return ui("m_ae85ebe729883ed1", [typeTabsHtml(), state.type === 'progress' ? `<div class="mb-3" id="structureInsertProgressModeWrap">${progressModeHtml()}</div>` : '', topOptionsHtml(), isProgressBar ? progressBarFormHtml() : itemsListHtml()]);
     }
 
     function snapshotInputs(): void {
@@ -3244,12 +2871,12 @@ function openStructureBlockInsertModal(): void {
     }
 
     Swal.fire({
-        title: '<i class="mdi mdi-view-dashboard-outline me-2"></i>구조 컴포넌트 삽입',
+        title: ui("m_d063e7dfecfefbcc"),
         width: 640,
         html: bodyHtml(),
         showCancelButton: true,
-        confirmButtonText: '삽입',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_0d635eda295a08c8"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         didOpen: () => {
             wireBody();
         },
@@ -3300,7 +2927,7 @@ function buildStructureBlockOutput(state: {
             }
         }
         if (!valid) {
-            Swal?.showValidationMessage?.('값은 0–100 숫자 또는 a/b(b ≥ a) 분수여야 합니다.');
+            Swal?.showValidationMessage?.(ui("m_254f1c310d7371ef"));
             return false;
         }
         // {progress:...} 의 정규식이 `}` / `<` / 개행으로 토큰을 끊으므로 라벨에서 제거.
@@ -3313,20 +2940,20 @@ function buildStructureBlockOutput(state: {
 
     const items = state.items;
     if (items.length === 0) {
-        Swal?.showValidationMessage?.('최소 1개 이상의 항목이 필요합니다.');
+        Swal?.showValidationMessage?.(ui("m_26a24b7e0ea8a922"));
         return false;
     }
     for (const it of items) {
         if (_structureItemHasInvalidBody(it.body)) {
-            Swal?.showValidationMessage?.("항목 본문에 ':::'로 시작하는 줄은 블록을 닫아버려 사용할 수 없습니다.");
+            Swal?.showValidationMessage?.(ui("m_2f8cf5a7c5ccd681"));
             return false;
         }
     }
 
     if (state.type === 'tabs') {
         const inner = items.map((it, i) => {
-            const title = (it.title || '').replace(/[\r\n]+/g, ' ').trim() || `탭 ${i + 1}`;
-            const body = (it.body || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\n+|\n+$/g, '') || '内容';
+            const title = (it.title || '').replace(/[\r\n]+/g, ' ').trim() || ui("m_5c2a8f867bc8be99", [i + 1]);
+            const body = (it.body || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\n+|\n+$/g, '') || ui("m_7a688306423bec17");
             return `:::tab ${title}\n${body}\n:::`;
         }).join('\n');
         return `\n:::tabs\n${inner}\n:::\n`;
@@ -3335,9 +2962,9 @@ function buildStructureBlockOutput(state: {
     if (state.type === 'accordion') {
         const head = state.accordionMultiple ? `:::accordion {multiple}` : `:::accordion`;
         const inner = items.map((it, i) => {
-            const titleRaw = (it.title || '').replace(/[\r\n]+/g, ' ').trim() || `항목 ${i + 1}`;
+            const titleRaw = (it.title || '').replace(/[\r\n]+/g, ' ').trim() || ui("m_7128e1015a8dd3dc", [i + 1]);
             const flag = it.open ? ' {open}' : '';
-            const body = (it.body || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\n+|\n+$/g, '') || '内容';
+            const body = (it.body || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\n+|\n+$/g, '') || ui("m_7a688306423bec17");
             return `:::item ${titleRaw}${flag}\n${body}\n:::`;
         }).join('\n');
         return `\n${head}\n${inner}\n:::\n`;
@@ -3346,9 +2973,9 @@ function buildStructureBlockOutput(state: {
     // type === 'progress' && progressMode === 'steps'
     const head = `:::steps`;
     const inner = items.map((it, i) => {
-        const titleRaw = (it.title || '').replace(/[\r\n]+/g, ' ').trim() || `${i + 1}단계`;
+        const titleRaw = (it.title || '').replace(/[\r\n]+/g, ' ').trim() || ui("m_977c0c00c8ebaa5e", [i + 1]);
         const statusToken = ` {status:${it.status}}`;
-        const body = (it.body || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\n+|\n+$/g, '') || '内容';
+        const body = (it.body || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\n+|\n+$/g, '') || ui("m_7a688306423bec17");
         return `:::step ${titleRaw}${statusToken}\n${body}\n:::`;
     }).join('\n');
     return `\n${head}\n${inner}\n:::\n`;

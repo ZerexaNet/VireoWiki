@@ -2,6 +2,7 @@
 // 새 블로그 포스트 연동 공지가 settings.announcements 에 추가될 때만 호출되어야 한다.
 // 단순 메타 수정 (PATCH /api/admin/announcements/:id) 이나 공지 철회는 호출부에서 필터링.
 
+import { ui } from '../../../i18n/server';
 import type { Env } from '../../../types';
 import type { WebhookEvent } from '../discord';
 import { absoluteUrl, escapeMd, nowIso, stripWiki, truncate } from '../format';
@@ -27,7 +28,7 @@ export function announcementPublish(args: {
         type: 'announcement_publish',
         embed: {
             color: COLOR_ANNOUNCE,
-            title: `📢 공지사항 : ${truncate(escapeMd(announceTitle), 80)}`,
+            title: ui("m_7171d3c73f9f2ea5", [truncate(escapeMd(announceTitle), 80)]),
             url,
             description,
             thumbnail: thumbnailUrl ? { url: thumbnailUrl } : undefined,

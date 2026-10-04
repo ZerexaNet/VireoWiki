@@ -2,6 +2,7 @@
 // in-app 알림과 동등한 권한(차단된 유저도 구독 가능 — 알림 조회와 동일하게 requireAuthAllowBanned).
 // 가입 신청 단계 옵트인은 signup_token 으로 보호된 별도 엔드포인트.
 
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { requireAuthAllowBanned } from '../middleware/session';
@@ -42,13 +43,13 @@ function validateSubscription(body: SubscribeBody): { endpoint: string; p256dh: 
  */
 pushRoutes.post('/push/subscribe', requireAuthAllowBanned, async (c) => {
     if (!isPushEnabled(c.env)) {
-        return c.json({ error: 'Web Push 가 비활성화되어 있습니다.' }, 503);
+        return c.json({ error: ui("m_b6c60011a90b11ec") }, 503);
     }
     const user = c.get('user')!;
     const body = await c.req.json<SubscribeBody>().catch(() => null);
-    if (!body) return c.json({ error: '잘못된 요청입니다.' }, 400);
+    if (!body) return c.json({ error: ui("m_ba44d61a5dc6d955") }, 400);
     const sub = validateSubscription(body);
-    if (!sub) return c.json({ error: '구독 정보가 올바르지 않습니다.' }, 400);
+    if (!sub) return c.json({ error: ui("m_a25541b05610e977") }, 400);
 
     const ua = c.req.header('User-Agent')?.slice(0, 500) || null;
 
@@ -79,27 +80,27 @@ pushRoutes.post('/push/subscribe', requireAuthAllowBanned, async (c) => {
  */
 pushRoutes.post('/push/subscribe-signup', async (c) => {
     if (!isPushEnabled(c.env)) {
-        return c.json({ error: 'Web Push 가 비활성화되어 있습니다.' }, 503);
+        return c.json({ error: ui("m_b6c60011a90b11ec") }, 503);
     }
     const body = await c.req.json<SubscribeBody & { push_token?: string }>().catch(() => null);
-    if (!body) return c.json({ error: '잘못된 요청입니다.' }, 400);
+    if (!body) return c.json({ error: ui("m_ba44d61a5dc6d955") }, 400);
     const sub = validateSubscription(body);
-    if (!sub) return c.json({ error: '구독 정보가 올바르지 않습니다.' }, 400);
+    if (!sub) return c.json({ error: ui("m_a25541b05610e977") }, 400);
 
     const pushToken = body.push_token?.trim();
     if (!pushToken || pushToken.length > 64) {
-        return c.json({ error: '유효한 push_token 이 필요합니다.' }, 400);
+        return c.json({ error: ui("m_d83e449da7ec1d8d") }, 400);
     }
 
     const tokenKey = `signup_push_token:${pushToken}`;
     const tokenValue = await c.env.KV.get(tokenKey);
     if (!tokenValue) {
-        return c.json({ error: '토큰이 만료되었거나 유효하지 않습니다.' }, 401);
+        return c.json({ error: ui("m_046820d26e94d180") }, 401);
     }
     const requestId = Number(tokenValue);
     if (!Number.isFinite(requestId) || requestId <= 0) {
         await c.env.KV.delete(tokenKey);
-        return c.json({ error: '토큰이 손상되었습니다.' }, 400);
+        return c.json({ error: ui("m_004ae7d8c14a4796") }, 400);
     }
 
     // 신청이 여전히 pending 상태인지 한 번 더 확인 (관리자가 그 사이 처리했을 수 있음).
@@ -109,7 +110,7 @@ pushRoutes.post('/push/subscribe-signup', async (c) => {
         .first<{ id: number }>();
     if (!row) {
         await c.env.KV.delete(tokenKey);
-        return c.json({ error: '대기 중인 가입 신청을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_e7d1fb773fdaa3a2") }, 404);
     }
 
     const ua = c.req.header('User-Agent')?.slice(0, 500) || null;
@@ -139,7 +140,7 @@ pushRoutes.delete('/push/subscribe', requireAuthAllowBanned, async (c) => {
     const user = c.get('user')!;
     const body = await c.req.json<{ endpoint?: string }>().catch(() => null);
     const endpoint = body?.endpoint?.trim();
-    if (!endpoint) return c.json({ error: 'endpoint 가 필요합니다.' }, 400);
+    if (!endpoint) return c.json({ error: ui("m_de90a380fda149f4") }, 400);
 
     await c.env.DB
         .prepare('DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?')

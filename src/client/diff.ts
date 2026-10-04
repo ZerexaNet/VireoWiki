@@ -15,6 +15,7 @@
 //     로컬 escape 를 사용해, 모듈 단독 로드 (common.js 없는 페이지) 환경에서도 안전.
 // @ts-nocheck — 1차 포팅 한정. 호출자(raw script) 의 느슨한 타입을 그대로 받기 위해 적용.
 
+import { ui } from '../../packages/wiki-shared/src/i18n/client';
 const escape = (s: any): string =>
     s === null || s === undefined || s === ''
         ? ''
@@ -182,9 +183,9 @@ function _lcsBlockOps(oldKeys: string[], newKeys: string[], oldHtmls: string[], 
 // 담아 _normalizeBlockKey 가 old/new 를 비교할 때 동일 블록은 '변경 없음' 으로 접히도록 한다.
 function _replaceUnpreviewableBlocks(container: HTMLElement): void {
     const LABELS: Record<string, string> = {
-        mermaid: 'Mermaid 다이어그램',
-        chart: '차트',
-        ext: '익스텐션',
+        mermaid: ui("m_10f31f3c85ee150f"),
+        chart: ui("m_c8084b4d279d80e4"),
+        ext: ui("m_072e68b79d9bae6d"),
     };
     const makePlaceholder = (kind: string, srcKey: string): HTMLElement => {
         const ph = document.createElement('div');
@@ -192,10 +193,10 @@ function _replaceUnpreviewableBlocks(container: HTMLElement): void {
         ph.setAttribute('data-noscript-kind', kind);
         // 원문/식별자를 키에 담아 old==new 인 블록이 diff 에서 same 으로 접히게 한다.
         if (srcKey) ph.setAttribute('data-noscript-key', srcKey);
-        const label = LABELS[kind] || '외부 콘텐츠';
+        const label = LABELS[kind] || ui("m_b17999ff6941b1b9");
         ph.innerHTML =
-            `<i class="bi bi-eye-slash" aria-hidden="true"></i> 미리보기에서 표시할 수 없는 ${escape(label)} 블록입니다. ` +
-            `<span class="rich-diff-noscript-hint">Raw 비교로 원문을 확인하세요.</span>`;
+            ui("m_abc1e7cf135be69e", [escape(label)]) +
+            ui("m_08f914b5b8fc4ad9");
         return ph;
     };
     container.querySelectorAll('.mermaid-figure').forEach((el) => {
@@ -211,7 +212,7 @@ function _replaceUnpreviewableBlocks(container: HTMLElement): void {
 
 export async function buildRichDiffHtml(oldText: string, newText: string, slug: string): Promise<string> {
     if ((oldText || '') === (newText || '')) {
-        return '<div class="diff-empty">변경된 내용이 없습니다.</div>';
+        return ui("m_16e9e630232b0f54");
     }
 
     const canRenderWiki = typeof (window as any).renderWikiContent === 'function';
@@ -296,7 +297,7 @@ export async function buildRichDiffHtml(oldText: string, newText: string, slug: 
 
         const ops = _lcsBlockOps(oldKeys, newKeys, oldHtmls, newHtmls);
         if (ops.length === 0 || !ops.some((o) => o.type !== 'same')) {
-            return '<div class="diff-empty">변경된 내용이 없습니다.</div>';
+            return ui("m_16e9e630232b0f54");
         }
 
         // 변경된 블록(문단) 주변 CONTEXT 블록만 표시, 나머지 미변경 구간은 접는다.
@@ -316,7 +317,7 @@ export async function buildRichDiffHtml(oldText: string, newText: string, slug: 
         for (let idx = 0; idx < ops.length; idx++) {
             if (visible.has(idx)) {
                 if (skipStart !== -1) {
-                    parts.push(`<div class="rich-diff-skip">⋯ ${idx - skipStart}개 문단 생략됨</div>`);
+                    parts.push(ui("m_28933254868ff727", [idx - skipStart]));
                     skipStart = -1;
                 }
                 const op = ops[idx];
@@ -326,7 +327,7 @@ export async function buildRichDiffHtml(oldText: string, newText: string, slug: 
             }
         }
         if (skipStart !== -1) {
-            parts.push(`<div class="rich-diff-skip">⋯ ${ops.length - skipStart}개 문단 생략됨</div>`);
+            parts.push(ui("m_28933254868ff727", [ops.length - skipStart]));
         }
         return parts.join('');
     } finally {
@@ -354,12 +355,12 @@ export function computeLineDiff(oldText: string, newText: string): string {
     const result = _lcsLineOps(oldText, newText);
 
     if (result.length === 0) {
-        return '<div class="diff-empty">변경된 내용이 없습니다.</div>';
+        return ui("m_16e9e630232b0f54");
     }
 
     const hasChange = result.some((r) => r.type !== 'same');
     if (!hasChange) {
-        return '<div class="diff-empty">변경된 내용이 없습니다.</div>';
+        return ui("m_16e9e630232b0f54");
     }
 
     // 변경된 줄 주변 CONTEXT_LINES만 표시, 나머지는 생략
@@ -379,7 +380,7 @@ export function computeLineDiff(oldText: string, newText: string): string {
         if (visible.has(idx)) {
             if (skipStart !== -1) {
                 const skipCount = idx - skipStart;
-                rows += `<tr class="diff-skip"><td class="diff-prefix">⋯</td><td class="diff-line diff-skip-label">${skipCount}줄 생략됨</td></tr>`;
+                rows += ui("m_348d96f189dbad3e", [skipCount]);
                 skipStart = -1;
             }
             const r = result[idx];
@@ -392,7 +393,7 @@ export function computeLineDiff(oldText: string, newText: string): string {
     }
     if (skipStart !== -1) {
         const skipCount = result.length - skipStart;
-        rows += `<tr class="diff-skip"><td class="diff-prefix">⋯</td><td class="diff-line diff-skip-label">${skipCount}줄 생략됨</td></tr>`;
+        rows += ui("m_348d96f189dbad3e", [skipCount]);
     }
 
     return '<table class="diff-table">' + rows + '</table>';
@@ -419,7 +420,7 @@ export function buildLineDiffText(oldText: string, newText: string): string {
     for (let idx = 0; idx < result.length; idx++) {
         if (visible.has(idx)) {
             if (skipStart !== -1) {
-                lines.push(`... ${idx - skipStart}줄 생략됨`);
+                lines.push(ui("m_0f6519606ca9a78a", [idx - skipStart]));
                 skipStart = -1;
             }
             const r = result[idx];
@@ -429,7 +430,7 @@ export function buildLineDiffText(oldText: string, newText: string): string {
             skipStart = idx;
         }
     }
-    if (skipStart !== -1) lines.push(`... ${result.length - skipStart}줄 생략됨`);
+    if (skipStart !== -1) lines.push(ui("m_0f6519606ca9a78a", [result.length - skipStart]));
     return lines.join('\n');
 }
 
@@ -455,7 +456,7 @@ export interface DiffModalOptions {
 
 export function showDiffModal(opts: DiffModalOptions) {
     const Swal: any = (window as any).Swal;
-    if (!Swal) throw new Error('SweetAlert2 (Swal) 가 로드되지 않았습니다.');
+    if (!Swal) throw new Error(ui("m_e81f18f2ccfa0ec4"));
 
     const { title, oldText, newText, slug, forceRaw, width = '1100px', extraTopHtml = '', swalOptions = {}, onOpen } = opts;
 
@@ -467,22 +468,13 @@ export function showDiffModal(opts: DiffModalOptions) {
     const toolbarHtml = (m: 'rendered' | 'raw') => {
         const toggleGroup = forceRaw
             ? ''
-            : `<div class="diff-mode-toggle btn-group btn-group-sm" role="group" aria-label="diff 모드">
-            <button type="button" class="btn ${m === 'rendered' ? 'btn-primary' : 'btn-outline-secondary'}" data-diff-mode="rendered">
-              <i class="bi bi-eye"></i> 렌더링 비교
-            </button>
-            <button type="button" class="btn ${m === 'raw' ? 'btn-primary' : 'btn-outline-secondary'}" data-diff-mode="raw">
-              <i class="bi bi-code"></i> Raw 비교
-            </button>
-          </div>`;
+            : ui("m_2e352b418c280276", [m === 'rendered' ? 'btn-primary' : 'btn-outline-secondary', m === 'raw' ? 'btn-primary' : 'btn-outline-secondary']);
         const copyHidden = m !== 'raw' ? ' style="display:none;"' : '';
-        const copyBtn = `<button type="button" class="btn btn-sm btn-outline-secondary diff-copy-btn" data-diff-copy${copyHidden}>
-            <i class="bi bi-clipboard"></i> 복사하기
-          </button>`;
+        const copyBtn = ui("m_4031d8d14f0a6741", [copyHidden]);
         return `<div class="diff-toolbar">${toggleGroup}${copyBtn}</div>`;
     };
 
-    const loadingHtml = '<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>렌더링 중...</div>';
+    const loadingHtml = ui("m_ac1fc253bac86a56");
 
     return Swal.fire({
         title,
@@ -550,9 +542,9 @@ export function showDiffModal(opts: DiffModalOptions) {
                     if (!text) return;
                     try {
                         await navigator.clipboard.writeText(text);
-                        copyBtn.innerHTML = '<i class="bi bi-check2"></i> 복사됨';
+                        copyBtn.innerHTML = ui("m_70de8e074ef644cd");
                     } catch {
-                        copyBtn.innerHTML = '<i class="bi bi-x-lg"></i> 복사 실패';
+                        copyBtn.innerHTML = ui("m_ec377483a303fde2");
                     }
                     if (restoreTimer !== null) clearTimeout(restoreTimer);
                     restoreTimer = setTimeout(() => {

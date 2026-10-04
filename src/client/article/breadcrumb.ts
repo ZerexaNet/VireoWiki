@@ -5,6 +5,7 @@
 // 하위문서 생성 권한)만 ArticleContext 로 주입받는다. 동작은 과거 index.ts 의
 // renderParentDocsNav + 형제 패널 헬퍼와 동일하다.
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import type { ArticleContext } from './context';
 
 /**
@@ -90,7 +91,7 @@ export function createBreadcrumbNav(ctx: ArticleContext) {
 
     panelEl.classList.remove('d-none');
     panelEl.setAttribute('role', 'menu');
-    panelEl.innerHTML = `<span class="parent-docs-siblings-status"><span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>正在加载...</span>`;
+    panelEl.innerHTML = ui("m_7a0ef1e9e023fa04");
     positionSiblings(btn);
 
     document.addEventListener('click', onOutsideClick, true);
@@ -100,7 +101,7 @@ export function createBreadcrumbNav(ctx: ArticleContext) {
     try {
       const res = await fetch(ctx.subdocsUrl(parentSlug, true));
       if (reqId !== siblingsReqSeq) return;
-      if (!res.ok) throw new Error('failed');
+      if (!res.ok) throw new Error("failed");
       const data = await res.json();
       if (reqId !== siblingsReqSeq) return;
       const docs = (data.subdocs || []).filter((d) => {
@@ -109,7 +110,7 @@ export function createBreadcrumbNav(ctx: ArticleContext) {
       });
 
       if (docs.length === 0) {
-        panelEl.innerHTML = `<span class="parent-docs-siblings-status fst-italic">동일 단계 暂无页面</span>`;
+        panelEl.innerHTML = ui("m_038b55bd7b3d8fa2");
         positionSiblings(btn);
         return;
       }
@@ -131,7 +132,7 @@ export function createBreadcrumbNav(ctx: ArticleContext) {
     } catch (err) {
       if (reqId !== siblingsReqSeq) return;
       console.error(err);
-      panelEl.innerHTML = `<span class="parent-docs-siblings-status">불러오기 실패</span>`;
+      panelEl.innerHTML = ui("m_06f20c851bc730ec");
       positionSiblings(btn);
     }
   }
@@ -155,16 +156,16 @@ export function createBreadcrumbNav(ctx: ArticleContext) {
         : `<a href="${ctx.docHref(segSlug)}" class="text-decoration-none article-nav-link">${window.escapeHtml(parts[i])}</a>`;
       const chevronHtml = i === 0
         ? ''
-        : ` <button type="button" class="btn btn-link btn-sm p-0 align-baseline parent-docs-chevron" data-parent="${window.escapeHtml(parentSlug)}" data-current="${window.escapeHtml(parts[i])}" data-level="${i}" title="동일 단계 문서 보기" aria-label="동일 단계 문서 보기" aria-expanded="false"><i class="bi bi-chevron-down"></i></button>`;
+        : ui("m_589949d0ce1b0617", [window.escapeHtml(parentSlug), window.escapeHtml(parts[i]), i]);
       segments.push(`<span class="parent-docs-segment">${labelHtml}${chevronHtml}</span>`);
     }
 
     const canCreate = ctx.canCreateSubdoc(actionSlug);
     const subdocButtonHtml = canCreate
-      ? ` <span class="text-muted mx-1">/</span> <button type="button" class="btn btn-link btn-sm p-0 align-baseline parent-docs-create" data-slug="${window.escapeHtml(actionSlug)}" title="하위 문서 생성" aria-label="하위 문서 생성"><i class="bi bi-pencil-square"></i></button>`
+      ? ui("m_d278e66fa5d99310", [window.escapeHtml(actionSlug)])
       : '';
 
-    parentDocsEl.innerHTML = `<span class="text-muted me-1">문서 구조:</span>${segments.join(' <span class="text-muted mx-1">/</span> ')}${subdocButtonHtml}`;
+    parentDocsEl.innerHTML = ui("m_661f7e44a4aa7fa1", [segments.join(' <span class="text-muted mx-1">/</span> '), subdocButtonHtml]);
     parentDocsEl.querySelectorAll('.article-nav-link').forEach((link) => {
       link.addEventListener('click', function (event) {
         event.preventDefault();

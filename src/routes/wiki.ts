@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono, type Context } from 'hono';
 import type { Env, Page, Revision, User } from '../types';
 import { requireAuth, requireAdmin, requirePermission } from '../middleware/session';
@@ -176,8 +177,8 @@ async function holdPendingEdit(
             if (adminIds.length === 0) return;
             // 검토는 문서 열람 페이지(편집 버튼 배지/드롭다운)에서 수행한다.
             const link = `/w/${encodeURIComponent(input.slug)}`;
-            const actionLabel = input.action === 'create' ? '새 문서' : '문서 수정';
-            const content = `${user.name}님이 "${input.slug}" ${actionLabel} 편집 요청을 제출했습니다.`;
+            const actionLabel = input.action === 'create' ? ui("m_4b5e35581628062d") : ui("m_9789d0dfbdbe37a3");
+            const content = ui("m_c87a5a18ec515157", [user.name, input.slug, actionLabel]);
             await createNotifications(c.env, c.executionCtx, adminIds.map(uid => ({
                 userId: uid,
                 type: 'pending_edit',
@@ -185,7 +186,7 @@ async function holdPendingEdit(
                 link,
                 refId: pendingEditId,
                 push: {
-                    title: '편집 요청',
+                    title: ui("m_7e80b056a83aac4f"),
                     body: content,
                     url: link,
                     tag: `pending_edit:${pendingEditId}`,
@@ -764,7 +765,7 @@ async function rewriteBacklinksForRename(
                 .prepare(
                     'INSERT INTO revisions (page_id, page_version, content, r2_key, summary, author_id) VALUES (?, ?, ?, ?, ?, ?)'
                 )
-                .bind(page.id, newVersion, '', r2Key, `[자동] 주소 변경: ${oldSlug} → ${newSlug}`, user.id)
+                .bind(page.id, newVersion, '', r2Key, ui("m_98efb44e75fe2fbe", [oldSlug, newSlug]), user.id)
                 .run();
             revisionId = revResult.meta.last_row_id as number;
         } catch (e) {
@@ -830,7 +831,7 @@ async function rewriteBacklinksForRename(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
                 .bind(
                     'doc_move_backlinks',
-                    `역링크 일괄 갱신: ${oldSlug} → ${newSlug} (${updated.length}개 갱신, ${skipped.length}개 건너뜀, ${conflicts.length}개 충돌)`,
+                    ui("m_6a741012dcb9e689", [oldSlug, newSlug, updated.length, skipped.length, conflicts.length]),
                     user.id
                 )
                 .run()
@@ -930,7 +931,7 @@ wiki.get('/config', async (c) => {
  */
 wiki.get('/palettes', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     return c.json({ palettes: await loadAllPalettes(c.env.DB) });
 });
@@ -942,7 +943,7 @@ wiki.get('/palettes', async (c) => {
  */
 wiki.get('/w/search-titles', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const user = c.get('user');
@@ -995,7 +996,7 @@ wiki.get('/w/search-titles', async (c) => {
  */
 wiki.get('/w/search-categories', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const user = c.get('user');
@@ -1116,7 +1117,7 @@ wiki.post('/w/check-category', requireAuth, async (c) => {
  */
 wiki.get('/w/recent-changes', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const user = c.get('user');
@@ -1207,7 +1208,7 @@ wiki.get('/w/templates', async (c) => {
     // closed 가시성에서는 비로그인 호출을 차단한다(/w/:slug·/w/search-titles 와 동일).
     // 그러지 않으면 로그인 없이 틀 슬러그 목록을 열거할 수 있다.
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const user = c.get('user');
@@ -1218,8 +1219,8 @@ wiki.get('/w/templates', async (c) => {
     // 인라인 삽입 모달만 3종 접두사 전체를 검색한다. 문서 교체 플로우는 `템플릿:` 유지.
     const inline = c.req.query('inline') === '1';
     const nsFilter = inline
-        ? `(slug LIKE '틀:%' OR slug LIKE 'template:%' OR slug LIKE '템플릿:%')`
-        : `slug LIKE '템플릿:%'`;
+        ? "(slug LIKE '틀:%' OR slug LIKE 'template:%' OR slug LIKE '템플릿:%')"
+        : "slug LIKE '템플릿:%'";
 
     if (q) {
         const orderLimit = inline ? 'ORDER BY slug ASC LIMIT 30' : 'ORDER BY created_at DESC';
@@ -1243,7 +1244,7 @@ wiki.get('/w/templates', async (c) => {
  */
 wiki.get('/w/random', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const user = c.get('user');
@@ -1263,7 +1264,7 @@ wiki.get('/w/random', async (c) => {
     const page = await db.prepare(query).first<{ slug: string }>();
 
     if (!page) {
-        return c.json({ error: '랜덤 문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_c7dd65df9f841f96") }, 404);
     }
 
     return c.json(safeJSON({ slug: page.slug }));
@@ -1277,7 +1278,7 @@ wiki.get('/w/random', async (c) => {
  */
 wiki.get('/w/recent-revisions', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const user = c.get('user');
@@ -1335,7 +1336,7 @@ wiki.get('/w/recent-revisions', async (c) => {
 /** POST /w/:slug/revisions/:id/patrol — only administrators can mark a visible edit reviewed. */
 wiki.post('/w/:slug/revisions/:id/patrol', requireAdmin, async (c) => {
     const id = Number(c.req.param('id'));
-    if (!Number.isSafeInteger(id) || id <= 0) return c.json({ error: '无效的修订版本' }, 400);
+    if (!Number.isSafeInteger(id) || id <= 0) return c.json({ error: ui("m_f8d8203743b12cde") }, 400);
     const slug = normalizeSlug(c.req.param('slug'));
     const db = c.env.DB;
     await ensureRevisionsVirtualMigration(db);
@@ -1345,10 +1346,10 @@ wiki.post('/w/:slug/revisions/:id/patrol', requireAdmin, async (c) => {
         WHERE r.id = ? AND p.slug = ? AND p.deleted_at IS NULL`)
         .bind(id, slug).first<{ id: number; author_id: number | null; is_virtual: number; deleted_at: number | null; purged_at: number | null }>();
     if (!revision || revision.is_virtual || revision.deleted_at || revision.purged_at) {
-        return c.json({ error: '此修订版本不可巡查' }, 404);
+        return c.json({ error: ui("m_b7d685b544e20462") }, 404);
     }
     const user = c.get('user')!;
-    if (revision.author_id === user.id) return c.json({ error: '不能巡查自己的编辑' }, 403);
+    if (revision.author_id === user.id) return c.json({ error: ui("m_4b16444ac8960333") }, 403);
     await db.prepare('INSERT OR IGNORE INTO revision_patrols (revision_id, patroller_id) VALUES (?, ?)')
         .bind(id, user.id).run();
     return c.json({ ok: true });
@@ -1364,7 +1365,7 @@ wiki.post('/w/:slug/revisions/:id/patrol', requireAdmin, async (c) => {
  */
 wiki.get('/w/all-pages', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const user = c.get('user');
@@ -1418,7 +1419,7 @@ wiki.get('/w/all-pages', async (c) => {
  */
 wiki.get('/w/all-index', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const user = c.get('user');
@@ -1458,7 +1459,7 @@ wiki.get('/w/all-index', async (c) => {
  */
 wiki.get('/w/all-categories', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const user = c.get('user');
@@ -1515,7 +1516,7 @@ wiki.get('/w/all-categories', async (c) => {
  */
 wiki.get('/w/wiki-stats', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
 
@@ -1538,7 +1539,7 @@ wiki.get('/w/wiki-stats', async (c) => {
  */
 wiki.get('/w/:slug', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const slug = c.req.param('slug');
     const db = c.env.DB;
@@ -1656,7 +1657,7 @@ wiki.get('/w/:slug', async (c) => {
     // 비공개 사실이 우선 노출되도록 한다.
     if (page && page.is_private === 1 && !canSeePrivate) {
         return c.json(
-            { error: '비공개 문서입니다.', is_private: true },
+            { error: ui("m_518ddb12656ff914"), is_private: true },
             403,
             { 'Cache-Control': 'private, no-store' }
         );
@@ -1664,7 +1665,7 @@ wiki.get('/w/:slug', async (c) => {
 
     if (page && page.deleted_at && !isAdmin) {
         return c.json(
-            { error: '삭제된 문서입니다.', is_deleted: true },
+            { error: ui("m_29d0659244b2ecf8"), is_deleted: true },
             410,
             { 'Cache-Control': 'no-store, must-revalidate' }
         );
@@ -1703,7 +1704,7 @@ wiki.get('/w/:slug', async (c) => {
     }
 
     if (!page) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     // R2-only 네임스페이스인 경우, 본문이 비어있다면 최신 리비전에서 본문을 가져옵니다.
@@ -1773,7 +1774,7 @@ wiki.get('/w/:slug', async (c) => {
  */
 wiki.get('/w/:slug/version', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401, { 'Cache-Control': 'no-store' });
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401, { 'Cache-Control': 'no-store' });
     }
     const slug = c.req.param('slug');
     const db = c.env.DB;
@@ -1786,17 +1787,17 @@ wiki.get('/w/:slug/version', async (c) => {
         .first<{ slug: string; version: number; updated_at: number; is_private: number; deleted_at: number | null }>();
 
     if (!page) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404, { 'Cache-Control': 'no-store' });
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404, { 'Cache-Control': 'no-store' });
     }
 
     const canSeePrivate = rbac.can(user?.role ?? 'guest', 'wiki:private');
     if (page.is_private === 1 && !canSeePrivate) {
-        return c.json({ error: '비공개 문서입니다.', is_private: true }, 403, { 'Cache-Control': 'no-store' });
+        return c.json({ error: ui("m_518ddb12656ff914"), is_private: true }, 403, { 'Cache-Control': 'no-store' });
     }
 
     const isAdmin = !!user && rbac.can(user.role, 'admin:access');
     if (page.deleted_at && !isAdmin) {
-        return c.json({ error: '삭제된 문서입니다.', deleted: true }, 410, { 'Cache-Control': 'no-store' });
+        return c.json({ error: ui("m_29d0659244b2ecf8"), deleted: true }, 410, { 'Cache-Control': 'no-store' });
     }
 
     return c.json(
@@ -1828,7 +1829,7 @@ wiki.get('/w/:slug/version', async (c) => {
  */
 wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
     const slug = normalizeSlug(c.req.param('slug'));
-    if (!slug) return c.json({ error: '문서 제목이 비어 있습니다.' }, 400);
+    if (!slug) return c.json({ error: ui("m_e6cdd4680a803298") }, 400);
 
     const user = c.get('user')!;
     const rbac = c.get('rbac') as RBAC;
@@ -1839,7 +1840,7 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
     if (!rbac.can(user.role, 'wiki:edit') && !isAdmin) {
         return c.json({
             allowed: false,
-            reason: 'no_permission',
+            reason: "no_permission",
             acl: null,
             source: 'none',
             min_age_days: 0,
@@ -1855,7 +1856,7 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
     if (slug.toLowerCase() === mainSlug && !isAdmin) {
         return c.json({
             allowed: false,
-            reason: 'main_page',
+            reason: "main_page",
             acl: null,
             source: 'none',
             min_age_days: 0,
@@ -1867,7 +1868,7 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
     if (slug.startsWith('이미지:')) {
         return c.json({
             allowed: false,
-            reason: 'image_namespace',
+            reason: "image_namespace",
             acl: null,
             source: 'none',
             min_age_days: 0,
@@ -1879,7 +1880,7 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
     if (slug.startsWith('map:')) {
         return c.json({
             allowed: false,
-            reason: 'map_namespace',
+            reason: "map_namespace",
             acl: null,
             source: 'none',
             min_age_days: 0,
@@ -1900,7 +1901,7 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
     if (page && page.deleted_at) {
         return c.json({
             allowed: false,
-            reason: 'deleted',
+            reason: "deleted",
             acl: null,
             source: 'page',
             min_age_days: minAge,
@@ -1925,7 +1926,7 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
         if (page.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
             return c.json({
                 allowed: false,
-                reason: 'private',
+                reason: "private",
                 acl: null,
                 source: 'page',
                 min_age_days: minAge,
@@ -1971,7 +1972,7 @@ wiki.get('/w/:slug/edit-permission', requireAuth, async (c) => {
         if (prefixRulesForcePrivate(rules, slug)) {
             return c.json({
                 allowed: false,
-                reason: 'private',
+                reason: "private",
                 acl: null,
                 source: 'prefix_rule',
                 min_age_days: minAge,
@@ -2014,12 +2015,12 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
 
     // 슬러그가 비어 있으면 거부 (normalizeSlug 가 앞뒤 슬래시/공백을 모두 떼어낸 결과)
     if (!slug) {
-        return c.json({ error: '문서 제목이 비어 있습니다.' }, 400);
+        return c.json({ error: ui("m_e6cdd4680a803298") }, 400);
     }
 
     // 슬러그 유효성 검사: 금지 문자 포함 여부
     if (SLUG_FORBIDDEN_CHARS.test(slug)) {
-        return c.json({ error: '제목에 사용할 수 없는 특수문자가 포함되어 있습니다.' }, 400);
+        return c.json({ error: ui("m_cb487221f2198b88") }, 400);
     }
 
     const user = c.get('user')!;
@@ -2052,21 +2053,21 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
     // 조용히 손실되므로, title 키가 있을 때는 string | null 만 허용하고 그 외엔 400.
     const hasTitleInBody = Object.prototype.hasOwnProperty.call(body, 'title');
     if (hasTitleInBody && body.title !== null && typeof body.title !== 'string') {
-        return c.json({ error: '대체 제목은 문자열 또는 null 이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_b5e41b626257814b") }, 400);
     }
     const requestedTitle = hasTitleInBody ? normalizeTitleInput(body.title) : undefined;
     if (requestedTitle && TITLE_FORBIDDEN_CHARS.test(requestedTitle)) {
-        return c.json({ error: '대체 제목에 제어문자는 사용할 수 없습니다.' }, 400);
+        return c.json({ error: ui("m_8012d0d029b44768") }, 400);
     }
     if (requestedTitle && requestedTitle.length > TITLE_MAX_LENGTH) {
-        return c.json({ error: `대체 제목은 ${TITLE_MAX_LENGTH}자 이하여야 합니다.` }, 400);
+        return c.json({ error: ui("m_d513e3d01b755e83", [TITLE_MAX_LENGTH]) }, 400);
     }
 
     // Turnstile 검증
     if (c.env.TURNSTILE_SECRET_KEY) {
         const token = body.turnstileToken;
         if (!token) {
-            return c.json({ error: 'Turnstile 검증이 필요합니다.' }, 403);
+            return c.json({ error: ui("m_e6b962a8eaff5533") }, 403);
         }
         // idempotency_key 를 양쪽 시도에 동일하게 전달해 첫 요청이 Cloudflare에 도달 후
         // 응답이 손실된 경우에도 재시도가 캐시된 성공 결과를 받을 수 있도록 한다.
@@ -2097,11 +2098,11 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
                 });
                 tsData = await tsRes2.json<{ success: boolean }>();
             } catch {
-                return c.json({ error: 'Turnstile 검증에 실패했습니다. 다시 시도해주세요.' }, 403);
+                return c.json({ error: ui("m_93f6eb544ffe4725") }, 403);
             }
         }
         if (!tsData!.success) {
-            return c.json({ error: 'Turnstile 검증에 실패했습니다. 다시 시도해주세요.' }, 403);
+            return c.json({ error: ui("m_93f6eb544ffe4725") }, 403);
         }
     }
 
@@ -2115,20 +2116,20 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
     const mainSlug = normalizeSlug(c.env.WIKI_NAME || 'CloudWiki').toLowerCase();
     if (normalizeSlug(slug).toLowerCase() === mainSlug) {
         if (!isAdmin) {
-            return c.json({ error: '메인 문서는 관리자만 편집할 수 있습니다.' }, 403);
+            return c.json({ error: ui("m_0d16e7454b329be5") }, 403);
         }
     }
 
     // "이미지:" 접두사 문서는 media 테이블 기반의 이미지 문서 전용이며,
     // content 수정은 /api/media/doc/:filename 엔드포인트로만 가능하다.
     if (slug.startsWith('이미지:')) {
-        return c.json({ error: '"이미지:"는 이미지 문서 전용 네임스페이스이므로 일반 문서 제목으로 사용할 수 없습니다.' }, 403);
+        return c.json({ error: ui("m_4c857ed217030e5a") }, 403);
     }
 
     // "map:" 접두사 문서는 하위 문서 트리를 합성해 보여주는 가상 뷰 전용이므로
     // 일반 문서로 생성/수정할 수 없다.
     if (slug.startsWith('map:')) {
-        return c.json({ error: '"map:"은 지도 뷰 전용 네임스페이스이므로 일반 문서 제목으로 사용할 수 없습니다.' }, 403);
+        return c.json({ error: ui("m_e6380590c0c06876") }, 403);
     }
 
     // "카테고리:이름" 슬러그는 자동 카테고리를 항상 포함시킨다 (제거 불가).
@@ -2151,16 +2152,16 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
         const cats = body.category.split(',').map(c => c.trim()).filter(c => c);
         for (const cat of cats) {
             if (await isAdminOnlyCategory(db, cat)) {
-                return c.json({ error: `"${cat}" 카테고리는 관리자만 적용할 수 있습니다.` }, 403);
+                return c.json({ error: ui("m_31429406550ed617", [cat]) }, 403);
             }
         }
     }
 
     if (body.content === undefined) {
-        return c.json({ error: 'content는 필수입니다.' }, 400);
+        return c.json({ error: ui("m_91d0966d84be4641") }, 400);
     }
     if (typeof body.content !== 'string') {
-        return c.json({ error: 'content는 문자열이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_8dd4e38868d9e2ba") }, 400);
     }
 
     // CRLF/CR → LF 정규화. 클라이언트 환경(Windows 클립보드, 외부 임포트 등)에서
@@ -2181,7 +2182,7 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
     if (body.category) {
         const categoryPattern = /^[가-힣a-zA-Z0-9\s,]+$/;
         if (!categoryPattern.test(body.category)) {
-            return c.json({ error: '카테고리에는 특수문자를 사용할 수 없습니다.' }, 400);
+            return c.json({ error: ui("m_a21df18dbb6dce0c") }, 400);
         }
     }
 
@@ -2191,10 +2192,10 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
     // 사용자 입력분만 길이 제한(255자)을 적용하고, 자동요약분 길이 때문에 정상 편집을 거부하지 않는다.
     // 잘못된 타입(문자열/null 외)은 정규화 시 문자열 메서드 호출로 500 이 되지 않도록 400 으로 막는다.
     if (body.summary !== undefined && body.summary !== null && typeof body.summary !== 'string') {
-        return c.json({ error: '편집 요약은 문자열이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_149c3339aa55ab89") }, 400);
     }
     if (body.auto_summary !== undefined && body.auto_summary !== null && typeof body.auto_summary !== 'string') {
-        return c.json({ error: '자동 편집 요약은 문자열이어야 합니다.' }, 400);
+        return c.json({ error: ui("m_69e7a2923e08f4ef") }, 400);
     }
     const userSummary = capUserSummary(body.summary);
     const autoSummary = (typeof body.auto_summary === 'string' && body.auto_summary.trim())
@@ -2224,10 +2225,10 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
         const selfId = existing?.id ?? null;
         const conflict = await findConflictingPage(db, requestedTitle, selfId);
         if (conflict) {
-            const deletedSuffix = conflict.isDeleted ? ' (소프트 삭제 상태 — 관리자가 복원 또는 영구 삭제해야 재사용 가능)' : '';
+            const deletedSuffix = conflict.isDeleted ? ui("m_49c589bbf965c9bd") : '';
             const msg = conflict.matchedColumn === 'slug'
-                ? `'${requestedTitle}' 는 이미 다른 문서의 제목으로 사용 중입니다.${deletedSuffix}`
-                : `'${requestedTitle}' 는 이미 다른 문서의 대체 제목으로 사용 중입니다.${deletedSuffix}`;
+                ? ui("m_21b73ea47099d948", [requestedTitle, deletedSuffix])
+                : ui("m_275afdfa7c6dbe58", [requestedTitle, deletedSuffix]);
             return c.json({ error: msg }, 409);
         }
     }
@@ -2238,15 +2239,15 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
     if (!existing) {
         const slugTitleConflict = await findConflictingPage(db, slug, null);
         if (slugTitleConflict && slugTitleConflict.matchedColumn === 'title') {
-            const deletedSuffix = slugTitleConflict.isDeleted ? ' (소프트 삭제 상태)' : '';
-            return c.json({ error: `'${slug}' 는 이미 다른 문서의 대체 제목과 같아 제목으로 사용할 수 없습니다.${deletedSuffix}` }, 409);
+            const deletedSuffix = slugTitleConflict.isDeleted ? ui("m_498cdf7a4578a46f") : '';
+            return c.json({ error: ui("m_9980d5f407562e20", [slug, deletedSuffix]) }, 409);
         }
     }
 
     // 삭제된 문서는 권한자(admin:access)만 복원할 수 있고 일반 사용자의 편집은 불가.
     // 일반 사용자가 동일 슬러그로 새 문서를 만들지 못하도록 명시적으로 차단한다.
     if (existing && existing.deleted_at && !isAdmin) {
-        return c.json({ error: '삭제된 문서는 편집할 수 없습니다.', is_deleted: true }, 410);
+        return c.json({ error: ui("m_56fe00af0af17df4"), is_deleted: true }, 410);
     }
 
     let finalIsPrivate = 0;
@@ -2258,14 +2259,14 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
         // 필요한 호출자가 결정론적으로 거부 응답을 받도록 한다.
         if (body.expected_version === 0) {
             return c.json(
-                { error: '같은 제목의 문서가 이미 존재합니다.', current_version: existing.version },
+                { error: ui("m_edb7ee4fec17cc4f"), current_version: existing.version },
                 409
             );
         }
 
         // 비공개 문서는 wiki:private 권한 없으면 편집 불가 (조회 단계에서도 막혀야 하지만 안전망)
         if (existing.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
-            return c.json({ error: '비공개 문서는 편집할 수 없습니다.', is_private: true }, 403);
+            return c.json({ error: ui("m_32a0e1a4e54d2340"), is_private: true }, 403);
         }
 
         // edit_acl 평가 — admin_only 플래그가 없으면 관리자는 우회. 비공개 단계를 통과한 뒤 검사한다.
@@ -2289,8 +2290,8 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
                     } else {
                         return c.json({
                             error: isAdminOnlyFail
-                                ? '이 문서는 관리자만 편집할 수 있습니다.'
-                                : '이 문서를 편집할 권한이 부족합니다.',
+                                ? ui("m_718e2147e1a2bdab")
+                                : ui("m_6f5fe96067957fb8"),
                             edit_acl: aclParsed,
                             min_age_days: minAge,
                         }, 403);
@@ -2360,7 +2361,7 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
             if (body.content !== existingNormalized) {
                 return c.json(
                     {
-                        error: '편집 충돌이 발생했습니다. 다른 사용자가 문서를 수정했습니다.',
+                        error: ui("m_2f8b8fb15271aac5"),
                         current_version: existing.version,
                         content: existingNormalized
                     },
@@ -2393,7 +2394,7 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
             if (body.content !== currentNormalized) {
                 return c.json(
                     {
-                        error: '편집 충돌이 발생했습니다. 다른 사용자가 문서를 수정했습니다.',
+                        error: ui("m_2f8b8fb15271aac5"),
                         current_version: existing.version,
                         content: currentNormalized
                     },
@@ -2492,7 +2493,7 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
                 }
                 const currentNormalized = currentContent.replace(/\r\n?/g, '\n');
                 return c.json({
-                    error: '편집 충돌이 발생했습니다. 다른 사용자가 문서를 수정했습니다.',
+                    error: ui("m_2f8b8fb15271aac5"),
                     current_version: fresh?.version ?? existing.version,
                     content: currentNormalized,
                 }, 409);
@@ -2501,10 +2502,10 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
             const msg = String(e?.message || e);
             if (/UNIQUE|constraint/i.test(msg) && /title/i.test(msg)) {
                 console.error('D1 page UPDATE failed due to title UNIQUE race:', e);
-                return c.json({ error: '대체 제목이 다른 문서와 충돌했습니다. 잠시 후 다시 시도해주세요.' }, 409);
+                return c.json({ error: ui("m_3cc9999f45d2d2ce") }, 409);
             }
             console.error('D1 page UPDATE failed:', e);
-            return c.json({ error: '문서 저장에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500);
+            return c.json({ error: ui("m_17fd2364d2772a04") }, 500);
         }
 
         return c.json(safeJSON({ slug, version: updateResult.new_version, revision_id: updateResult.revision_id }));
@@ -2542,7 +2543,7 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
         // 비공개로 강제되는 신규 문서(하위 문서 일괄 규칙 등 prefix 룰의 is_private)는 비공개=관리자 전용
         // 동등 취급이므로, wiki:private 이 없는 사용자는 편집 요청 모드 없이 하드 거부한다.
         if (finalIsPrivate === 1 && !rbac.can(user.role, 'wiki:private')) {
-            return c.json({ error: '비공개로 지정된 문서는 새로 생성할 수 없습니다.', is_private: true }, 403);
+            return c.json({ error: ui("m_60dd4157ca5e69ab"), is_private: true }, 403);
         }
 
         // 새 ACL 이 적용된 신규 페이지를 생성하기 전에, 생성자(비관리자)가 그 ACL 을 통과하는지 검증한다.
@@ -2568,8 +2569,8 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
                         } else {
                             return c.json({
                                 error: isAdminOnlyFail
-                                    ? '이 슬러그로 시작하는 문서는 관리자만 새로 생성할 수 있습니다.'
-                                    : '이 슬러그로 시작하는 문서는 ACL 정책상 새로 생성할 수 없습니다.',
+                                    ? ui("m_40db2d51a7822a45")
+                                    : ui("m_7092531bf8f16176"),
                                 edit_acl: aclForCreate,
                                 min_age_days: minAge,
                             }, 403);
@@ -2640,14 +2641,14 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
             // applyNewPageInsert 가 UNIQUE race(slug/title)를 명시적 코드로 던지는 경우 409 로 매핑
             // (페이지/리비전/R2 롤백은 헬퍼가 이미 수행). precheck 와 INSERT 사이의 동시 생성 안내.
             if (e?.code === 'TITLE_TAKEN') {
-                return c.json({ error: '대체 제목이 다른 문서와 충돌했습니다. 잠시 후 다시 시도해주세요.' }, 409);
+                return c.json({ error: ui("m_3cc9999f45d2d2ce") }, 409);
             }
             if (e?.code === 'SLUG_TAKEN') {
-                return c.json({ error: '같은 제목의 문서가 동시에 생성되었습니다. 다시 시도해주세요.' }, 409);
+                return c.json({ error: ui("m_a4405bb7ffd0ca7d") }, 409);
             }
             // R2 업로드 실패 등 그 외 오류(헬퍼가 페이지/리비전 롤백을 이미 수행) — 인라인 구현과 동일하게 500 JSON.
             console.error('Page create via pipeline failed:', e);
-            return c.json({ error: '문서 저장에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500);
+            return c.json({ error: ui("m_17fd2364d2772a04") }, 500);
         }
 
         return c.json(safeJSON({ slug, version: 1, revision_id: createResult.revision_id }), 201);
@@ -2666,13 +2667,13 @@ wiki.put('/w/:slug', requireAuth, requirePermission('wiki:edit'), async (c) => {
 wiki.put('/w/:slug/editor-note', requireAuth, requirePermission('wiki:edit'), async (c) => {
     const slug = normalizeSlug(c.req.param('slug'));
     if (!slug) {
-        return c.json({ error: '문서 제목이 비어 있습니다.' }, 400);
+        return c.json({ error: ui("m_e6cdd4680a803298") }, 400);
     }
     if (SLUG_FORBIDDEN_CHARS.test(slug)) {
-        return c.json({ error: '제목에 사용할 수 없는 특수문자가 포함되어 있습니다.' }, 400);
+        return c.json({ error: ui("m_cb487221f2198b88") }, 400);
     }
     if (slug.startsWith('이미지:') || slug.startsWith('map:')) {
-        return c.json({ error: '이 네임스페이스는 편집 메모를 지원하지 않습니다.' }, 403);
+        return c.json({ error: ui("m_0e12c17fa6f302a5") }, 403);
     }
 
     const user = c.get('user')!;
@@ -2689,12 +2690,12 @@ wiki.put('/w/:slug/editor-note', requireAuth, requirePermission('wiki:edit'), as
         .first<{ id: number; version: number; editor_note: string | null; is_private: number; edit_acl: string | null }>();
 
     if (!page) {
-        return c.json({ error: '문서를 찾을 수 없거나 삭제된 상태입니다.' }, 404);
+        return c.json({ error: ui("m_80d16e0cd99765ca") }, 404);
     }
 
     // 비공개 문서 가시성 게이트
     if (page.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
-        return c.json({ error: '문서를 찾을 수 없거나 삭제된 상태입니다.' }, 404);
+        return c.json({ error: ui("m_80d16e0cd99765ca") }, 404);
     }
 
     // edit_acl 검사 — admin_only 가 없으면 관리자 우회.
@@ -2709,8 +2710,8 @@ wiki.put('/w/:slug/editor-note', requireAuth, requirePermission('wiki:edit'), as
                 if (!ev.allowed) {
                     return c.json({
                         error: hasAdminOnly && ev.decisive === 'admin_only'
-                            ? '이 문서는 관리자만 편집할 수 있습니다.'
-                            : '이 문서를 편집할 권한이 부족합니다.',
+                            ? ui("m_718e2147e1a2bdab")
+                            : ui("m_6f5fe96067957fb8"),
                     }, 403);
                 }
             }
@@ -2728,7 +2729,7 @@ wiki.put('/w/:slug/editor-note', requireAuth, requirePermission('wiki:edit'), as
 
     // 가상 리비전 기록 (본문 변경 없음)
     try {
-        await insertVirtualRevision(db, page.id, '[편집메모] 편집 메모 변경', user.id);
+        await insertVirtualRevision(db, page.id, ui("m_a47db840b4ed0d13"), user.id);
     } catch (e) {
         console.error('editor-note virtual revision failed:', e);
     }
@@ -2792,11 +2793,11 @@ wiki.get('/w/:slug/revisions', async (c) => {
         .first<{ id: number; deleted_at: number | null; is_private: number }>();
 
     if (!page || (page.deleted_at && !isAdmin)) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     if (page.is_private === 1 && !canSeePrivate) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
@@ -2867,11 +2868,11 @@ wiki.get('/w/:slug/revisions/:id', async (c) => {
         .first<{ id: number; deleted_at: number | null; is_private: number }>();
 
     if (!page || (page.deleted_at && !isAdmin)) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     if (page.is_private === 1 && !canSeePrivate) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
@@ -2889,12 +2890,12 @@ wiki.get('/w/:slug/revisions/:id', async (c) => {
         .first<{ id: number; page_id: number; page_version: number | null; content: string; r2_key: string | null; summary: string | null; author_id: number | null; created_at: number; deleted_at: number | null; purged_at: number | null; is_virtual: number; author_name: string | null }>();
 
     if (!revision) {
-        return c.json({ error: '리비전을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_3ea4afaf812b07c8") }, 404);
     }
 
     // 비관리자에게는 삭제된 리비전이 존재하지 않는 것처럼 보여야 한다.
     if (revision.deleted_at && !isAdmin) {
-        return c.json({ error: '리비전을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_3ea4afaf812b07c8") }, 404);
     }
 
     // 가상 리비전은 본문이 없다(비-본문 변경 기록). R2 조회를 건너뛰고 빈 본문으로 반환한다.
@@ -2937,11 +2938,11 @@ wiki.get('/w/:slug/revisions/:id/diff', async (c) => {
         .first<{ id: number; deleted_at: number | null; is_private: number }>();
 
     if (!page || (page.deleted_at && !isAdmin)) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     if (page.is_private === 1 && !canSeePrivate) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
@@ -2957,12 +2958,12 @@ wiki.get('/w/:slug/revisions/:id/diff', async (c) => {
         .first<{ id: number; page_version: number | null; content: string; r2_key: string | null; page_id: number; created_at: number; deleted_at: number | null; purged_at: number | null; is_virtual: number }>();
 
     if (!revision || (revision.deleted_at && !isAdmin)) {
-        return c.json({ error: '리비전을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_3ea4afaf812b07c8") }, 404);
     }
 
     // 가상 리비전은 본문이 없어 비교할 수 없다.
     if (revision.is_virtual) {
-        return c.json({ error: '가상 리비전은 비교할 수 없습니다.' }, 409);
+        return c.json({ error: ui("m_f6ac1c7ff4c7b4fc") }, 409);
     }
 
     // 바로 이전 리비전 조회 — 비관리자에게는 살아있는(=deleted_at IS NULL) 직전 리비전과
@@ -3068,7 +3069,7 @@ wiki.get('/w/:slug/nav-tree', async (c) => {
     // 비공개 위키(WIKI_VISIBILITY=closed)에서는 비로그인 사용자가 그룹 트리로 슬러그 구조를
     // 열람·열거할 수 없도록 캐시/DB 접근 전에 차단한다 (/api/w/:slug 등 다른 읽기 API 와 동일).
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const slug = c.req.param('slug');
     const db = c.env.DB;
@@ -3187,12 +3188,12 @@ wiki.delete('/w/:slug', requireAuth, async (c) => {
         .bind(slug).first<{ id: number; edit_acl: string | null; deleted_at: number | null }>();
 
     if (!page) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     if (hard) {
         if (!rbac.can(user.role, '*')) {
-            return c.json({ error: '영구 삭제는 최고 관리자만 가능합니다.' }, 403);
+            return c.json({ error: ui("m_43389606b46c0865") }, 403);
         }
 
         // 리비전 R2 파일 삭제
@@ -3217,24 +3218,24 @@ wiki.delete('/w/:slug', requireAuth, async (c) => {
         // 관리자 로그 기록
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('hard_delete', `문서 영구 삭제: ${slug}`, user.id)
+                .bind('hard_delete', ui("m_58d34fbe05574d64", [slug]), user.id)
                 .run().catch((e: any) => console.error('Failed to write admin log:', e))
         );
 
         // RAG 미러 정리: 영구 삭제는 D1 에서 완전히 사라지므로 인덱스 위생을 위해 R2 객체도 제거.
         removePageMirror(c.env, c.executionCtx, slug);
 
-        return c.json({ message: '문서가 영구 삭제되었습니다.' });
+        return c.json({ message: ui("m_fc520b8437af4266") });
     } else {
         // 이미 소프트삭제된 문서는 다시 소프트삭제할 수 없다(영구 삭제만 가능).
         // 이전에는 deleted_at IS NULL 조회로 이 경우 404 를 반환했으므로 동일 시맨틱을 유지한다.
         if (page.deleted_at) {
-            return c.json({ error: '이미 삭제된 문서입니다.' }, 404);
+            return c.json({ error: ui("m_ac9ec8d35dce78ce") }, 404);
         }
 
         // Soft delete requires wiki:delete permission
         if (!rbac.can(user.role, 'wiki:delete')) {
-            return c.json({ error: '문서 삭제 권한이 없습니다.' }, 403);
+            return c.json({ error: ui("m_7dd99545c7b9465a") }, 403);
         }
 
         // 삭제는 본문을 통째로 무력화하는 편집의 일종이므로 일반 편집(PUT)·되돌리기(revert)와
@@ -3251,8 +3252,8 @@ wiki.delete('/w/:slug', requireAuth, async (c) => {
                     const isAdminOnlyFail = hasAdminOnly && !isAdmin;
                     return c.json({
                         error: isAdminOnlyFail
-                            ? '관리자 전용 문서는 관리자만 삭제할 수 있습니다.'
-                            : '이 문서를 삭제할 권한이 부족합니다.',
+                            ? ui("m_a76086f3a964774e")
+                            : ui("m_567ddaca9be26ccf"),
                         edit_acl: aclDelete,
                         min_age_days: minAge,
                     }, 403);
@@ -3280,11 +3281,11 @@ wiki.delete('/w/:slug', requireAuth, async (c) => {
         // 관리자 로그 기록
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('soft_delete', `문서 삭제: ${slug}`, user.id)
+                .bind('soft_delete', ui("m_8cf77e328b9e3fd5", [slug]), user.id)
                 .run().catch((e: any) => console.error('Failed to write admin log:', e))
         );
 
-        return c.json({ message: '문서가 삭제되었습니다.' });
+        return c.json({ message: ui("m_5ab980c9c1944729") });
     }
 });
 
@@ -3300,26 +3301,26 @@ wiki.post('/w/:slug/restore', requireAuth, async (c) => {
     const db = c.env.DB;
 
     if (!rbac.can(user.role, 'wiki:delete')) {
-        return c.json({ error: '권한이 없습니다.' }, 403);
+        return c.json({ error: ui("m_a20ccb3e6b01e324") }, 403);
     }
 
     // "이미지:" / "map:" 예약 네임스페이스는 일반 페이지로 복원될 수 없다.
     // 복원되면 가상 뷰 로직과 충돌해 접근 불가 페이지가 네임스페이스를 점유한다.
     if (slug.startsWith('이미지:')) {
-        return c.json({ error: '"이미지:" 네임스페이스는 일반 문서로 복원할 수 없습니다.' }, 400);
+        return c.json({ error: ui("m_fe999320d28a6e33") }, 400);
     }
     if (slug.startsWith('map:')) {
-        return c.json({ error: '"map:" 네임스페이스는 가상 트리 뷰 전용이므로 복원할 수 없습니다.' }, 400);
+        return c.json({ error: ui("m_c9c2979d1a731a43") }, 400);
     }
 
     const page = await db.prepare('SELECT id, deleted_at FROM pages WHERE slug = ?').bind(slug).first<{ id: number; deleted_at: number | null }>();
 
     if (!page) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     if (!page.deleted_at) {
-        return c.json({ error: '문서가 삭제된 상태가 아닙니다.' }, 400);
+        return c.json({ error: ui("m_3c225b5dab81e41e") }, 400);
     }
 
     // 복원 (deleted_at 해제)
@@ -3328,7 +3329,7 @@ wiki.post('/w/:slug/restore', requireAuth, async (c) => {
     // 관리자 로그 기록
     c.executionCtx.waitUntil(
         db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-            .bind('restore', `문서 복원: ${slug}`, user.id)
+            .bind('restore', ui("m_772a58411f6b32aa", [slug]), user.id)
             .run().catch((e: any) => console.error('Failed to write admin log:', e))
     );
 
@@ -3340,7 +3341,7 @@ wiki.post('/w/:slug/restore', requireAuth, async (c) => {
         invalidateBacklinkCaches(c, slug, db),
     ]));
 
-    return c.json({ message: '문서가 복원되었습니다.' });
+    return c.json({ message: ui("m_66fe4041f91167e7") });
 });
 
 /**
@@ -3378,34 +3379,34 @@ export async function movePage(
         ({ ok: false, status, error, old_slug: currentSlug });
 
     if (!newSlugRaw || newSlugRaw.trim().length === 0) {
-        return fail(400, '새 문서 이름을 입력해주세요.');
+        return fail(400, ui("m_4697cbb206bcd001"));
     }
 
     // 앞뒤 공백 + 앞뒤 슬래시 제거 (슬래시는 하위 문서 구분자로만 유의미)
     const trimmedNewSlug = normalizeSlug(newSlugRaw);
     if (!trimmedNewSlug) {
-        return fail(400, '새 문서 이름을 입력해주세요.');
+        return fail(400, ui("m_4697cbb206bcd001"));
     }
 
     // 동일 슬러그로의 no-op 이동 차단. findConflictingPage 는 page.id 를 제외하므로 자기 자신을
     // 잡아내지 않아, 그대로 두면 admin_log 와 백링크 재작성이 무의미하게 실행된다.
     if (trimmedNewSlug === currentSlug) {
-        return fail(400, '새 문서 이름이 기존 이름과 동일합니다.');
+        return fail(400, ui("m_e5c33435941dd968"));
     }
 
     // 보안: 슬러그 금지 문자 점검
     if (SLUG_FORBIDDEN_CHARS.test(trimmedNewSlug)) {
-        return fail(400, '제목에 사용할 수 없는 특수문자가 포함되어 있습니다.');
+        return fail(400, ui("m_cb487221f2198b88"));
     }
 
     // "이미지:" 네임스페이스는 media 테이블 기반 이미지 문서 전용이므로 이동 대상/출처가 될 수 없다
     if (currentSlug.startsWith('이미지:') || trimmedNewSlug.startsWith('이미지:')) {
-        return fail(400, '"이미지:" 네임스페이스는 이미지 문서 전용이며, 일반 문서 이동 대상이 될 수 없습니다.');
+        return fail(400, ui("m_a590834403ff04d2"));
     }
 
     // "map:" 네임스페이스는 가상 트리 뷰 전용이므로 이동 대상/출처가 될 수 없다
     if (currentSlug.startsWith('map:') || trimmedNewSlug.startsWith('map:')) {
-        return fail(400, '"map:" 네임스페이스는 가상 트리 뷰 전용이며, 일반 문서 이동 대상이 될 수 없습니다.');
+        return fail(400, ui("m_69c48d5ef3c7e7b7"));
     }
 
     // 네임스페이스 이동 제한: 콜론이 포함된 문서는 다른 네임스페이스로 이동 불가
@@ -3413,28 +3414,28 @@ export async function movePage(
     const currentNamespace = isNamespaceDocument ? currentSlug.split(':')[0] : '';
     const newNamespace = trimmedNewSlug.includes(':') ? trimmedNewSlug.split(':')[0] : '';
     if (isNamespaceDocument && currentNamespace !== newNamespace) {
-        return fail(400, '네임스페이스가 있는 문서는 다른 네임스페이스로 이동할 수 없습니다.');
+        return fail(400, ui("m_3f6361670ddd949f"));
     }
 
     // 페이지 먼저 조회 — 충돌 검사에서 자기 자신을 제외해야 한다 (rename to same slug 등 idempotent 호출 안전망).
     const page = await db.prepare('SELECT id, category, is_private, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL').bind(currentSlug).first<{ id: number, category: string | null, is_private: number, edit_acl: string | null }>();
     if (!page) {
-        return fail(404, '문서를 찾을 수 없습니다.');
+        return fail(404, ui("m_f4afd431e04afffc"));
     }
 
     // new_slug 가 다른 페이지의 slug 또는 title 과 충돌하는지 검사.
     // 소프트 삭제 행도 포함 — pages.slug UNIQUE 와 idx_pages_title_unique 둘 다 deleted_at 무관하게 강제.
     const moveConflict = await findConflictingPage(db, trimmedNewSlug, page.id);
     if (moveConflict) {
-        const deletedSuffix = moveConflict.isDeleted ? ' (소프트 삭제 상태)' : '';
+        const deletedSuffix = moveConflict.isDeleted ? ui("m_498cdf7a4578a46f") : '';
         const msg = moveConflict.matchedColumn === 'slug'
-            ? `이미 존재하는 문서 이름입니다.${deletedSuffix}`
-            : `'${trimmedNewSlug}' 는 이미 다른 문서의 대체 제목과 같아 사용할 수 없습니다.${deletedSuffix}`;
+            ? ui("m_2323c8119d6f7b40", [deletedSuffix])
+            : ui("m_ca7312fc1524000c", [trimmedNewSlug, deletedSuffix]);
         return fail(409, msg);
     }
 
     if (page.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
-        return fail(404, '문서를 찾을 수 없습니다.');
+        return fail(404, ui("m_f4afd431e04afffc"));
     }
 
     // admin_only ACL 문서 이동은 관리자만 가능. (구 is_locked 분기 대체)
@@ -3442,7 +3443,7 @@ export async function movePage(
     if (!moveIsAdmin) {
         const aclMove = parseEditAcl(page.edit_acl);
         if (aclMove && aclMove.flags.includes('admin_only')) {
-            return fail(403, '관리자 전용 문서는 관리자만 이동할 수 있습니다.');
+            return fail(403, ui("m_a609e669a6165e0e"));
         }
     }
 
@@ -3457,7 +3458,7 @@ export async function movePage(
         const msg = String(e?.message || e);
         if (/UNIQUE|constraint/i.test(msg)) {
             console.error('Page slug UPDATE failed due to UNIQUE race:', e);
-            return fail(409, '새 제목이 다른 문서와 충돌합니다. 다시 시도해주세요.');
+            return fail(409, ui("m_e25d85469623f952"));
         }
         throw e;
     }
@@ -3471,7 +3472,7 @@ export async function movePage(
         await insertVirtualRevision(
             db,
             page.id,
-            `[이동] 주소 변경: ${currentSlug} → ${trimmedNewSlug}`,
+            ui("m_f9b2c39ea47d991a", [currentSlug, trimmedNewSlug]),
             user.id
         );
     } catch (e) {
@@ -3499,7 +3500,7 @@ export async function movePage(
     // 관리자 로그 기록
     c.executionCtx.waitUntil(
         db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-            .bind('doc_move', `문서 이름변경: ${currentSlug} → ${trimmedNewSlug}`, user.id)
+            .bind('doc_move', ui("m_9790e638835f3b49", [currentSlug, trimmedNewSlug]), user.id)
             .run().catch((e: any) => console.error('Failed to write admin log:', e))
     );
 
@@ -3519,7 +3520,7 @@ export async function movePage(
                 db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
                     .bind(
                         'doc_move_backlinks_error',
-                        `역링크 일괄 갱신 실패: ${currentSlug} → ${trimmedNewSlug} (${backlinksError})`,
+                        ui("m_6206229d5de21b9e", [currentSlug, trimmedNewSlug, backlinksError]),
                         user.id
                     )
                     .run().catch((logErr: any) => console.error('Failed to write admin_log for backlinks error:', logErr))
@@ -3573,7 +3574,7 @@ wiki.post('/w/:slug/move', requireAdmin, async (c) => {
         new_slug: string;
         backlinks?: { updated: number; skipped: string[]; conflicts: string[]; total: number };
         backlinks_error?: string;
-    } = { message: '문서가 이동되었습니다.', new_slug: outcome.new_slug! };
+    } = { message: ui("m_c0d0cdb8aafea17f"), new_slug: outcome.new_slug! };
 
     if (outcome.backlinks) response.backlinks = outcome.backlinks;
     if (outcome.backlinks_error) response.backlinks_error = outcome.backlinks_error;
@@ -3596,13 +3597,13 @@ wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async 
         .bind(slug).first<{ id: number, version: number, is_private: number, edit_acl: string | null }>();
 
     if (!page) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     const isAdmin = rbac.can(user.role, 'admin:access');
 
     if (page.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     // 되돌리기는 새 리비전을 쌓는 본문 변경이므로 일반 편집(PUT)과 동일한 edit_acl 게이트를
@@ -3618,8 +3619,8 @@ wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async 
                 const isAdminOnlyFail = hasAdminOnly && !isAdmin;
                 return c.json({
                     error: isAdminOnlyFail
-                        ? '관리자 전용 문서는 관리자만 되돌릴 수 있습니다.'
-                        : '이 문서를 되돌릴 권한이 부족합니다.',
+                        ? ui("m_36cc21da55740f49")
+                        : ui("m_b63a71af73aa0837"),
                     edit_acl: aclRevert,
                     min_age_days: minAge,
                 }, 403);
@@ -3633,12 +3634,12 @@ wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async 
         .bind(revision_id, page.id).first<{ content: string; r2_key: string | null; page_version: number | null; deleted_at: number | null; purged_at: number | null; is_virtual: number }>();
 
     if (!targetRevision) {
-        return c.json({ error: '해당 리비전을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_cbbdcb2f01aedaab") }, 404);
     }
 
     // 가상 리비전은 본문이 없으므로 되돌릴 수 없다.
     if (targetRevision.is_virtual) {
-        return c.json({ error: '가상 리비전으로는 되돌릴 수 없습니다.' }, 409);
+        return c.json({ error: ui("m_b1f6cde79fe3fca2") }, 409);
     }
 
     // 숨겨진/영구 삭제된 리비전으로의 되돌리기는 redaction 우회 통로가 된다.
@@ -3647,13 +3648,13 @@ wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async 
     //             되살리려면 별도 unhide 흐름이 필요하며 이 PR 범위 밖.
     if (targetRevision.purged_at) {
         return isAdmin
-            ? c.json({ error: '본문이 영구 삭제된 리비전으로는 되돌릴 수 없습니다.' }, 409)
-            : c.json({ error: '해당 리비전을 찾을 수 없습니다.' }, 404);
+            ? c.json({ error: ui("m_4d4c034f6c37b1d0") }, 409)
+            : c.json({ error: ui("m_cbbdcb2f01aedaab") }, 404);
     }
     if (targetRevision.deleted_at) {
         return isAdmin
-            ? c.json({ error: '숨겨진 리비전으로는 되돌릴 수 없습니다. 먼저 숨김을 해제해야 합니다.' }, 409)
-            : c.json({ error: '해당 리비전을 찾을 수 없습니다.' }, 404);
+            ? c.json({ error: ui("m_4a61f034d4152aff") }, 409)
+            : c.json({ error: ui("m_cbbdcb2f01aedaab") }, 404);
     }
 
     // 되돌릴 리비전의 본문을 R2 또는 D1에서 조회
@@ -3663,7 +3664,7 @@ wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async 
         revertContent = await getRevisionContent(c.env.MEDIA, targetRevision, origin);
     } catch (e) {
         console.error('Failed to fetch revert target content:', e);
-        return c.json({ error: '리비전 본문을 불러오지 못했습니다.' }, 500);
+        return c.json({ error: ui("m_7a2806b0cfd17e0a") }, 500);
     }
 
     // 레거시 리비전이 CRLF 를 포함할 수 있으므로 새 리비전으로 쌓기 전에 LF 로 정규화.
@@ -3672,7 +3673,7 @@ wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async 
     // 새 리비전 생성 (리비전 이력은 선형으로 계속 쌓임)
     const newVersion = page.version + 1;
     const targetVersionLabel = targetRevision.page_version != null ? `v${targetRevision.page_version}` : `#${revision_id}`;
-    const summary = `${targetVersionLabel}으로 되돌리기`;
+    const summary = ui("m_4c5dca363464e2a6", [targetVersionLabel]);
 
     // 1. R2에 새 리비전 본문 업로드
     let newR2Key: string;
@@ -3680,7 +3681,7 @@ wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async 
         newR2Key = await uploadRevisionToR2(c.env.MEDIA, page.id, newVersion, revertContent);
     } catch (e) {
         console.error('R2 revert upload failed:', e);
-        return c.json({ error: '리비전 저장에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500);
+        return c.json({ error: ui("m_e70d17b58f103f70") }, 500);
     }
 
     // 2. D1에 새 리비전 레코드 삽입
@@ -3693,7 +3694,7 @@ wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async 
     } catch (e) {
         await c.env.MEDIA.delete(newR2Key).catch(() => {});
         console.error('D1 revert revision insert failed:', e);
-        return c.json({ error: '리비전 저장에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500);
+        return c.json({ error: ui("m_e70d17b58f103f70") }, 500);
     }
 
     const enabledExtensionsRevert = getEnabledExtensions(c.env);
@@ -3717,7 +3718,7 @@ wiki.post('/w/:slug/revert', requireAuth, requirePermission('wiki:edit'), async 
         refreshRecentChangesCache(c),
     ]));
 
-    return c.json({ message: '문서가 되돌려졌습니다.', version: newVersion });
+    return c.json({ message: ui("m_76f59c47a3a322dd"), version: newVersion });
 });
 
 /**
@@ -3746,13 +3747,13 @@ async function loadRevisionForDeletion(
         .first<{ id: number; last_revision_id: number | null; is_private: number; deleted_at: number | null }>();
 
     if (!page) {
-        return { ok: false, response: c.json({ error: '문서를 찾을 수 없습니다.' }, 404) };
+        return { ok: false, response: c.json({ error: ui("m_f4afd431e04afffc") }, 404) };
     }
     if (page.deleted_at) {
-        return { ok: false, response: c.json({ error: '삭제된 문서의 리비전은 정리할 수 없습니다. 먼저 문서를 복원하세요.' }, 409) };
+        return { ok: false, response: c.json({ error: ui("m_826b173fe2bfd9ac") }, 409) };
     }
     if (page.is_private === 1 && !canSeePrivate) {
-        return { ok: false, response: c.json({ error: '문서를 찾을 수 없습니다.' }, 404) };
+        return { ok: false, response: c.json({ error: ui("m_f4afd431e04afffc") }, 404) };
     }
 
     // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
@@ -3763,14 +3764,14 @@ async function loadRevisionForDeletion(
         .first<{ id: number; page_id: number; page_version: number | null; content: string; r2_key: string | null; deleted_at: number | null; purged_at: number | null; is_virtual: number }>();
 
     if (!revision) {
-        return { ok: false, response: c.json({ error: '리비전을 찾을 수 없습니다.' }, 404) };
+        return { ok: false, response: c.json({ error: ui("m_3ea4afaf812b07c8") }, 404) };
     }
     // 가상 리비전(비-본문 변경 기록)은 삭제(소프트/하드)할 수 없다.
     if (revision.is_virtual) {
-        return { ok: false, response: c.json({ error: '가상 리비전은 삭제할 수 없습니다.' }, 409) };
+        return { ok: false, response: c.json({ error: ui("m_918680ab7a28d0f4") }, 409) };
     }
     if (page.last_revision_id === revision.id) {
-        return { ok: false, response: c.json({ error: '최신 리비전은 삭제할 수 없습니다. 먼저 되돌리기를 한 뒤 시도하세요.' }, 409) };
+        return { ok: false, response: c.json({ error: ui("m_e00459f8f04acf8c") }, 409) };
     }
     return { ok: true, page, revision };
 }
@@ -3787,7 +3788,7 @@ wiki.post('/w/:slug/revisions/:id/delete', requireAuth, requirePermission('wiki:
     const db = c.env.DB;
 
     if (!Number.isFinite(revId) || revId <= 0) {
-        return c.json({ error: '리비전 id 가 올바르지 않습니다.' }, 400);
+        return c.json({ error: ui("m_9bfb76dd02724174") }, 400);
     }
 
     const loaded = await loadRevisionForDeletion(c, slug, revId);
@@ -3795,7 +3796,7 @@ wiki.post('/w/:slug/revisions/:id/delete', requireAuth, requirePermission('wiki:
     const { revision } = loaded;
 
     if (revision.deleted_at) {
-        return c.json({ error: '이미 삭제된 리비전입니다.' }, 409);
+        return c.json({ error: ui("m_d8bb21ed9e6766af") }, 409);
     }
 
     await db.prepare('UPDATE revisions SET deleted_at = unixepoch() WHERE id = ?').bind(revId).run();
@@ -3804,11 +3805,11 @@ wiki.post('/w/:slug/revisions/:id/delete', requireAuth, requirePermission('wiki:
     c.executionCtx.waitUntil(Promise.allSettled([
         refreshRecentChangesCache(c),
         db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-            .bind('revision_soft_delete', `리비전 소프트 삭제: ${slug} ${versionLabel} (rev #${revId})`, user.id)
+            .bind('revision_soft_delete', ui("m_ee3e2ffbe2672de0", [slug, versionLabel, revId]), user.id)
             .run().catch((e: any) => console.error('Failed to write admin log:', e)),
     ]));
 
-    return c.json({ message: '리비전이 삭제되었습니다.' });
+    return c.json({ message: ui("m_a6f7aebbe3ff6dac") });
 });
 
 /**
@@ -3826,10 +3827,10 @@ wiki.delete('/w/:slug/revisions/:id', requireAuth, async (c) => {
     const db = c.env.DB;
 
     if (!rbac.can(user.role, '*')) {
-        return c.json({ error: '리비전 영구 삭제는 최고 관리자만 가능합니다.' }, 403);
+        return c.json({ error: ui("m_725313817e6868e1") }, 403);
     }
     if (!Number.isFinite(revId) || revId <= 0) {
-        return c.json({ error: '리비전 id 가 올바르지 않습니다.' }, 400);
+        return c.json({ error: ui("m_9bfb76dd02724174") }, 400);
     }
 
     const loaded = await loadRevisionForDeletion(c, slug, revId);
@@ -3840,7 +3841,7 @@ wiki.delete('/w/:slug/revisions/:id', requireAuth, async (c) => {
     // 남아 있으면(=legacy D1-backed 리비전의 메타 정리 단계가 미완료) 멱등 재시도
     // 경로로 진입한다.
     if (revision.purged_at && !revision.r2_key && revision.content === '') {
-        return c.json({ error: '이미 영구 삭제된 리비전입니다.' }, 409);
+        return c.json({ error: ui("m_81f288da43a4b5c1") }, 409);
     }
 
     // 분산 트랜잭션 (D1 + R2) 순서 — 각 단계 실패 시 read 경로가 절대 stale R2 객체를
@@ -3866,7 +3867,7 @@ wiki.delete('/w/:slug/revisions/:id', requireAuth, async (c) => {
         ).bind(revId).run();
     } catch (e) {
         console.error('Hard delete pre-mark failed:', revId, e);
-        return c.json({ error: '삭제 마킹에 실패했습니다. 잠시 후 다시 시도하세요.' }, 500);
+        return c.json({ error: ui("m_112590efded576b3") }, 500);
     }
 
     if (revision.r2_key) {
@@ -3874,7 +3875,7 @@ wiki.delete('/w/:slug/revisions/:id', requireAuth, async (c) => {
             await c.env.MEDIA.delete(revision.r2_key);
         } catch (e) {
             console.error('R2 hard delete failed:', revision.r2_key, e);
-            return c.json({ error: 'R2 본문 삭제에 실패했습니다. 잠시 후 다시 시도하세요.' }, 502);
+            return c.json({ error: ui("m_d68556d83b4740cc") }, 502);
         }
         await invalidateRevisionContentCache(c, revision.r2_key).catch(() => {});
     }
@@ -3887,18 +3888,18 @@ wiki.delete('/w/:slug/revisions/:id', requireAuth, async (c) => {
         // 메타 정리 실패 — R2 객체는 이미 사라졌고 purged_at 가 read 경로를 차단하므로
         // 데이터 일관성 위험은 없다. 다음 재시도 호출에서 같은 UPDATE 가 멱등 실행된다.
         console.error('Hard delete metadata cleanup failed (will retry on next call):', revId, e);
-        return c.json({ error: '메타데이터 정리에 실패했습니다. 잠시 후 다시 시도하세요.' }, 500);
+        return c.json({ error: ui("m_23bfa329b67f47c1") }, 500);
     }
 
     const versionLabel = revision.page_version != null ? `v${revision.page_version}` : `#${revId}`;
     c.executionCtx.waitUntil(Promise.allSettled([
         refreshRecentChangesCache(c),
         db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-            .bind('revision_hard_delete', `리비전 영구 삭제: ${slug} ${versionLabel} (rev #${revId})`, user.id)
+            .bind('revision_hard_delete', ui("m_b00b078e851ea38a", [slug, versionLabel, revId]), user.id)
             .run().catch((e: any) => console.error('Failed to write admin log:', e)),
     ]));
 
-    return c.json({ message: '리비전이 영구 삭제되었습니다.' });
+    return c.json({ message: ui("m_a536da90de2fa925") });
 });
 
 /**
@@ -3919,7 +3920,7 @@ wiki.get('/w/:slug/watch', requireAuth, async (c) => {
     const page = await db.prepare(`SELECT id FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`)
         .bind(slug).first<{ id: number }>();
     if (!page) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     const watch = await db.prepare('SELECT scope FROM page_watches WHERE user_id = ? AND page_id = ?')
@@ -3956,7 +3957,7 @@ wiki.post('/w/:slug/watch', requireAuth, async (c) => {
     const page = await db.prepare(`SELECT id FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`)
         .bind(slug).first<{ id: number }>();
     if (!page) {
-        return c.json({ error: '문서를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_f4afd431e04afffc") }, 404);
     }
 
     const existing = await db.prepare('SELECT scope FROM page_watches WHERE user_id = ? AND page_id = ?')
@@ -4014,7 +4015,7 @@ wiki.post('/w/category/:category/watch', requireAuth, async (c) => {
     const user = c.get('user')!;
     const db = c.env.DB;
     if (!category || category.length > 200) {
-        return c.json({ error: '카테고리가 올바르지 않습니다.' }, 400);
+        return c.json({ error: ui("m_03fac0a43f3c4117") }, 400);
     }
     const existing = await db.prepare('SELECT 1 FROM category_watches WHERE user_id = ? AND category = ?')
         .bind(user.id, category).first();

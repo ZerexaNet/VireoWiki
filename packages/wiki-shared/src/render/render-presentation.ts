@@ -22,6 +22,7 @@
 
 // window.renderWikiContent 의 전역 타입은 src/client/edit/types.ts 의 declare global 가 이미 제공.
 
+import { ui } from '../i18n/client';
 interface PresentationOptions {
     palettes?: unknown;
     // 덱의 활성 슬라이드가 바뀔 때(컨트롤/해시/키보드) 호출되는 콜백.
@@ -342,23 +343,7 @@ export async function renderPresentation(
 
     // 본문 컨테이너에 슬라이드 덱 마크업 삽입. 기본은 인라인(레이아웃 보존) — 풀스크린 진입 시
     // body.presentation-fullscreen 이 부여돼 CSS 가 fixed 풀-뷰포트로 전환한다.
-    mount.innerHTML = `
-        <div class="slide-deck" role="region" aria-label="프레젠테이션 슬라이드">
-            <div class="slide-deck-stage">
-                ${effective.map((_, i) => `<section class="slide" data-slide-index="${i}"><div class="wiki-content slide-content" id="slideContent-${i}"></div><span class="slide-overview-num" aria-hidden="true">${i + 1}</span></section>`).join('')}
-            </div>
-            <div class="slide-deck-progress" aria-hidden="true">
-                <div class="slide-deck-progress-fill"></div>
-            </div>
-            <div class="slide-deck-controls" role="toolbar" aria-label="슬라이드 컨트롤">
-                <button type="button" class="slide-deck-btn" data-slide-act="prev" aria-label="이전 슬라이드"><i class="bi bi-chevron-left"></i></button>
-                <span class="slide-deck-indicator" aria-live="polite">1 / ${_slideCount}</span>
-                <button type="button" class="slide-deck-btn" data-slide-act="next" aria-label="다음 슬라이드"><i class="bi bi-chevron-right"></i></button>
-                <button type="button" class="slide-deck-btn slide-deck-btn-overview" data-slide-act="overview" title="전체 보기 (그리드)" aria-label="전체 슬라이드 그리드 보기" aria-pressed="false"><i class="bi bi-grid-3x3-gap"></i></button>
-                <button type="button" class="slide-deck-btn slide-deck-btn-fullscreen" data-slide-act="fullscreen" title="전체 화면 (F)" aria-label="전체 화면 전환"><i class="bi bi-arrows-fullscreen"></i></button>
-            </div>
-        </div>
-    `;
+    mount.innerHTML = ui("m_39b6b8ebbc11c8fb", [effective.map((_, i) => `<section class="slide" data-slide-index="${i}"><div class="wiki-content slide-content" id="slideContent-${i}"></div><span class="slide-overview-num" aria-hidden="true">${i + 1}</span></section>`).join(''), _slideCount]);
 
     _activeDeckEl = mount.querySelector<HTMLElement>('.slide-deck');
 

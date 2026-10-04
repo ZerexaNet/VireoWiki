@@ -18,6 +18,7 @@
  *   api = { getValue(), setValue(s), slug, extName }.
  */
 (function () {
+    const ui = (key, values) => window.VireoI18n.ui(key, values);
     'use strict';
 
     // ── 파서: freq.js 의 _parseFreqData 와 동일한 규약 ──
@@ -202,43 +203,43 @@
         if (parsed.freq.length === 0) {
             window.Swal.fire({
                 icon: 'warning',
-                title: '스무딩 대상 없음',
-                text: '주파수 응답 데이터를 파싱할 수 없습니다.',
+                title: ui("m_5a189009ea301dc2"),
+                text: ui("m_be7bef35403236ab"),
             });
             return;
         }
 
         const phaseWarning = parsed.hasPhase
-            ? '<div class="wiki-freq-phase-warning"><i class="bi bi-exclamation-triangle-fill"></i><span>스무딩 적용 후 위상(Phase) 데이터는 제거됩니다.</span></div>'
+            ? ui("m_04d9f97a19a93f89")
             : '';
 
         const existingSmoothing = parsed.meta.smoothing
-            ? '<div class="text-muted small mt-1">기존 Smoothing: <code>' + escapeForHtml(parsed.meta.smoothing) + '</code></div>'
+            ? ui("m_daba9777afa31b0a") + escapeForHtml(parsed.meta.smoothing) + '</code></div>'
             : '';
 
         window.Swal.fire({
-            title: '스무딩 적용',
+            title: ui("m_37d1bd2e240ceedc"),
             html: '<div class="text-start small">' +
-                '<p class="mb-2">현재 데이터: <b>' + parsed.freq.length.toLocaleString() + '</b> 포인트 ' +
-                '(약 ' + (currentValue.length / 1024).toFixed(1) + ' KB)</p>' +
+                ui("m_d87a4cb7b2cf3797") + parsed.freq.length.toLocaleString() + ui("m_84e0b2a3fbd2112c") +
+                ui("m_b8e334b7c2fdeb90") + (currentValue.length / 1024).toFixed(1) + ui("m_4e34c76a6d1f6f0f") +
                 existingSmoothing +
-                '<label class="form-label fw-bold mt-2 mb-1" for="freqSmoothOctaveSel">옥타브 분수</label>' +
+                ui("m_338ad9e3d971af1d") +
                 '<select id="freqSmoothOctaveSel" class="form-select form-select-sm">' +
-                '<option value="48">1/48 옥타브 (가장 조밀)</option>' +
-                '<option value="24" selected>1/24 옥타브 (REW 권장 기본값)</option>' +
-                '<option value="12">1/12 옥타브 (반음)</option>' +
-                '<option value="6">1/6 옥타브</option>' +
-                '<option value="3">1/3 옥타브 (RTA)</option>' +
-                '<option value="1">1 옥타브 (가장 부드러움)</option>' +
+                ui("m_7eed8f0104741b98") +
+                ui("m_3911749132b03ce7") +
+                ui("m_6f419bd0d781c71c") +
+                ui("m_9812fd1911c755ce") +
+                ui("m_90b8d2c6a8242047") +
+                ui("m_3b0f62c7f9961e41") +
                 '</select>' +
-                '<label class="form-label fw-bold mt-3 mb-1" for="freqSmoothPointsInp">출력 포인트 수</label>' +
+                ui("m_62bd76cca29eee40") +
                 '<input type="number" id="freqSmoothPointsInp" class="form-control form-control-sm" min="50" max="4000" step="10" value="400">' +
-                '<small class="text-muted">로그 균등 분포로 생성됩니다. (50 ~ 4000)<br>리비전을 통해 스무딩 이전으로 복원이 가능합니다.</small>' +
+                ui("m_53e456491f37bc9c") +
                 phaseWarning +
                 '</div>',
             showCancelButton: true,
-            confirmButtonText: '스무딩 적용',
-            cancelButtonText: '취소',
+            confirmButtonText: ui("m_37d1bd2e240ceedc"),
+            cancelButtonText: ui("m_be876433993ab7ba"),
             focusConfirm: false,
             preConfirm: () => {
                 const octEl = document.getElementById('freqSmoothOctaveSel');
@@ -246,11 +247,11 @@
                 const oct = octEl ? parseInt(octEl.value, 10) : NaN;
                 const pts = ptsEl ? parseInt(ptsEl.value, 10) : NaN;
                 if (!Number.isFinite(oct) || oct <= 0) {
-                    window.Swal.showValidationMessage('옥타브 분수를 선택하세요.');
+                    window.Swal.showValidationMessage(ui("m_e2ebe184ab11ca28"));
                     return false;
                 }
                 if (!Number.isFinite(pts) || pts < 50 || pts > 4000) {
-                    window.Swal.showValidationMessage('출력 포인트 수는 50~4000 범위입니다.');
+                    window.Swal.showValidationMessage(ui("m_4cdd37d6d41ae06b"));
                     return false;
                 }
                 return { oct, pts };
@@ -277,16 +278,16 @@
                 if (!summaryEl) return;
                 summaryEl.removeEventListener('input', onSummaryUserInput);
                 if (userTouchedSummary) return;
-                summaryEl.value = '데이터 스무딩 (1/' + oct + ' oct, ' + smoothed.freq.length + ' pts)';
+                summaryEl.value = ui("m_7a41047d553357ee") + oct + ' oct, ' + smoothed.freq.length + ' pts)';
                 summaryEl.dispatchEvent(new Event('input'));
             }, 600);
             const reductionPct = oldBytes > 0 ? ((1 - newBytes / oldBytes) * 100) : 0;
             window.Swal.fire({
                 icon: 'success',
-                title: '스무딩 적용 완료',
+                title: ui("m_d3a1196fb372994a"),
                 html: '<div class="text-start small">' +
-                    '<p class="mb-1">포인트: <b>' + parsed.freq.length.toLocaleString() + '</b> → <b>' + smoothed.freq.length.toLocaleString() + '</b></p>' +
-                    '<p class="mb-0">크기: <b>' + (oldBytes / 1024).toFixed(1) + ' KB</b> → <b>' + (newBytes / 1024).toFixed(1) + ' KB</b> ' +
+                    ui("m_42f54b48383c48fe") + parsed.freq.length.toLocaleString() + '</b> → <b>' + smoothed.freq.length.toLocaleString() + '</b></p>' +
+                    ui("m_fca475aedb398f68") + (oldBytes / 1024).toFixed(1) + ui("m_da87a98efb7fa482") + (newBytes / 1024).toFixed(1) + ui("m_68785ba1090341f5") +
                     '(' + (reductionPct >= 0 ? '−' : '+') + Math.abs(reductionPct).toFixed(1) + '%)</p>' +
                     '</div>',
                 timer: 3500,
@@ -313,8 +314,8 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'wiki-ext-toolbar-btn';
-        btn.innerHTML = '<i class="bi bi-graph-down-arrow"></i> 데이터 스무딩';
-        btn.title = '1/N 옥타브 스무딩';
+        btn.innerHTML = ui("m_eecd13ecc9dfe144");
+        btn.title = ui("m_3e2e7e493bed9251");
         btn.addEventListener('click', () => openSmoothingDialog(api));
 
         toolbarEl.appendChild(btn);

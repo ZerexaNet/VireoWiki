@@ -9,6 +9,7 @@
 //
 // 결과: "mdi mdi-bullhorn" 같은 class 문자열, 또는 null (취소/없음).
 
+import { ui } from '../../packages/wiki-shared/src/i18n/client';
 import { loadBiIcons, loadMdiIcons, filterIcons } from './iconLib';
 
 interface BootstrapModalInstance {
@@ -79,10 +80,10 @@ export function openIconPicker(): Promise<string | null> {
             tabBi!.setAttribute('aria-selected', String(type === 'bi'));
             tabMdi!.setAttribute('aria-selected', String(type === 'mdi'));
             if (type === 'bi') {
-                titleEl!.textContent = 'Bootstrap Icons 선택';
+                titleEl!.textContent = ui("m_9c6c669c47481aa1");
                 typeIconEl!.className = 'bi bi-bootstrap me-2';
             } else {
-                titleEl!.textContent = 'Material Design Icons 선택';
+                titleEl!.textContent = ui("m_36bdb068c44b81a8");
                 typeIconEl!.className = 'mdi mdi-material-design me-2';
             }
 

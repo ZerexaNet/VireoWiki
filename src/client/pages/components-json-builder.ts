@@ -10,6 +10,7 @@
  * - escapeHtml 은 공통 유틸을 재사용해 innerHTML 삽입을 안전하게 처리한다.
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import { escapeHtml } from '../utils/html';
 import '../utils/swal';
 
@@ -39,17 +40,17 @@ function renderList(target: NavTarget): void {
     countElement.textContent = String(data.length);
 
     if (data.length === 0) {
-        listElement.innerHTML = `<div class="p-4 text-center text-muted small"><i class="mdi mdi-tray-open fs-3 d-block mb-2"></i>항목이 없습니다.</div>`;
+        listElement.innerHTML = ui("m_38ed9f4ba6124ff7");
     } else {
         listElement.innerHTML = data
             .map((item, idx) => {
                 let badge = '';
                 const iconHtml = item.icon ? `<i class="${escapeHtml(item.icon)} me-2"></i>` : '';
 
-                if (item.type === 'header') badge = '<span class="badge badge-type bg-success-subtle text-success border border-success-subtle me-3">标题</span>';
-                else if (item.type === 'link') badge = '<span class="badge badge-type bg-primary-subtle text-primary border border-primary-subtle me-3">링크</span>';
-                else if (item.type === 'text') badge = '<span class="badge badge-type bg-secondary-subtle text-secondary border border-secondary-subtle me-3">텍스트</span>';
-                else if (item.type === 'divider') badge = '<span class="badge badge-type bg-light text-muted border me-3">구분선</span>';
+                if (item.type === 'header') badge = ui("m_50d31cce0e90b6f0");
+                else if (item.type === 'link') badge = ui("m_b96d7c3b45d30da9");
+                else if (item.type === 'text') badge = ui("m_ed6dbf8ac2b22530");
+                else if (item.type === 'divider') badge = ui("m_505d97348549989a");
 
                 let content = '';
                 if (item.type === 'divider') {
@@ -63,22 +64,7 @@ function renderList(target: NavTarget): void {
                     `;
                 }
 
-                return `
-                <li class="list-group-item d-flex align-items-center">
-                    <div class="d-flex flex-column me-2">
-                        <button class="btn btn-link btn-control p-0" onclick="moveItem('${target}', ${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="위로 이동">
-                            <i class="mdi mdi-menu-up"></i>
-                        </button>
-                        <button class="btn btn-link btn-control p-0" onclick="moveItem('${target}', ${idx}, 1)" ${idx === data.length - 1 ? 'disabled' : ''} title="아래로 이동">
-                            <i class="mdi mdi-menu-down"></i>
-                        </button>
-                    </div>
-                    ${badge}
-                    ${content}
-                    <button class="btn btn-link btn-delete ms-auto p-2" onclick="deleteItem('${target}', ${idx})" title="删除">
-                        <i class="mdi mdi-trash-can-outline fs-5"></i>
-                    </button>
-                </li>`;
+                return ui("m_602245ed4eaa4f92", [target, idx, idx === 0 ? 'disabled' : '', target, idx, idx === data.length - 1 ? 'disabled' : '', badge, content, target, idx]);
             })
             .join('');
     }
@@ -112,7 +98,7 @@ function applyJson(target: NavTarget): void {
 
         // 최상위가 배열 형식인지 검사
         if (!Array.isArray(parsedData)) {
-            throw new Error('JSON 최상위 형식은 배열([ ])이어야 합니다.');
+            throw new Error(ui("m_b113aa5a6fb9a5cd"));
         }
 
         configData[target] = parsedData as NavItem[];
@@ -122,7 +108,7 @@ function applyJson(target: NavTarget): void {
             toast: true,
             position: 'top-end',
             icon: 'success',
-            title: 'JSON 구조가 화면에 적용되었습니다.',
+            title: ui("m_a7e04da8e43cf6ce"),
             showConfirmButton: false,
             timer: 1500,
         });
@@ -130,8 +116,8 @@ function applyJson(target: NavTarget): void {
         const message = e instanceof Error ? e.message : String(e);
         window.Swal?.fire({
             icon: 'error',
-            title: 'JSON 형식 오류',
-            html: `입력한 JSON 형식이 올바르지 않습니다.<br><br><small class="text-danger text-start d-block bg-light p-2 rounded">${escapeHtml(message)}</small>`,
+            title: ui("m_ee08022bc594ec0f"),
+            html: ui("m_9ce10d6ab3c73bca", [escapeHtml(message)]),
         });
     }
 }
@@ -145,40 +131,18 @@ async function addItem(target: NavTarget, type: NavItemType): Promise<void> {
     }
 
     let title = '';
-    if (type === 'header') title = '제목 (Header) 추가';
-    if (type === 'link') title = '링크 (Link) 추가';
-    if (type === 'text') title = '텍스트 (Text) 추가';
+    if (type === 'header') title = ui("m_ca2c953402996b21");
+    if (type === 'link') title = ui("m_b5ba46e9a638e4d1");
+    if (type === 'text') title = ui("m_1abf0e0da64cca16");
 
-    let html = `
-        <div class="mb-3 text-start">
-            <label class="form-label small fw-bold">표시 텍스트 <span class="text-danger">*</span></label>
-            <input id="swal-input-text" class="form-control" placeholder="표시될 텍스트를 입력하세요">
-        </div>
-    `;
+    let html = ui("m_338d167f3755a272");
 
     if (type === 'link') {
-        html += `
-            <div class="mb-3 text-start">
-                <label class="form-label small fw-bold">이동할 URL <span class="text-danger">*</span></label>
-                <input id="swal-input-url" class="form-control" placeholder="https://...">
-            </div>
-        `;
+        html += ui("m_270d377dea8d48d6");
     }
 
     if (type !== 'header') {
-        html += `
-            <div class="mb-3 text-start">
-                <label class="form-label small fw-bold">아이콘 (선택)</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i id="swal-icon-preview" class="mdi mdi-star-outline"></i></span>
-                    <input id="swal-input-icon" class="form-control" placeholder="예: mdi mdi-home">
-                    <button type="button" id="swal-icon-pick-btn" class="btn btn-outline-secondary">
-                        <i class="mdi mdi-shape-plus me-1"></i>선택
-                    </button>
-                </div>
-                <div class="form-text small">选择图标기로 고르거나 클래스명을 직접 입력하세요. (형식: <code>mdi mdi-home</code> · <code>bi bi-house</code>)</div>
-            </div>
-        `;
+        html += ui("m_8917df7098c56ec2");
     }
 
     const result = await window.Swal?.fire<NavItem | false>({
@@ -186,8 +150,8 @@ async function addItem(target: NavTarget, type: NavItemType): Promise<void> {
         html,
         focusConfirm: false,
         showCancelButton: true,
-        confirmButtonText: '추가하기',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_20df662357441cfb"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
         confirmButtonColor: target === 'sidebar' ? '#0d6efd' : '#0dcaf0',
         didOpen: () => {
             const iconInput = document.getElementById('swal-input-icon') as HTMLInputElement | null;
@@ -223,11 +187,11 @@ async function addItem(target: NavTarget, type: NavItemType): Promise<void> {
             const icon = iconInput ? iconInput.value.trim() : '';
 
             if (!text) {
-                window.Swal?.showValidationMessage('표시 텍스트를 입력해주세요.');
+                window.Swal?.showValidationMessage(ui("m_22897b499b8bab6e"));
                 return false;
             }
             if (type === 'link' && !url) {
-                window.Swal?.showValidationMessage('이동할 URL을 입력해주세요.');
+                window.Swal?.showValidationMessage(ui("m_2cfeb3c9d255eb1a"));
                 return false;
             }
 
@@ -247,7 +211,7 @@ async function addItem(target: NavTarget, type: NavItemType): Promise<void> {
             toast: true,
             position: 'top-end',
             icon: 'success',
-            title: '추가되었습니다.',
+            title: ui("m_79a3d5f833e14e45"),
             showConfirmButton: false,
             timer: 1500,
         });
@@ -275,13 +239,13 @@ function deleteItem(target: NavTarget, index: number): void {
 // 전체 초기화
 function clearAll(): void {
     window.Swal?.fire({
-        title: '전체 초기화',
-        text: '모든 구성 항목을 삭제하시겠습니까?',
+        title: ui("m_91211d8faac71c08"),
+        text: ui("m_f24ee40fb98f74fb"),
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
-        confirmButtonText: '네, 삭제합니다',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_321d3a69a12109cf"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
     }).then((res) => {
         if (res?.isConfirmed) {
             configData.sidebar = [];
@@ -297,7 +261,7 @@ function showCopySuccess(): void {
         toast: true,
         position: 'top-end',
         icon: 'success',
-        title: '클립보드에 복사되었습니다.',
+        title: ui("m_5414fc96c6e58627"),
         showConfirmButton: false,
         timer: 1500,
     });
@@ -321,7 +285,7 @@ function copyJson(target: NavTarget): void {
             showCopySuccess();
         }
     } catch {
-        window.Swal?.fire('실패', '복사 중 오류가 발생했습니다.', 'error');
+        window.Swal?.fire(ui("m_2743911f83e1da69"), ui("m_0bddd4195710081a"), 'error');
     }
 
     window.getSelection()?.removeAllRanges();

@@ -11,6 +11,7 @@
 // 로 접근한다. onclick 에서 호출되는 saveProfile 은 파일 끝에서 window 로 노출한다.
 
 // 승인제 모드 여부 확인
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 const urlParams = new URLSearchParams(window.location.search);
 const isApprovalMode = urlParams.get('mode') === 'approval';
 const signupToken = urlParams.get('token') || '';
@@ -21,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isApprovalMode) {
         // 승인제 모드: 비인증 상태이므로 checkAuth 건너뛰기
         if (!signupToken) {
-            Swal.fire('错误', '유효하지 않은 접근입니다.', 'error').then(() => {
+            Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_f3ce0493f33b7b60"), 'error').then(() => {
                 window.location.href = '/';
             });
             return;
@@ -29,11 +30,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // UI 변경
         document.getElementById('setupIcon').className = 'mdi mdi-account-clock-outline setup-icon';
-        document.getElementById('setupTitle').textContent = '가입 신청';
-        document.getElementById('setupSubtitle').textContent = '사용할 표시명을 입력하고 가입을 신청해주세요. 관리자 승인 후 이용 가능합니다.';
+        document.getElementById('setupTitle').textContent = ui("m_de79ecfecb0bfc08");
+        document.getElementById('setupSubtitle').textContent = ui("m_2b990c6bf55d045b");
         document.getElementById('signupMessageGroup').style.display = '';
-        document.getElementById('submitBtn').textContent = '가입 신청하기';
-        document.getElementById('statusMessage').innerHTML = '<i class="mdi mdi-information-outline"></i> 관리자가 신청을 확인한 후 승인 또는 거절합니다.';
+        document.getElementById('submitBtn').textContent = ui("m_a57481d90afceb54");
+        document.getElementById('statusMessage').innerHTML = ui("m_af2f7c326c0a90b0");
     } else {
         await window.checkAuth();
 
@@ -53,7 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (data.message) {
                     const statusEl = document.getElementById('statusMessage');
 
-                    if (data.message.includes('불가능')) {
+                    if (data.allowed === false) {
                         statusEl.innerHTML = '<i class="mdi mdi-alert-circle"></i> <span class="text-danger fw-bold">' + window.escapeHtml(data.message) + '</span>';
                     } else {
                         statusEl.innerHTML = '<i class="mdi mdi-information-outline"></i> ' + window.escapeHtml(data.message);
@@ -69,11 +70,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function saveProfile() {
     const name = document.getElementById('nameInput').value.trim();
     if (!name) {
-        Swal.fire('错误', '이름을 입력해주세요.', 'warning');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_b6c1c96c52ea9de7"), 'warning');
         return;
     }
     if (name.length > 20) {
-        Swal.fire('错误', '표시명은 20자 이내로 입력해주세요.', 'warning');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_404a4c8ee516dfa1"), 'warning');
         return;
     }
 
@@ -81,7 +82,7 @@ async function saveProfile() {
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 처리 중...';
+    btn.innerHTML = ui("m_37a791b69f49734e");
 
     try {
         if (isApprovalMode) {
@@ -108,7 +109,7 @@ async function saveProfile() {
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || '가입 신청에 실패했습니다.');
+            if (!res.ok) throw new Error(data.error || ui("m_4933053f220d5ba7"));
 
             // 신청 성공 + 미리 받아둔 구독이 있으면 단발성 push_token 으로 서버 등록 (실패는 무시)
             if (preparedPush && typeof window.registerSignupPushSubscription === 'function' && data.push_token) {
@@ -117,9 +118,9 @@ async function saveProfile() {
 
             Swal.fire({
                 icon: 'success',
-                title: '已提交注册申请',
-                text: '관리자 승인 후 이용 가능합니다.',
-                confirmButtonText: '확인'
+                title: ui("m_fdf55bfdc69ff31d"),
+                text: ui("m_e0b2956c2c8e803e"),
+                confirmButtonText: ui("m_1aacb54c49924296")
             }).then(() => {
                 window.location.href = '/?info=signup_submitted';
             });
@@ -132,7 +133,7 @@ async function saveProfile() {
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || '保存失败。');
+            if (!res.ok) throw new Error(data.error || ui("m_cf1487e7aa8947c2"));
 
             // 사진 비공개를 선택했으면 별도 엔드포인트로 반영 (실패해도 가입 자체는 완료된 것으로 처리)
             if (picturePrivate) {
@@ -149,8 +150,8 @@ async function saveProfile() {
 
             Swal.fire({
                 icon: 'success',
-                title: '설정 완료!',
-                text: 'CloudWiki에 오신 것을 환영합니다.',
+                title: ui("m_616392c3a59e008d"),
+                text: ui("m_9fffd5f717ca3c8e"),
                 showConfirmButton: false,
                 timer: 1500
             }).then(() => {
@@ -159,8 +160,8 @@ async function saveProfile() {
         }
     } catch (err) {
         btn.disabled = false;
-        btn.textContent = isApprovalMode ? '가입 신청하기' : '시작하기';
-        Swal.fire('错误', err.message, 'error');
+        btn.textContent = isApprovalMode ? ui("m_a57481d90afceb54") : ui("m_8779a905898386e4");
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
     }
 }
 

@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import type { Context } from 'hono';
 import type { Env } from '../types';
 
@@ -141,7 +142,7 @@ export async function queryAnalytics(accountId: string, apiToken: string, sql: s
 
     if (!response.ok) {
         const text = await response.text();
-        throw new Error(`Analytics query failed (${response.status}): ${text}`);
+        throw new Error(ui("m_3075d7f4fd31df20", [response.status, text]));
     }
 
     const text = await response.text();

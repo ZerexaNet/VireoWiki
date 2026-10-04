@@ -18,6 +18,7 @@
  * - DOMContentLoaded 시점 처리(_setupArticleTitleCopy 등) 는 module top-level 에서
  *   동기적으로 호출되며, 모듈은 deferred 이므로 DOM 이 이미 준비된 상태이다.
  */
+import { ui, getLocale } from '../../packages/wiki-shared/src/i18n/client';
 import { escapeHtml } from './utils/html';
 import { isSafeUrl } from './utils/url';
 import { CDN_URLS, FONTS } from '../shared/cdn';
@@ -991,7 +992,7 @@ function _wrapTransclusionSentinels(protectedText, c, expanded) {
 function _replaceSelfCalls(text, selfSlug) {
     const calls = _findTemplateCalls(text);
     if (calls.length === 0) return text;
-    const warning = `⚠️ [자기 자신을 참조하는 틀은 사용할 수 없습니다: ${selfSlug}]`;
+    const warning = ui("m_8ffe88ed5f7f189a", [selfSlug]);
     let out = '';
     let cursor = 0;
     for (const c of calls) {
@@ -1116,7 +1117,7 @@ async function _resolveTransclusionsCore(text, depth, cache, pageSlug, options) 
     for (const slug of slugsToFetch) {
         if (!cache.has(slug)) {
             if (pageSlug && slug === pageSlug) {
-                cache.set(slug, `⚠️ [자기 자신을 참조하는 틀은 사용할 수 없습니다: ${slug}]`);
+                cache.set(slug, ui("m_8ffe88ed5f7f189a", [slug]));
                 continue;
             }
 
@@ -1145,13 +1146,13 @@ async function _resolveTransclusionsCore(text, depth, cache, pageSlug, options) 
                             }
                         } else {
                             if (!data || typeof data.content !== 'string') {
-                                cache.set(slug, `⚠️ [틀을 찾을 수 없음: ${slug}]`);
+                                cache.set(slug, ui("m_665c358abceedf94", [slug]));
                                 return;
                             }
                             // 틀 본문도 CRLF/CR → LF 정규화. 이후 펜스/`:::`/폴드 정규식과
                             // marked.lexer 의 `raw` 매칭이 어긋나지 않도록 한다.
                             const tplBody = data.content.replace(/\r\n?/g, '\n');
-                            const selfReferenceWarning = `⚠️ [자기 자신을 참조하는 틀은 사용할 수 없습니다: ${slug}]`;
+                            const selfReferenceWarning = ui("m_8ffe88ed5f7f189a", [slug]);
                             // 틀 본문 내부의 자기 참조를 치환. 중괄호 균형을 맞추는 파서로 호출을
                             // 찾기 때문에 인자 내부의 {button:...} 같은 토큰이 있어도 정확히 매칭한다.
                             const innerCalls = _findTemplateCalls(tplBody);
@@ -1178,9 +1179,9 @@ async function _resolveTransclusionsCore(text, depth, cache, pageSlug, options) 
                     })
                     .catch(() => {
                         if (extensionSlugs.has(slug)) {
-                            cache.set(slug, `⚠️ [익스텐션 로딩 실패: ${slug}]`);
+                            cache.set(slug, ui("m_99f6f81a8aa5b77d", [slug]));
                         } else {
-                            cache.set(slug, `⚠️ [틀 로딩 실패: ${slug}]`);
+                            cache.set(slug, ui("m_18d5c859522a679e", [slug]));
                         }
                     })
             );
@@ -1220,7 +1221,7 @@ async function _resolveTransclusionsCore(text, depth, cache, pageSlug, options) 
                 // :::meta 블록도 원본 텍스트로 새지 않도록 제거된다 — 문서를 단독으로 열 때와 동일.
                 const section = _sliceMarkdownSection(_applyDocMetaVars(cached), secRef.anchor);
                 if (section === null) {
-                    replacement = `⚠️ [섹션을 찾을 수 없음: ${slug}#${secRef.anchor}]`;
+                    replacement = ui("m_2656e8b39e17148b", [slug, secRef.anchor]);
                 } else {
                     let expanded = _substituteTemplateParams(section, call.args);
                     expanded = _replaceSelfCalls(expanded, slug);
@@ -1234,7 +1235,7 @@ async function _resolveTransclusionsCore(text, depth, cache, pageSlug, options) 
                 // 워크스페이스 등 익스텐션 미지원 컨텍스트: 메인 위키로 새지 않도록 안내로 치환.
                 const colonIdx = trimmed.indexOf(':');
                 const extName = colonIdx > 0 ? trimmed.substring(0, colonIdx) : trimmed;
-                replacement = `⚠️ [이 공간에서는 익스텐션을 사용할 수 없습니다: ${extName}]`;
+                replacement = ui("m_0d17e8f2f3b4b01b", [extName]);
             } else {
                 const cached = cache.get(trimmed);
                 if (!cached) {
@@ -1242,7 +1243,7 @@ async function _resolveTransclusionsCore(text, depth, cache, pageSlug, options) 
                 } else if (typeof cached === 'string') {
                     replacement = cached; // 에러 메시지
                 } else if (cached._disabled) {
-                    replacement = `⚠️ [비활성화된 익스텐션: ${cached.extName}]`;
+                    replacement = ui("m_f3555cb4161683af", [cached.extName]);
                 } else if (options.emitExtensionPlaceholders) {
                     const idx = _wikiExtensionData.length;
                     // 호출 인자 중 익스텐션 슬러그를 가리키는 값들을 secondary 로 해소.
@@ -1258,7 +1259,7 @@ async function _resolveTransclusionsCore(text, depth, cache, pageSlug, options) 
                                     secondary[argVal] = { slug: argVal, content: sub.content, title: sub.title };
                                 }
                             } else {
-                                secondary[argVal] = { slug: argVal, error: typeof sub === 'string' ? sub : '참조를 찾을 수 없습니다.' };
+                                secondary[argVal] = { slug: argVal, error: typeof sub === 'string' ? sub : ui("m_99fe9a1adeedd774") };
                             }
                         }
                     }
@@ -1487,7 +1488,7 @@ function _renderCategoryPagination(category, page, totalPages) {
         html += make(totalPages, String(totalPages), false, page === totalPages);
     }
     html += make(Math.min(totalPages, page + 1), '›', page >= totalPages, false);
-    return `<nav class="category-pagination" aria-label="카테고리 페이지">${html}</nav>`;
+    return ui("m_08dc5eb1c11ebf43", [html]);
 }
 
 // 카테고리별 전체 정렬 결과 캐시. SPA 세션 내에서 stale 데이터를 막기 위해 짧은 TTL 적용.
@@ -1535,10 +1536,7 @@ async function fetchCategoryList(category, page) {
         const total = items.length;
 
         if (total === 0) {
-            return `<div class="category-list mt-4" data-category="${catAttr}" data-cpage="1">
-                <h4><i class="bi bi-folder2-open"></i> "${escapeHtml(category)}" 카테고리에 속한 문서</h4>
-                <div class="alert alert-light border text-center my-4">이 카테고리에 속한 문서가 없습니다.</div>
-            </div>`;
+            return ui("m_c2cd9cfee65451aa", [catAttr, escapeHtml(category)]);
         }
 
         const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -1569,17 +1567,12 @@ async function fetchCategoryList(category, page) {
         const pagination = _renderCategoryPagination(category, curPage, totalPages);
         const startIdx = startIdx0 + 1;
         const endIdx = startIdx0 + pageItems.length;
-        const summary = `<div class="category-summary text-muted small mb-2">총 ${total}개 문서 · ${startIdx}–${endIdx} 표시</div>`;
+        const summary = ui("m_bc8405d47500e07c", [total, startIdx, endIdx]);
 
-        return `<div class="category-list mt-4" data-category="${catAttr}" data-cpage="${curPage}">
-            <h4><i class="bi bi-folder2-open"></i> "${escapeHtml(category)}" 카테고리에 속한 문서</h4>
-            ${summary}
-            <div class="category-groups">${groupsHtml}</div>
-            ${pagination}
-        </div>`;
+        return ui("m_e28ae288f825c900", [catAttr, curPage, escapeHtml(category), summary, groupsHtml, pagination]);
     } catch (e) {
         console.error(e);
-        return '<div class="alert alert-danger">카테고리 목록을 불러오는 데 실패했습니다.</div>';
+        return ui("m_1717ee6c7d32ee5f");
     }
 }
 
@@ -1817,11 +1810,11 @@ function _buildInlineTocLayout(containerEl) {
     head.className = 'wiki-toc-card-head';
     const label = document.createElement('span');
     label.className = 'wiki-toc-card-title';
-    label.innerHTML = '<i class="bi bi-list-columns-reverse"></i> 목차';
+    label.innerHTML = ui("m_dfda0f129346a004");
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'wiki-toc-card-toggle';
-    toggle.setAttribute('aria-label', '목차 접기/펼치기');
+    toggle.setAttribute('aria-label', ui("m_31fcc45938eda752"));
     toggle.setAttribute('aria-expanded', 'true');
     toggle.innerHTML = '<i class="bi bi-chevron-up"></i>';
     head.appendChild(label);
@@ -1939,7 +1932,7 @@ async function _copySectionLinkToClipboard(url) {
     if (ok && typeof Swal !== 'undefined') {
         Swal.fire({
             icon: 'success',
-            title: '섹션 링크가 복사되었습니다.',
+            title: ui("m_f777d92481925194"),
             toast: true,
             position: 'top-end',
             timer: 1500,
@@ -2233,7 +2226,7 @@ function processWikiLinks(contentEl) {
                 } else {
                     const errSpan = document.createElement('span');
                     errSpan.className = 'text-danger';
-                    errSpan.title = '알 수 없는 아이콘 접두사: bi- 또는 mdi-로 시작해야 합니다';
+                    errSpan.title = ui("m_a17ac6d1dceeb395");
                     errSpan.textContent = part;
                     frag.appendChild(errSpan);
                 }
@@ -2293,7 +2286,7 @@ function processMentions(contentEl, mentionUsers) {
                     // 삭제/알 수 없는 사용자
                     const span = document.createElement('span');
                     span.className = 'wiki-mention wiki-mention-unknown';
-                    span.textContent = '@(알 수 없음)';
+                    span.textContent = ui("m_089832cdf853a5a7");
                     frag.appendChild(span);
                 }
             } else if (part) {
@@ -2406,7 +2399,7 @@ function processFootnotes(contentEl) {
     if (order.length > 0) {
         const fnSection = document.createElement('div');
         fnSection.className = 'wiki-footnotes';
-        fnSection.innerHTML = `<hr><h4><i class="bi bi-card-text"></i> 각주</h4>`;
+        fnSection.innerHTML = ui("m_56858b992eccdad0");
 
         const ol = document.createElement('ol');
         order.forEach(entry => {
@@ -2423,7 +2416,7 @@ function processFootnotes(contentEl) {
                 backLink.href = `#${entry.refIds[0]}`;
                 backLink.className = 'wiki-fn-back';
                 backLink.innerHTML = '<i class="bi bi-arrow-return-left"></i>';
-                backLink.title = '본문으로 돌아가기';
+                backLink.title = ui("m_06ced4f71513d64c");
                 backLink.onclick = (e) => {
                     e.preventDefault();
                     document.getElementById(entry.refIds[0])?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2435,7 +2428,7 @@ function processFootnotes(contentEl) {
                     backLink.href = `#${rid}`;
                     backLink.className = 'wiki-fn-back wiki-fn-back-multi';
                     backLink.textContent = _fnBackLabel(i);
-                    backLink.title = '이 참조 위치로 돌아가기';
+                    backLink.title = ui("m_62fd567d662ad0cb");
                     backLink.onclick = (e) => {
                         e.preventDefault();
                         document.getElementById(rid)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2445,7 +2438,7 @@ function processFootnotes(contentEl) {
             }
 
             const span = document.createElement('span');
-            span.innerHTML = ' ' + (entry.html != null ? entry.html : '<span class="text-muted">(내용 없음)</span>');
+            span.innerHTML = ' ' + (entry.html != null ? entry.html : ui("m_437d685c16379e87"));
 
             li.appendChild(span);
             ol.appendChild(li);
@@ -2485,7 +2478,7 @@ function extractPlainTextWithFootnotes(contentEl) {
     else parent.appendChild(fnSection);
 
     if (lines.length === 0) return bodyText;
-    return `${bodyText.replace(/\s+$/, '')}\n\n각주\n${lines.join('\n')}`;
+    return ui("m_f6d4a77dd09ea3ff", [bodyText.replace(/\s+$/, ''), lines.join('\n')]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2608,11 +2601,11 @@ function buildPortableHtml(contentEl, options) {
         if (png) {
             const img = document.createElement('img');
             img.src = png;
-            img.alt = '차트';
+            img.alt = ui("m_c8084b4d279d80e4");
             img.style.maxWidth = '100%';
             p.appendChild(img);
         } else {
-            p.textContent = '(차트)';
+            p.textContent = ui("m_2aaabf1589c3491c");
         }
         fig.replaceWith(p);
     });
@@ -2626,7 +2619,7 @@ function buildPortableHtml(contentEl, options) {
                 const ser = new XMLSerializer().serializeToString(svg);
                 const img = document.createElement('img');
                 img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(ser)));
-                img.alt = '다이어그램';
+                img.alt = ui("m_b49df9362b9fc04c");
                 img.style.maxWidth = '100%';
                 replaced = document.createElement('p');
                 replaced.appendChild(img);
@@ -2634,7 +2627,7 @@ function buildPortableHtml(contentEl, options) {
         }
         if (!replaced) {
             replaced = document.createElement('p');
-            replaced.textContent = '(다이어그램)';
+            replaced.textContent = ui("m_63e09b6ec1e9d6f7");
         }
         fig.replaceWith(replaced);
     });
@@ -2664,7 +2657,7 @@ function buildPortableHtml(contentEl, options) {
         const panes = Array.from(tabs.querySelectorAll(':scope > .tab-content > .tab-pane'));
         const frag = document.createDocumentFragment();
         panes.forEach((pane, i) => {
-            frag.appendChild(makeTitleP(titles[i] || `탭 ${i + 1}`));
+            frag.appendChild(makeTitleP(titles[i] || ui("m_5c2a8f867bc8be99", [i + 1])));
             while (pane.firstChild) frag.appendChild(pane.firstChild);
         });
         tabs.replaceWith(frag);
@@ -2675,7 +2668,7 @@ function buildPortableHtml(contentEl, options) {
         const frag = document.createDocumentFragment();
         Array.from(acc.querySelectorAll(':scope > .accordion-item')).forEach((item, i) => {
             const btn = item.querySelector('.accordion-button');
-            frag.appendChild(makeTitleP(btn ? flattenLabel(btn) : `항목 ${i + 1}`));
+            frag.appendChild(makeTitleP(btn ? flattenLabel(btn) : ui("m_7128e1015a8dd3dc", [i + 1])));
             const body = item.querySelector('.accordion-body');
             if (body) { while (body.firstChild) frag.appendChild(body.firstChild); }
         });
@@ -3751,7 +3744,7 @@ function _renderBlockHtml(block, blockData) {
                 // 상태 키도 복원본 기준이어야 문서의 다른 코드 스팬 개수 변화에 따라
                 // placeholder 인덱스를 타고 키가 흔들리지 않는다.
                 const tabLabel = _restoreCodeSpans(meta.cleanTitle);
-                const labelEsc = _escapeLabelWithCodeSpans(tabLabel || `탭 ${i + 1}`);
+                const labelEsc = _escapeLabelWithCodeSpans(tabLabel || ui("m_5c2a8f867bc8be99", [i + 1]));
                 const tabKey = _makeStateKey('tab', tabLabel || `tab-${i}`);
                 // {id:이름} 딥링크 앵커: 패널 내부 첫 자식으로 marker span 을 심어
                 // [[문서#이름]] 이동 시 getElementById → _expandAncestorsForScroll 이
@@ -3770,7 +3763,7 @@ function _renderBlockHtml(block, blockData) {
                 const childInner = _renderChildInnerHtml(child.innerText, blockData);
                 panes.push(
                     `<div class="tab-pane fade${isActive ? ' show active' : ''}" id="${tabId}" ` +
-                    `role="tabpanel" aria-labelledby="${navId}" tabindex="0" data-state-key="${tabKey}">${anchorMarker}${childInner}</div>`
+                    ui("m_326c02a5cb9ae742", [navId, tabKey, anchorMarker, childInner])
                 );
             });
             return `<div class="wiki-tabs">` +
@@ -3804,7 +3797,7 @@ function _renderBlockHtml(block, blockData) {
                 }
                 const iconHtml = meta.tokens.icon ? _iconHtmlFromToken(meta.tokens.icon) + ' ' : '';
                 const itemLabel = _restoreCodeSpans(meta.cleanTitle);
-                const labelEsc = _escapeLabelWithCodeSpans(itemLabel || `항목 ${i + 1}`);
+                const labelEsc = _escapeLabelWithCodeSpans(itemLabel || ui("m_7128e1015a8dd3dc", [i + 1]));
                 const parentAttr = allowMultiple ? '' : ` data-bs-parent="#${groupId}"`;
                 const childInner = _renderChildInnerHtml(child.innerText, blockData);
                 const accKey = _makeStateKey('acc', itemLabel || `item-${i}`);
@@ -3834,7 +3827,7 @@ function _renderBlockHtml(block, blockData) {
                     status: { type: 'enum', values: ['done', 'current', 'todo'] }
                 });
                 const status = meta.tokens.status || 'todo';
-                const labelEsc = _escapeLabelWithCodeSpans(_restoreCodeSpans(meta.cleanTitle) || `${i + 1}단계`);
+                const labelEsc = _escapeLabelWithCodeSpans(_restoreCodeSpans(meta.cleanTitle) || ui("m_977c0c00c8ebaa5e", [i + 1]));
                 const ariaCurrent = status === 'current' ? ' aria-current="step"' : '';
                 const iconCls = status === 'done' ? 'bi-check-circle-fill'
                               : status === 'current' ? 'bi-circle-fill'
@@ -3876,7 +3869,7 @@ function _renderBlockHtml(block, blockData) {
             const visible = type === 'until' ? !passed : passed;
             const hiddenAttr = visible ? '' : ' hidden';
             return `<div class="wiki-temporal wiki-temporal-${type}"${hiddenAttr} ` +
-                `data-temporal-ms="${boundaryMs}" data-temporal-mode="${type}">${innerHtml}</div>`;
+                ui("m_61ebde6ce0278343", [boundaryMs, type, innerHtml]);
         }
         case 'embed': {
             const accentRaw = (bg && _isSafeCssColor(bg)) ? bg
@@ -3897,12 +3890,12 @@ function _renderBlockHtml(block, blockData) {
         case 'note': {
             // Bootstrap .alert 변종으로 매핑. note/tip 은 BS 에 직접 대응이 없어 secondary/info 로.
             const calloutMeta = {
-                info:    { icon: 'mdi-information-outline',   title: '정보',   bsVariant: 'info' },
-                tip:     { icon: 'mdi-lightbulb-on-outline',  title: '팁',     bsVariant: 'info' },
-                success: { icon: 'mdi-check-circle-outline',  title: '성공',   bsVariant: 'success' },
-                warning: { icon: 'mdi-alert-outline',         title: '주의',   bsVariant: 'warning' },
-                danger:  { icon: 'mdi-alert-octagon-outline', title: '위험',   bsVariant: 'danger' },
-                note:    { icon: 'mdi-note-text-outline',     title: '노트',   bsVariant: 'secondary' }
+                info:    { icon: 'mdi-information-outline',   title: ui("m_b8cf07ac906c8124"),   bsVariant: 'info' },
+                tip:     { icon: 'mdi-lightbulb-on-outline',  title: ui("m_d9fcd43cf85293f6"),     bsVariant: 'info' },
+                success: { icon: 'mdi-check-circle-outline',  title: ui("m_b4f76a33b89bb947"),   bsVariant: 'success' },
+                warning: { icon: 'mdi-alert-outline',         title: ui("m_acc90fbf66686d20"),   bsVariant: 'warning' },
+                danger:  { icon: 'mdi-alert-octagon-outline', title: ui("m_baaff05e434f85e3"),   bsVariant: 'danger' },
+                note:    { icon: 'mdi-note-text-outline',     title: ui("m_a34b4d0aafc9ecfd"),   bsVariant: 'secondary' }
             }[type];
             const headerTitle = titleHtml || escapeHtml(calloutMeta.title);
             return `<div class="alert alert-${calloutMeta.bsVariant} wiki-callout wiki-callout-${type}" role="note">` +
@@ -4395,7 +4388,7 @@ function _computeDdayText(dateStr) {
         if (target === null) return null;
         const diff = Math.round((target - today) / (1000 * 60 * 60 * 24));
         if (diff === 0) return 'D-Day';
-        return `${diff}일 남음`;
+        return ui("m_37f9f3b4dae3a0c2", [diff]);
     }
 
     if (parts.length !== 3) return null;
@@ -4403,9 +4396,9 @@ function _computeDdayText(dateStr) {
     target.setHours(0, 0, 0, 0);
     if (isNaN(target.getTime())) return null;
     const diff = Math.round((target - today) / (1000 * 60 * 60 * 24));
-    if (diff > 0) return `${diff}일 남음`;
+    if (diff > 0) return ui("m_37f9f3b4dae3a0c2", [diff]);
     if (diff === 0) return 'D-Day';
-    return `${Math.abs(diff)}일 지남`;
+    return ui("m_bd5fc8d9d63144b5", [Math.abs(diff)]);
 }
 
 /** {time:UNIX} → 날짜+시간 문자열 */
@@ -4428,13 +4421,13 @@ function _computeTimerText(unixSec) {
     const minutes = Math.floor((s % 3600) / 60);
     const seconds = s % 60;
     const parts = [];
-    if (years   > 0) parts.push(`${years}년`);
-    if (months  > 0) parts.push(`${months}달`);
-    if (days    > 0) parts.push(`${days}일`);
-    if (hours   > 0) parts.push(`${hours}시간`);
-    if (minutes > 0) parts.push(`${minutes}분`);
-    if (seconds > 0 || parts.length === 0) parts.push(`${seconds}초`);
-    return parts.join(' ') + (diff >= 0 ? ' 남음' : ' 지남');
+    if (years   > 0) parts.push(ui("m_660be8dc05756f29", [years]));
+    if (months  > 0) parts.push(ui("m_b2a75ffc664cfb3e", [months]));
+    if (days    > 0) parts.push(ui("m_24c9da1e988be3bc", [days]));
+    if (hours   > 0) parts.push(ui("m_e4ed44191d2c228b", [hours]));
+    if (minutes > 0) parts.push(ui("m_8ef0c1f1977d2540", [minutes]));
+    if (seconds > 0 || parts.length === 0) parts.push(ui("m_f16a85a9e93a8699", [seconds]));
+    return parts.join(' ') + (diff >= 0 ? ui("m_79e1a55bcaec418e") : ui("m_cd887be638763115"));
 }
 
 // containerId → intervalId (타이머 중복 방지)
@@ -4645,7 +4638,7 @@ function _computeAge(dateStr) {
     const m = today.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
     if (age < 0) return null;
-    return `${age}세`;
+    return ui("m_111ec068b7c8a9e8", [age]);
 }
 
 /** HTML 문자열 내의 타임스탬프 문법을 span 태그로 치환 (코드블록 제외) */
@@ -4666,7 +4659,7 @@ function _processTimestampsInHtml(html) {
         const text = _computeDdayText(dateStr);
         if (text === null) return match;
         const cls = text === 'D-Day' ? 'wiki-dday wiki-dday-today'
-            : text.endsWith('남음') ? 'wiki-dday wiki-dday-future'
+            : text === ui("m_37f9f3b4dae3a0c2", [parseInt(text.replace(/[^0-9]/g, ''), 10)]) ? 'wiki-dday wiki-dday-future'
             : 'wiki-dday wiki-dday-past';
         return `<span class="${cls}" title="${dateStr}">${text}</span>`;
     });
@@ -4674,13 +4667,13 @@ function _processTimestampsInHtml(html) {
     html = html.replace(/\{time:(\d+)\}/g, (match, unixStr) => {
         const text = _formatUnixTime(parseInt(unixStr, 10));
         if (text === null) return match;
-        return `<span class="wiki-timestamp" title="Unix: ${unixStr}">${text}</span>`;
+        return ui("m_c716bb70a4231be0", [unixStr, text]);
     });
     // {timer:UNIX}
     html = html.replace(/\{timer:(\d+)\}/g, (match, unixStr) => {
         const unix = parseInt(unixStr, 10);
         const text = _computeTimerText(unix);
-        return `<span class="wiki-timer" data-unix="${unix}" title="Unix: ${unixStr}">${text}</span>`;
+        return ui("m_36a083a833558006", [unix, unixStr, text]);
     });
     // {age:YYYY-MM-DD}
     html = html.replace(/\{age:(\d{4}-\d{2}-\d{2})\}/g, (match, dateStr) => {
@@ -4690,8 +4683,8 @@ function _processTimestampsInHtml(html) {
     });
     // {calendar:YYYY-MM-DD} 또는 {calendar:MM-DD} (연도 생략)
     html = html.replace(/\{calendar:(?:(\d{4})-)?(\d{2})-(\d{2})\}/g, (match, yearStr, monthStr, dayStr) => {
-        const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-        const dayNames = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+        const monthNames = [ui("m_d1f9295e8d370952"),ui("m_811d5d8a6b790167"),ui("m_310010d93f058b83"),ui("m_9d74e6caa95d1e81"),ui("m_3bfa4068589f0a55"),ui("m_b12d17822d583bf0"),ui("m_add36baea45c759b"),ui("m_5f0127f701deadad"),ui("m_b16a827d17339118"),ui("m_e0583d626b98ba7c"),ui("m_5e12e956c42b0eb6"),ui("m_c1ea3f913a36afc5")];
+        const dayNames = [ui("m_1094b7d96a9a4109"),ui("m_6c95540e90f1a668"),ui("m_94e234f76b8eab7e"),ui("m_4ee1e5308220dcf1"),ui("m_42d1a6367432ff8e"),ui("m_a594e9b583050ec4"),ui("m_9f4eef79554b65d0")];
         const getDowClass = (dayOfWeek) => dayOfWeek === 0 ? ' wiki-cal-sun' : dayOfWeek === 6 ? ' wiki-cal-sat' : '';
         const month = parseInt(monthStr, 10);
         const day = parseInt(dayStr, 10);
@@ -4720,7 +4713,7 @@ function _processTimestampsInHtml(html) {
         const isValidDate = !isNaN(d.getTime()) && d.getFullYear() === currentYear && d.getMonth() === month - 1 && d.getDate() === day;
         const dowHtml = isValidDate
             ? `<span class="wiki-cal-dow${getDowClass(d.getDay())}">${dayNames[d.getDay()]}</span>`
-            : `<span class="wiki-cal-dow">&nbsp;</span>`;
+            : ui("m_e09647e56f8b7b25");
         return `<span class="wiki-calendar-box wiki-calendar-box--no-year" title="${monthStr}-${dayStr}">` +
             `<span class="wiki-cal-month">${monthName}</span>` +
             `<span class="wiki-cal-day">${day}</span>` +
@@ -5026,7 +5019,7 @@ function _sortWikiTableByColumn(table, headRow, colIdx) {
         if (a.text === '' && b.text === '') return 0;
         if (a.text === '') return 1; // 빈 셀은 정렬 방향과 무관하게 항상 뒤로
         if (b.text === '') return -1;
-        const cmp = numeric ? (a.num - b.num) : a.text.localeCompare(b.text, 'ko');
+        const cmp = numeric ? (a.num - b.num) : a.text.localeCompare(b.text, getLocale());
         return cmp * dir;
     });
     keyed.forEach(k => tbody.appendChild(k.tr));
@@ -5820,17 +5813,17 @@ async function renderWikiContent(content, slug, containerId, options = {}) {
                     e.preventDefault();
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
-                            title: '외부 링크 이동',
-                            html: `외부 링크 <b>${escapeHtml(href)}</b> 로 이동합니다.<br>계속하시겠습니까?`,
+                            title: ui("m_2ab2d25416cb9437"),
+                            html: ui("m_586d87d9a8dd8005", [escapeHtml(href)]),
                             icon: 'warning',
                             showCancelButton: true,
-                            confirmButtonText: '예',
-                            cancelButtonText: '아니오'
+                            confirmButtonText: ui("m_2eb73fba696e2fe4"),
+                            cancelButtonText: ui("m_4c490f1ca1d756f8")
                         }).then((result) => {
                             if (result.isConfirmed) window.open(href, '_blank');
                         });
                     } else {
-                        if (confirm(`외부 링크 ${href} 로 이동하시겠습니까?`)) {
+                        if (confirm(ui("m_1bd9c7624573e401", [href]))) {
                             window.open(href, '_blank');
                         }
                     }
@@ -5917,7 +5910,7 @@ async function renderWikiContent(content, slug, containerId, options = {}) {
             const link = document.createElement('a');
             link.href = `${_renderCtx.imageDocLinkBase}/${encodeURIComponent('이미지:' + filename)}`;
             link.className = 'wiki-image-link';
-            link.setAttribute('aria-label', `이미지 문서 보기: ${filename}`);
+            link.setAttribute('aria-label', ui("m_9de1e8f20f53773d", [filename]));
             img.parentNode.insertBefore(link, img);
             link.appendChild(img);
         });
@@ -5964,7 +5957,7 @@ async function renderWikiContent(content, slug, containerId, options = {}) {
             figure.className = 'mermaid-figure';
             figure.setAttribute('role', 'img');
             figure.dataset.src = src;
-            figure.innerHTML = '<div class="mermaid-loading"><span class="spinner-border spinner-border-sm"></span> 다이어그램 렌더링 중…</div>';
+            figure.innerHTML = ui("m_998f8bc6d96891d4");
             pre.parentNode.replaceChild(figure, pre);
             hasMermaid = true;
         });
@@ -5986,7 +5979,7 @@ async function renderWikiContent(content, slug, containerId, options = {}) {
             figure.className = 'wiki-chart-figure';
             figure.setAttribute('role', 'img');
             figure.dataset.src = src;
-            figure.innerHTML = '<div class="wiki-chart-loading"><span class="spinner-border spinner-border-sm"></span> 차트 렌더링 중…</div>';
+            figure.innerHTML = ui("m_f686e06a1e3e59ab");
             pre.parentNode.replaceChild(figure, pre);
             hasChart = true;
         });
@@ -6015,7 +6008,7 @@ async function renderWikiContent(content, slug, containerId, options = {}) {
 
             const copyBtn = document.createElement('button');
             copyBtn.className = 'btn-copy-code';
-            copyBtn.title = '코드 복사';
+            copyBtn.title = ui("m_2fd5fe4b1f06d612");
             copyBtn.innerHTML = '<i class="bi bi-copy"></i>';
 
             copyBtn.onclick = async () => {
@@ -6181,7 +6174,7 @@ function _setupArticleTitleCopy() {
         if (ok && typeof Swal !== 'undefined') {
             Swal.fire({
                 icon: 'success',
-                title: '제목이 복사되었습니다.',
+                title: ui("m_45b2dba76f782b4a"),
                 toast: true,
                 position: 'top-end',
                 timer: 1500,
@@ -6399,7 +6392,7 @@ function _addHeadingCopyButtons(containerEl, resolvedContent, options = {}) {
 
         const copyBtn = document.createElement('button');
         copyBtn.className = 'wiki-heading-copy-btn';
-        copyBtn.title = '섹션 마크다운 복사';
+        copyBtn.title = ui("m_a9a082320a57a6aa");
         copyBtn.type = 'button';
         copyBtn.innerHTML = '<i class="bi bi-copy"></i>';
 
@@ -6428,7 +6421,7 @@ function _addHeadingCopyButtons(containerEl, resolvedContent, options = {}) {
             if (ok && typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'success',
-                    title: '문단이 복사되었습니다.',
+                    title: ui("m_75a4500c1bfe7e1f"),
                     toast: true,
                     position: 'top-end',
                     timer: 1500,
@@ -6454,7 +6447,7 @@ function _addHeadingCopyButtons(containerEl, resolvedContent, options = {}) {
         if (!options.hideSectionLinkCopy) {
             linkBtn = document.createElement('button');
             linkBtn.className = 'wiki-heading-link-btn';
-            linkBtn.title = '섹션 링크 복사';
+            linkBtn.title = ui("m_fd9385f42fbeb3bb");
             linkBtn.type = 'button';
             linkBtn.innerHTML = '<i class="bi bi-link-45deg"></i>';
             linkBtn.onclick = async (e) => {
@@ -6495,8 +6488,8 @@ function _addHeadingCopyButtons(containerEl, resolvedContent, options = {}) {
 
             const editLink = document.createElement('a');
             editLink.className = 'wiki-heading-edit-btn';
-            editLink.title = '이 섹션만 편집';
-            editLink.setAttribute('aria-label', '섹션 편집');
+            editLink.title = ui("m_58fd747e504105e2");
+            editLink.setAttribute('aria-label', ui("m_0587feed32dce2b1"));
             const params = new URLSearchParams({
                 slug: editSlug,
                 section: String(rawIdx),
@@ -6532,15 +6525,15 @@ function _updateDocumentStatsCounter(text) {
     const chars = str.replace(/\s/g, '').length;
     const trimmed = str.trim();
     const words = trimmed ? trimmed.split(/\s+/).length : 0;
-    const fmt = (n) => n.toLocaleString();
+    const fmt = (n) => n.toLocaleString(getLocale());
     const set = (key, val) => {
         const el = root.querySelector(`[data-counter="${key}"]`);
         if (el) el.textContent = val;
     };
-    set('lines', `${fmt(lines)}줄`);
-    set('chars', `${fmt(chars)}자`);
-    set('charsWithSpaces', `${fmt(charsWithSpaces)}자(공백포함)`);
-    set('words', `${fmt(words)}단어`);
+    set('lines', ui("m_6d483574d6f62c82", [fmt(lines)]));
+    set('chars', ui("m_3f461b232fc684b2", [fmt(chars)]));
+    set('charsWithSpaces', ui("m_6677dacfda7bd1cf", [fmt(charsWithSpaces)]));
+    set('words', ui("m_6f884f72025f6d53", [fmt(words)]));
     root.classList.remove('d-none');
 }
 
@@ -6581,7 +6574,7 @@ function _extLoadScript(src, opts) {
             // 전체 새로고침 전까지 freq 등이 복구되지 못한다.
             delete _extScriptPromises[src];
             if (s.parentNode) s.parentNode.removeChild(s);
-            reject(new Error('익스텐션 스크립트 로드 실패: ' + src));
+            reject(new Error(ui("m_bba2df43bd36317f") + src));
         };
         document.body.appendChild(s);
     });
@@ -6622,7 +6615,7 @@ function defineExtension(manifest, renderer) {
     const name = manifest.name;
     const def = (typeof renderer === 'function') ? { render: renderer } : (renderer || {});
     if (typeof def.render !== 'function') {
-        console.error('[ext-sdk] defineExtension: render 함수 누락 (' + name + ')');
+        console.error(ui("m_04e6a6c23261a095") + name + ')');
         return;
     }
     window._extensionDefs[name] = def;
@@ -6641,8 +6634,8 @@ function defineExtension(manifest, renderer) {
         try {
             ret = def.render(el, extData, _extSdk);
         } catch (e) {
-            console.error('[ext-sdk] 익스텐션 렌더 실패 (' + name + '):', e);
-            el.innerHTML = `<div class="alert alert-danger mb-0">⚠️ 익스텐션 렌더 오류: ${escapeHtml(name)}</div>`;
+            console.error(ui("m_7330c8d77372b51b") + name + '):', e);
+            el.innerHTML = ui("m_816717780d53b2bf", [escapeHtml(name)]);
             recordDestroy(el);
             return;
         }
@@ -6650,8 +6643,8 @@ function defineExtension(manifest, renderer) {
             ret.catch((e) => {
                 // 이미 더 새로운 렌더로 교체됐다면(세대 불일치) 그 내용을 덮어쓰지 않는다.
                 if (el._extGen !== gen) return;
-                console.error('[ext-sdk] 익스텐션 비동기 렌더 실패 (' + name + '):', e);
-                el.innerHTML = `<div class="alert alert-danger mb-0">⚠️ 익스텐션 렌더 오류: ${escapeHtml(name)}</div>`;
+                console.error(ui("m_e2e16c57161e128a") + name + '):', e);
+                el.innerHTML = ui("m_816717780d53b2bf", [escapeHtml(name)]);
             });
             recordDestroy(el);
         } else if (typeof ret === 'function') {
@@ -6676,8 +6669,8 @@ function _rerenderExt(el) {
     try {
         renderer(el, extData);
     } catch (e) {
-        console.error('[ext-sdk] 익스텐션 재렌더 실패 (' + name + '):', e);
-        el.innerHTML = `<div class="alert alert-danger mb-0">⚠️ 익스텐션 렌더 오류: ${escapeHtml(name || '')}</div>`;
+        console.error(ui("m_221ffcbb2b08b016") + name + '):', e);
+        el.innerHTML = ui("m_816717780d53b2bf", [escapeHtml(name || '')]);
     }
 }
 
@@ -6711,7 +6704,7 @@ function _onExtThemeChange() {
         const def = window._extensionDefs && window._extensionDefs[name];
         if (def && typeof def.onThemeChange === 'function') {
             try { def.onThemeChange(el, _extSdk); }
-            catch (e) { console.error('[ext-sdk] onThemeChange 실패 (' + name + '):', e); _rerenderExt(el); }
+            catch (e) { console.error(ui("m_a2af293eb559a854") + name + '):', e); _rerenderExt(el); }
         } else if (def || typeof el._extDestroy === 'function') {
             // SDK 등록 익스텐션(def 존재)은 onThemeChange 미정의 시 항상 destroy+재렌더로 테마를
             // 반영한다(render 에서 ctx.theme 만 쓰고 정리 훅이 없는 확장도 갱신되도록). 레거시
@@ -6758,7 +6751,7 @@ function _processExtensions(containerEl, extensionData) {
             const extData = data ? data[extIdx] : null;
 
             if (!extData) {
-                el.innerHTML = '<div class="alert alert-warning">⚠️ 익스텐션 데이터를 찾을 수 없습니다.</div>';
+                el.innerHTML = ui("m_5270ec565b3f59aa");
                 el.dataset.extRendered = '1';
                 return;
             }
@@ -6771,15 +6764,15 @@ function _processExtensions(containerEl, extensionData) {
                 try {
                     renderer(el, extData);
                 } catch (e) {
-                    console.error('[ext-sdk] 익스텐션 렌더 실패 (' + extName + '):', e);
-                    el.innerHTML = `<div class="alert alert-danger mb-0">⚠️ 익스텐션 렌더 오류: ${escapeHtml(extName)}</div>`;
+                    console.error(ui("m_7330c8d77372b51b") + extName + '):', e);
+                    el.innerHTML = ui("m_816717780d53b2bf", [escapeHtml(extName)]);
                 }
                 el.dataset.extRendered = '1';
             } else if (retries > 0) {
                 // 등록 대기 — 재시도 큐에 둔다
                 pending.push(el);
             } else {
-                el.innerHTML = `<div class="alert alert-warning">⚠️ 알 수 없는 익스텐션: ${escapeHtml(extName)}</div>`;
+                el.innerHTML = ui("m_61b165a8c8808951", [escapeHtml(extName)]);
                 el.dataset.extRendered = '1';
             }
         });
@@ -6866,7 +6859,7 @@ async function _renderMermaidFigures(root) {
         mermaid = await _loadMermaid();
     } catch (err) {
         figures.forEach(fig => {
-            fig.innerHTML = '<div class="mermaid-error alert alert-warning mb-0">다이어그램 라이브러리를 불러오지 못했습니다.</div>';
+            fig.innerHTML = ui("m_98b3a605c4dfcab1");
         });
         _emitMermaidRendered();
         return;
@@ -6887,11 +6880,11 @@ async function _renderMermaidFigures(root) {
                 svgEl.removeAttribute('height');
                 svgEl.style.maxWidth = '100%';
             }
-            if (!fig.getAttribute('aria-label')) fig.setAttribute('aria-label', '다이어그램');
+            if (!fig.getAttribute('aria-label')) fig.setAttribute('aria-label', ui("m_b49df9362b9fc04c"));
         } catch (err) {
             // 잘못된 DSL 은 페이지를 깨지 않고 인라인 에러 박스로 표시.
             const msg = (err && err.message) ? err.message : String(err);
-            fig.innerHTML = `<div class="mermaid-error alert alert-warning mb-0"><strong>다이어그램 오류</strong><br><span class="small">${escapeHtml(msg)}</span></div>`;
+            fig.innerHTML = ui("m_3ca3edc2a96a0b58", [escapeHtml(msg)]);
             // mermaid 가 렌더 실패 시 body 에 남긴 임시 노드(d{renderId}) 정리.
             const orphan = document.getElementById('d' + renderId);
             if (orphan && orphan.parentNode) orphan.parentNode.removeChild(orphan);
@@ -6971,7 +6964,7 @@ function _parseWikiChartSource(src) {
     let inSeries = false;
     const parseList = (v, what) => {
         const m = v.trim().match(/^\[(.*)\]$/);
-        if (!m) throw new Error(`${what} 값은 [a, b, c] 형식이어야 합니다.`);
+        if (!m) throw new Error(ui("m_895ed39975f12244", [what]));
         return m[1].split(',').map(s => s.trim()).filter(s => s !== '');
     };
     for (const rawLine of lines) {
@@ -6981,45 +6974,45 @@ function _parseWikiChartSource(src) {
         if (inSeries && indented) {
             const ci = line.indexOf(':');
             const name = ci === -1 ? '' : line.slice(0, ci).trim();
-            if (!name) throw new Error(`시리즈 항목 형식 오류: "${line}" — "이름: [숫자, ...]" 형식이어야 합니다.`);
-            const nums = parseList(line.slice(ci + 1), `시리즈 "${name}"`).map(Number);
+            if (!name) throw new Error(ui("m_5a34b417191ccfc4", [line]));
+            const nums = parseList(line.slice(ci + 1), ui("m_834519cb468392f6", [name])).map(Number);
             if (nums.length === 0 || nums.some(n => !Number.isFinite(n))) {
-                throw new Error(`시리즈 "${name}" 값은 숫자 목록([120, 150, ...])이어야 합니다.`);
+                throw new Error(ui("m_05c591378dcc57d4", [name]));
             }
             series.push({ label: name, data: nums });
             continue;
         }
         inSeries = false;
         const ci = line.indexOf(':');
-        if (ci === -1) throw new Error(`알 수 없는 줄: "${line}"`);
+        if (ci === -1) throw new Error(ui("m_d2433aabb003afe2", [line]));
         const key = line.slice(0, ci).trim().toLowerCase();
         const value = line.slice(ci + 1).trim();
         if (key === 'type') {
             if (!WIKI_CHART_TYPES.includes(value)) {
-                throw new Error(`지원하지 않는 type: "${value}" — bar·line·pie·doughnut·radar 중 하나여야 합니다.`);
+                throw new Error(ui("m_c2930c6fbd88cc61", [value]));
             }
             type = value;
         } else if (key === 'labels') {
             labels = parseList(value, 'labels');
         } else if (key === 'series') {
-            if (value) throw new Error('series: 다음 줄부터 들여쓰기로 "이름: [숫자, ...]" 를 나열합니다.');
+            if (value) throw new Error(ui("m_d5c2dee002704944"));
             inSeries = true;
         } else {
-            throw new Error(`알 수 없는 키: "${key}" — type·labels·series 만 지원합니다(시리즈 항목은 들여쓰기 필요).`);
+            throw new Error(ui("m_ab81ac6483934fb3", [key]));
         }
     }
-    if (!type) throw new Error('type 이 필요합니다 (bar·line·pie·doughnut·radar).');
-    if (!labels || labels.length === 0) throw new Error('labels 가 필요합니다 (예: labels: [1Q, 2Q, 3Q, 4Q]).');
-    if (series.length === 0) throw new Error('series 항목이 최소 1개 필요합니다.');
-    if (series.length > 8) throw new Error('시리즈는 최대 8개까지 지원합니다.');
+    if (!type) throw new Error(ui("m_0e36ab1fef14b593"));
+    if (!labels || labels.length === 0) throw new Error(ui("m_ed77553468de39f6"));
+    if (series.length === 0) throw new Error(ui("m_30bbebfd650e1342"));
+    if (series.length > 8) throw new Error(ui("m_825f2c4976ebc036"));
     if ((type === 'pie' || type === 'doughnut') && labels.length > 8) {
-        throw new Error('pie/doughnut 차트는 항목(labels)을 최대 8개까지 지원합니다.');
+        throw new Error(ui("m_b47794ae85254045"));
     }
     // 값 개수가 labels 와 다르면 Chart.js 가 빈 칸/라벨 없는 점을 조용히 렌더해
     // 잘못된 데이터로 보일 수 있으므로 명시적으로 거부한다.
     for (const s of series) {
         if (s.data.length !== labels.length) {
-            throw new Error(`시리즈 "${s.label}" 값 개수(${s.data.length})가 labels 개수(${labels.length})와 일치해야 합니다.`);
+            throw new Error(ui("m_8d2ec125e902f5db", [s.label, s.data.length, labels.length]));
         }
     }
     return { type, labels, series };
@@ -7120,20 +7113,20 @@ function _renderWikiChartFigure(fig) {
         parsed = _parseWikiChartSource(fig.dataset.src || '');
     } catch (err) {
         const msg = (err && err.message) ? err.message : String(err);
-        fig.innerHTML = `<div class="wiki-chart-error alert alert-warning mb-0"><strong>차트 오류</strong><br><span class="small">${escapeHtml(msg)}</span></div>`;
+        fig.innerHTML = ui("m_1674c85d9fa4ee82", [escapeHtml(msg)]);
         return;
     }
     fig.innerHTML = '';
     const canvas = document.createElement('canvas');
     fig.appendChild(canvas);
     if (!fig.getAttribute('aria-label')) {
-        fig.setAttribute('aria-label', `차트: ${parsed.series.map(s => s.label).join(', ')}`);
+        fig.setAttribute('aria-label', ui("m_1b47559afb653720", [parsed.series.map(s => s.label).join(', ')]));
     }
     try {
         fig._wikiChart = new window.Chart(canvas, _buildWikiChartConfig(parsed));
     } catch (err) {
         console.error('위키 차트 렌더 실패:', err);
-        fig.innerHTML = '<div class="wiki-chart-error alert alert-warning mb-0">차트를 렌더링하지 못했습니다.</div>';
+        fig.innerHTML = ui("m_19c8b1eaaa5b3232");
     }
 }
 
@@ -7146,7 +7139,7 @@ async function _renderWikiChartFigures(root) {
     } catch (err) {
         console.error('Chart.js 로드 실패:', err);
         figures.forEach(fig => {
-            fig.innerHTML = '<div class="wiki-chart-error alert alert-warning mb-0">차트 라이브러리를 불러오지 못했습니다.</div>';
+            fig.innerHTML = ui("m_3a92f0945a5ebe34");
         });
         return;
     }

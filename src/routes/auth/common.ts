@@ -1,3 +1,4 @@
+import { ui } from '../../i18n/server';
 import type { Context } from 'hono';
 import type { Env } from '../../types';
 import type { OAuthProfile } from './providers/base';
@@ -141,7 +142,7 @@ export async function handleOAuthLogin(c: Context<Env>, profile: OAuthProfile, r
         .first<{ id: number }>();
 
     if (!user) {
-        return c.redirect('/error?reason=' + encodeURIComponent('계정 생성에 실패했습니다. 다시 시도해주세요.'));
+        return c.redirect('/error?reason=' + encodeURIComponent(ui("m_69ce7e22c1a4418a")));
     }
 
     // 3. 세션 생성 + 쿠키 발급

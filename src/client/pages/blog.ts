@@ -10,6 +10,7 @@
 //    deleteBlogPost / shareNative / shareCopyLink / shareCopyText / shareCopyMarkdown /
 //    sharePrint / shareAskClaude / shareAskChatGPT)는 파일 끝에서 window.* 로 노출한다.
 
+import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 const BLOG_LIST_LIMIT = 20;
 let blogCurrentOffset = 0;
 let blogTotalCount = 0;
@@ -26,7 +27,7 @@ function escHtml(str) {
 
 function formatDate(unixTs) {
   const d = new Date(unixTs * 1000);
-  return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  return d.toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function showView(id) {
@@ -45,19 +46,19 @@ async function loadBlogList(offset) {
   showView('blogList');
   try {
     const res = await fetch(`/api/blog?limit=${BLOG_LIST_LIMIT}&offset=${blogCurrentOffset}`);
-    if (!res.ok) throw new Error('목록 로드 실패');
+    if (!res.ok) throw new Error(ui("m_31173ef0f1720547"));
     const data = await res.json();
     blogTotalCount = data.total || 0;
 
     const listEl = document.getElementById('blogPostsList');
     if (!data.posts || data.posts.length === 0) {
-      listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-journal-text', title: '포스트가 없습니다', text: '아직 발행된 블로그 글이 없습니다.' });
+      listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-journal-text', title: ui("m_0d4c50e88af7eca4"), text: ui("m_4e808334eb8abe41") });
     } else {
       listEl.innerHTML = data.posts.map(post => `
         <div class="border-bottom pb-3 mb-3 d-flex gap-3 align-items-start ${post.deleted_at ? 'opacity-50' : ''}">
           <div class="flex-grow-1 min-w-0">
             <a href="/blog/${escHtml(post.id)}" class="text-decoration-none">
-              <h5 class="mb-1">${escHtml(post.title)}${post.deleted_at ? ' <span class="badge bg-danger small">已删除</span>' : ''}</h5>
+              <h5 class="mb-1">${escHtml(post.title)}${post.deleted_at ? ui("m_1c831e776367775a") : ''}</h5>
             </a>
             <small class="text-muted">${formatDate(post.created_at)}</small>
           </div>
@@ -75,22 +76,22 @@ async function loadBlogList(offset) {
     if (blogCurrentOffset > 0) {
       const prevBtn = document.createElement('button');
       prevBtn.className = 'btn btn-secondary btn-sm';
-      prevBtn.innerHTML = '<i class="bi bi-chevron-left"></i> 이전';
+      prevBtn.innerHTML = ui("m_85f202f2c81c4f82");
       prevBtn.onclick = () => loadBlogList(blogCurrentOffset - BLOG_LIST_LIMIT);
       pagEl.appendChild(prevBtn);
     }
     if (blogCurrentOffset + BLOG_LIST_LIMIT < blogTotalCount) {
       const nextBtn = document.createElement('button');
       nextBtn.className = 'btn btn-secondary btn-sm';
-      nextBtn.innerHTML = '다음 <i class="bi bi-chevron-right"></i>';
+      nextBtn.innerHTML = ui("m_6e474e08543a700e");
       nextBtn.onclick = () => loadBlogList(blogCurrentOffset + BLOG_LIST_LIMIT);
       pagEl.appendChild(nextBtn);
     }
 
     showView('blogList');
-    document.title = '블로그 - ' + (window.appConfig?.wikiName || 'CloudWiki');
+    document.title = ui("m_1abe73e9bda9281a") + (window.appConfig?.wikiName || 'CloudWiki');
   } catch (e) {
-    Swal.fire('错误', e.message, 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message, 'error');
     showView('blogList');
   }
 }
@@ -142,30 +143,16 @@ async function announceBlogPost() {
   announceIconClass = null;
 
   const renderIconLabel = (cls) => {
-    if (!cls) return '<i class="mdi mdi-bullhorn"></i> 기본';
+    if (!cls) return ui("m_c9bc06ff14db6aec");
     return `<i class="${cls}"></i> ${cls.replace(/^(mdi mdi-|bi bi-)/, '')}`;
   };
 
   const result = await Swal.fire({
-    title: '공지로 발행',
-    html: `
-      <div class="text-start">
-        <label class="form-label small mb-1">배너 제목</label>
-        <input id="announceTitleInput" type="text" class="form-control mb-3" maxlength="200" value="${escHtml(defaultTitle)}">
-        <label class="form-label small mb-1">图标</label>
-        <div class="d-flex gap-2 align-items-center">
-          <button type="button" id="announceIconBtn" class="btn btn-outline-secondary btn-sm flex-grow-1">
-            <span id="announceIconLabel">${renderIconLabel(null)}</span>
-          </button>
-          <button type="button" id="announceIconClearBtn" class="btn btn-outline-secondary btn-sm" title="기본 아이콘으로 초기화">
-            <i class="bi bi-x"></i>
-          </button>
-        </div>
-      </div>
-    `,
+    title: ui("m_5056b04e6a6b824a"),
+    html: ui("m_629e74af9de0752d", [escHtml(defaultTitle), renderIconLabel(null)]),
     showCancelButton: true,
-    confirmButtonText: '발행',
-    cancelButtonText: '取消',
+    confirmButtonText: ui("m_65224c8a54f4faa4"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c"),
     didOpen: () => {
       const iconBtn = document.getElementById('announceIconBtn');
       const iconLabel = document.getElementById('announceIconLabel');
@@ -184,8 +171,8 @@ async function announceBlogPost() {
     preConfirm: () => {
       const titleEl = document.getElementById('announceTitleInput');
       const t = (titleEl?.value || '').trim();
-      if (!t) { Swal.showValidationMessage('제목을 입력하세요.'); return false; }
-      if (t.length > 200) { Swal.showValidationMessage('200자 이하로 입력하세요.'); return false; }
+      if (!t) { Swal.showValidationMessage(ui("m_80a42fdc93a8b3a3")); return false; }
+      if (t.length > 200) { Swal.showValidationMessage(ui("m_402dbf446ebd35a5")); return false; }
       return { title: t, icon: announceIconClass };
     },
   });
@@ -200,13 +187,13 @@ async function announceBlogPost() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || '발행 실패');
+      throw new Error(data.error || ui("m_c0fd9a542515c058"));
     }
-    Swal.fire({ icon: 'success', title: '공지로 발행됨', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+    Swal.fire({ icon: 'success', title: ui("m_6f7e0546eb7f12ce"), toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
     await window.loadConfig();
     syncAnnounceButtons(currentBlogPostId);
   } catch (e) {
-    Swal.fire('错误', e.message, 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message, 'error');
   }
 }
 
@@ -217,12 +204,12 @@ async function unannounceBlogPost() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ postId: currentBlogPostId }),
     });
-    if (!res.ok) throw new Error('취소 실패');
-    Swal.fire({ icon: 'success', title: '공지 취소됨', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+    if (!res.ok) throw new Error(ui("m_7b257d20332407ea"));
+    Swal.fire({ icon: 'success', title: ui("m_cdbf365d344f89c5"), toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
     await window.loadConfig();
     syncAnnounceButtons(currentBlogPostId);
   } catch (e) {
-    Swal.fire('错误', e.message, 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message, 'error');
   }
 }
 
@@ -230,12 +217,12 @@ async function unannounceBlogPost() {
 async function deleteBlogPost() {
   if (!currentBlogPostId) return;
   const result = await Swal.fire({
-    title: '포스트를 삭제하시겠습니까?',
-    text: '삭제된 포스트는 관리자만 볼 수 있습니다.',
+    title: ui("m_53b89a297e207095"),
+    text: ui("m_45caf5a50992737e"),
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
+    confirmButtonText: ui("m_2f9daa828907b93f"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c"),
     confirmButtonColor: '#d33',
   });
   if (!result.isConfirmed) return;
@@ -244,12 +231,12 @@ async function deleteBlogPost() {
     const res = await fetch(`/api/blog/${currentBlogPostId}`, { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || '删除失败');
+      throw new Error(data.error || ui("m_c228558cf257fc49"));
     }
-    await Swal.fire({ icon: 'success', title: '삭제되었습니다.', timer: 1500, showConfirmButton: false });
+    await Swal.fire({ icon: 'success', title: ui("m_977dfc49dbc7d8b2"), timer: 1500, showConfirmButton: false });
     window.location.href = '/blog';
   } catch (e) {
-    Swal.fire('错误', e.message, 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message, 'error');
   }
 }
 
@@ -257,12 +244,12 @@ async function deleteBlogPost() {
 async function hardDeleteBlogPost() {
   if (!currentBlogPostId) return;
   const result = await Swal.fire({
-    title: '포스트를 永久删除하시겠습니까?',
-    html: '이 작업은 <b>되돌릴 수 없습니다.</b>',
+    title: ui("m_f92ebe3bee085dd6"),
+    html: ui("m_c4f1fd5120a38dbb"),
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: '永久删除',
-    cancelButtonText: '取消',
+    confirmButtonText: ui("m_4e01a4d26a03423b"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c"),
     confirmButtonColor: '#d33',
   });
   if (!result.isConfirmed) return;
@@ -271,12 +258,12 @@ async function hardDeleteBlogPost() {
     const res = await fetch(`/api/blog/${currentBlogPostId}?hard=true`, { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || '영구 删除失败');
+      throw new Error(data.error || ui("m_c83214923a9ca5d5"));
     }
-    await Swal.fire({ icon: 'success', title: '永久删除되었습니다.', timer: 1500, showConfirmButton: false });
+    await Swal.fire({ icon: 'success', title: ui("m_4755c64e5ec3dae6"), timer: 1500, showConfirmButton: false });
     window.location.href = '/blog';
   } catch (e) {
-    Swal.fire('错误', e.message, 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message, 'error');
   }
 }
 
@@ -306,10 +293,10 @@ async function shareCopyLink() {
   const cleanUrl = window.location.origin + window.location.pathname;
   try {
     await navigator.clipboard.writeText(cleanUrl);
-    Swal.fire({ icon: 'success', title: '복사 완료', text: '포스트 링크가 클립보드에 복사되었습니다.', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+    Swal.fire({ icon: 'success', title: ui("m_92e825d2066bd126"), text: ui("m_42af8fb4ca133c97"), toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
   } catch (err) {
     console.error('복사 실패:', err);
-    Swal.fire('错误', '클립보드 복사에 실패했습니다.', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_ec6f40a9e763d7c1"), 'error');
   }
 }
 
@@ -320,16 +307,16 @@ async function shareCopyText() {
     const postTitle = getShareTitle();
     const textWithTitle = postTitle ? postTitle + '\n' + content.innerText : content.innerText;
     await navigator.clipboard.writeText(textWithTitle);
-    Swal.fire({ icon: 'success', title: '복사 완료', text: '포스트 내용이 클립보드에 복사되었습니다.', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+    Swal.fire({ icon: 'success', title: ui("m_92e825d2066bd126"), text: ui("m_ca858e82212f101b"), toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
   } catch (err) {
     console.error('복사 실패:', err);
-    Swal.fire('错误', '클립보드 복사에 실패했습니다.', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_ec6f40a9e763d7c1"), 'error');
   }
 }
 
 async function shareCopyMarkdown() {
   if (!currentBlogPost || typeof currentBlogPost.content !== 'string') {
-    Swal.fire('错误', '포스트 내용을 가져올 수 없습니다.', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_c32dfb0ed75541d5"), 'error');
     return;
   }
   try {
@@ -343,10 +330,10 @@ async function shareCopyMarkdown() {
     const postTitle = getShareTitle();
     const markdownWithTitle = postTitle ? postTitle + '\n\n' + resolvedContent : resolvedContent;
     await navigator.clipboard.writeText(markdownWithTitle);
-    Swal.fire({ icon: 'success', title: '복사 완료', text: '마크다운 원문이 클립보드에 복사되었습니다.', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+    Swal.fire({ icon: 'success', title: ui("m_92e825d2066bd126"), text: ui("m_384c7951cf63c117"), toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
   } catch (err) {
     console.error('복사 실패:', err);
-    Swal.fire('错误', '클립보드 복사에 실패했습니다.', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_ec6f40a9e763d7c1"), 'error');
   }
 }
 
@@ -356,13 +343,13 @@ function sharePrint() {
 
 function shareAskClaude() {
   const cleanUrl = window.location.origin + window.location.pathname;
-  const prompt = '다음 블로그 페이지를 읽고 내용에 대한 질문에 답해줘: ' + cleanUrl;
+  const prompt = ui("m_97a8fd2fa7331f34") + cleanUrl;
   window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank');
 }
 
 function shareAskChatGPT() {
   const cleanUrl = window.location.origin + window.location.pathname;
-  const prompt = '다음 블로그 페이지를 읽고 내용에 대한 질문에 답해줘: ' + cleanUrl;
+  const prompt = ui("m_97a8fd2fa7331f34") + cleanUrl;
   window.open('https://chatgpt.com/?q=' + encodeURIComponent(prompt), '_blank');
 }
 

@@ -23,6 +23,7 @@
  *                categoryTags (edit.js 가 read/write)
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import './types';
 import { escapeHtml } from '../utils/html';
 import type { PaletteInfo } from './types';
@@ -131,10 +132,10 @@ const imgSizeAc = {
     selectedIndex: -1,
     div: document.getElementById('imgsize-autocomplete'),
     options: [
-        { id: 'icon',   label: '图标',      icon: 'mdi-square-medium-outline' },
-        { id: 'small',  label: '小',        icon: 'mdi-arrow-collapse' },
-        { id: 'medium', label: '中',        icon: 'mdi-square-outline' },
-        { id: 'full',   label: '大（默认）',  icon: 'mdi-arrow-expand-all' },
+        { id: 'icon',   label: ui("m_0d720eeea26466dd"),      icon: 'mdi-square-medium-outline' },
+        { id: 'small',  label: ui("m_6a7339bb759788f3"),        icon: 'mdi-arrow-collapse' },
+        { id: 'medium', label: ui("m_a567bdaa11367f26"),        icon: 'mdi-square-outline' },
+        { id: 'full',   label: ui("m_62ebda24c90ca0a5"),  icon: 'mdi-arrow-expand-all' },
     ] as ImgSizeOption[],
 };
 
@@ -207,29 +208,29 @@ const codeAc = {
     query: '',
     div: document.getElementById('code-autocomplete'),
     options: [
-        { id: 'icon',     label: '图标',       icon: 'mdi mdi-emoticon-outline',          insert: 'icon:',     iconMode: 'selected' },
-        { id: 'bi',       label: 'Bootstrap Icons', icon: 'bi bi-bootstrap',                insert: 'bi:',       iconMode: 'library'  },
-        { id: 'mdi',      label: 'Material Design', icon: 'mdi mdi-material-design',         insert: 'mdi:',      iconMode: 'library'  },
-        { id: 'bg',       label: '背景色',        icon: 'mdi mdi-format-color-fill',         insert: 'bg:'        },
-        { id: 'color',    label: '글자색',        icon: 'mdi mdi-format-color-text',         insert: 'color:'     },
-        { id: 'palette',  label: '팔레트 색상',   icon: 'mdi mdi-palette-swatch',            insert: 'palette:'   },
-        { id: 'fs',       label: '글자 크기',     icon: 'mdi mdi-format-size',               insert: 'fs:'        },
-        { id: 'dday',     label: 'D-Day',         icon: 'mdi mdi-calendar-clock',            insert: 'dday:'      },
-        { id: 'time',     label: '표시 시간',     icon: 'mdi mdi-clock-outline',             insert: 'time:'      },
-        { id: 'timer',    label: '타이머',        icon: 'mdi mdi-timer-outline',             insert: 'timer:'     },
-        { id: 'age',      label: '만 나이',       icon: 'mdi mdi-cake-variant-outline',      insert: 'age:'       },
-        { id: 'calendar', label: '캘린더 날짜',   icon: 'mdi mdi-calendar-month',            insert: 'calendar:'  },
-        { id: 'kbd',      label: '키보드 키',     icon: 'mdi mdi-keyboard-outline',          insert: 'kbd:'       },
-        { id: 'progress', label: '진행도 바',     icon: 'mdi mdi-progress-helper',           insert: 'progress:'  },
-        { id: 'size',     label: '이미지 크기',   icon: 'mdi mdi-image-size-select-large',   insert: 'size:'      },
-        { id: 'align',    label: '이미지 정렬',   icon: 'mdi mdi-format-align-center',        insert: 'align:'     },
-        { id: 'caption',  label: '이미지/표 캡션', icon: 'mdi mdi-format-text',              insert: 'caption:'   },
-        { id: 'id',       label: '앵커 ID(탭/아코디언)', icon: 'mdi mdi-identifier',          insert: 'id:'        },
-        { id: 'badge',    label: '배지',          icon: 'mdi mdi-label-outline',             insert: 'badge:'     },
-        { id: 'tag',      label: '태그',          icon: 'mdi mdi-tag-outline',               insert: 'tag:'       },
-        { id: 'button',   label: '버튼',          icon: 'mdi mdi-gesture-tap-button',        insert: 'button:'    },
-        { id: 'stat',     label: '통계 수치',     icon: 'mdi mdi-counter',                   insert: 'stat:'      },
-        { id: 'embed',    label: '미디어 임베드', icon: 'mdi mdi-play-box-outline',          insert: 'embed:'     },
+        { id: 'icon',     label: ui("m_0d720eeea26466dd"),       icon: 'mdi mdi-emoticon-outline',          insert: 'icon:',     iconMode: 'selected' },
+        { id: 'bi',       label: ui("m_381cbc5a80cdd675"), icon: 'bi bi-bootstrap',                insert: 'bi:',       iconMode: 'library'  },
+        { id: 'mdi',      label: ui("m_9d89cdc64edf175d"), icon: 'mdi mdi-material-design',         insert: 'mdi:',      iconMode: 'library'  },
+        { id: 'bg',       label: ui("m_6d2b296c1cd03af4"),        icon: 'mdi mdi-format-color-fill',         insert: 'bg:'        },
+        { id: 'color',    label: ui("m_04b9d4d0d299bc60"),        icon: 'mdi mdi-format-color-text',         insert: 'color:'     },
+        { id: 'palette',  label: ui("m_8268412b046258a5"),   icon: 'mdi mdi-palette-swatch',            insert: 'palette:'   },
+        { id: 'fs',       label: ui("m_6b28ff42c3bd1e53"),     icon: 'mdi mdi-format-size',               insert: 'fs:'        },
+        { id: 'dday',     label: ui("m_563d700698b2e153"),         icon: 'mdi mdi-calendar-clock',            insert: 'dday:'      },
+        { id: 'time',     label: ui("m_e8e55f63b04c532c"),     icon: 'mdi mdi-clock-outline',             insert: 'time:'      },
+        { id: 'timer',    label: ui("m_39434f4dbd6aa9ad"),        icon: 'mdi mdi-timer-outline',             insert: 'timer:'     },
+        { id: 'age',      label: ui("m_57b8d86c7074f30c"),       icon: 'mdi mdi-cake-variant-outline',      insert: 'age:'       },
+        { id: 'calendar', label: ui("m_b9a2602b5dd2c5b7"),   icon: 'mdi mdi-calendar-month',            insert: 'calendar:'  },
+        { id: 'kbd',      label: ui("m_2fe5356cb0530f05"),     icon: 'mdi mdi-keyboard-outline',          insert: 'kbd:'       },
+        { id: 'progress', label: ui("m_6bbd4af8328c9ba6"),     icon: 'mdi mdi-progress-helper',           insert: 'progress:'  },
+        { id: 'size',     label: ui("m_2810cd41e255386b"),   icon: 'mdi mdi-image-size-select-large',   insert: 'size:'      },
+        { id: 'align',    label: ui("m_0af5878da3772fe3"),   icon: 'mdi mdi-format-align-center',        insert: 'align:'     },
+        { id: 'caption',  label: ui("m_9225b45181da8f16"), icon: 'mdi mdi-format-text',              insert: 'caption:'   },
+        { id: 'id',       label: ui("m_22866179d06cfcf3"), icon: 'mdi mdi-identifier',          insert: 'id:'        },
+        { id: 'badge',    label: ui("m_57ff1b60f5b9be4b"),          icon: 'mdi mdi-label-outline',             insert: 'badge:'     },
+        { id: 'tag',      label: ui("m_e24f8f799a09913f"),          icon: 'mdi mdi-tag-outline',               insert: 'tag:'       },
+        { id: 'button',   label: ui("m_605632038f49400b"),          icon: 'mdi mdi-gesture-tap-button',        insert: 'button:'    },
+        { id: 'stat',     label: ui("m_30c765b107c5eb5a"),     icon: 'mdi mdi-counter',                   insert: 'stat:'      },
+        { id: 'embed',    label: ui("m_588be0deb770b095"), icon: 'mdi mdi-play-box-outline',          insert: 'embed:'     },
     ] as CodeOption[],
     filtered: [] as CodeOption[],
 };
@@ -325,8 +326,8 @@ const BLOCK_SCAFFOLDS: Record<string, string> = {
     // 인포박스 — 제목 헤더 + 구분 행 없는 `| 키 | 값 |` 프로필 나열(나무위키식).
     infobox:
         ':::infobox {right} {span:4} ' + CARET_MARKER + '\n' +
-        '| 이름 | 값 |\n' +
-        '| 이름 | 값 |\n\n' +
+        ui("m_c738b61460f613ac") +
+        ui("m_f076669f17b53f92") +
         ':::',
     // 이미지 갤러리 — 본문의 <img> 만 수집해 균등 썸네일 그리드로 배치.
     gallery:
@@ -338,26 +339,26 @@ const BLOCK_SCAFFOLDS: Record<string, string> = {
     // 탭 — 자식 :::tab 항목.
     tabs:
         ':::tabs\n' +
-        ':::tab 탭 1\n' + CARET_MARKER + '내용\n:::\n' +
-        ':::tab 탭 2\n내용\n:::\n' +
+        ui("m_6e5c1fafcd87247d") + CARET_MARKER + ui("m_d7cafcbd87c399b7") +
+        ui("m_b750a273eb0c992a") +
         ':::',
     // 아코디언 — 자식 :::item 항목.
     accordion:
         ':::accordion\n' +
-        ':::item 항목 1\n' + CARET_MARKER + '내용\n:::\n' +
-        ':::item 항목 2\n내용\n:::\n' +
+        ui("m_d26e710e43dbf1d0") + CARET_MARKER + ui("m_d7cafcbd87c399b7") +
+        ui("m_1987e477de299aaa") +
         ':::',
     // 스텝퍼 — 자식 :::step 항목.
     steps:
         ':::steps\n' +
-        ':::step 단계 1\n' + CARET_MARKER + '내용\n:::\n' +
-        ':::step 단계 2\n내용\n:::\n' +
+        ui("m_d1641961d67e5ef0") + CARET_MARKER + ui("m_d7cafcbd87c399b7") +
+        ui("m_368117f5be6dee60") +
         ':::',
     // 문서 변수 — `이름 = 값` 정의(본문에서 {{{@이름}}} 으로 참조).
     meta:
         ':::meta\n' +
-        '제목 = ' + CARET_MARKER + '\n' +
-        '저자 = \n' +
+        ui("m_932dba77309c6041") + CARET_MARKER + '\n' +
+        ui("m_005648e5b43bb97a") +
         ':::',
 };
 
@@ -367,29 +368,29 @@ const blockAc = {
     query: '',
     div: document.getElementById('block-autocomplete'),
     options: [
-        { id: 'card',      label: '카드',      desc: '제목 + 본문 박스',           icon: 'mdi mdi-card-text-outline'       },
-        { id: 'grid',      label: '그리드',    desc: '그리드 ({cols:N}/{template:1-3·8-4 등})', icon: 'mdi mdi-grid'                },
-        { id: 'row',       label: '가로 정렬', desc: '자식을 가로로 배치',         icon: 'mdi mdi-view-column-outline'     },
-        { id: 'center',    label: '가운데 정렬', desc: '내용을 가운데 정렬',       icon: 'mdi mdi-format-align-center'     },
-        { id: 'right',     label: '오른쪽 정렬', desc: '내용을 오른쪽 정렬',       icon: 'mdi mdi-format-align-right'      },
-        { id: 'left',      label: '왼쪽 정렬', desc: '내용을 왼쪽 정렬(중첩 정렬 해제)', icon: 'mdi mdi-format-align-left'  },
-        { id: 'canvas',    label: '캔버스',    desc: '비대칭 12컬럼 레이아웃 — 선택 시 :::area 골격 자동 삽입', icon: 'mdi mdi-view-dashboard-outline', scaffold: BLOCK_SCAFFOLDS.canvas },
-        { id: 'infobox',   label: '인포박스',  desc: '옆을 감싸는 프로필 카드 — 선택 시 제목+표 골격 삽입', icon: 'mdi mdi-card-account-details-outline', scaffold: BLOCK_SCAFFOLDS.infobox },
-        { id: 'float',     label: '플로팅 패널', desc: '본문이 옆을 감싸는 좌/우 패널 ({left|right}{span:3~6})', icon: 'mdi mdi-dock-right'          },
-        { id: 'gallery',   label: '갤러리',    desc: '이미지 균등 그리드 — 선택 시 이미지 골격 삽입 ({cols:2~6})', icon: 'mdi mdi-view-gallery-outline', scaffold: BLOCK_SCAFFOLDS.gallery },
-        { id: 'embed',     label: '임베드',    desc: '강조선 박스 + 내부 URL 미디어 임베드', icon: 'mdi mdi-format-quote-close'      },
-        { id: 'tabs',      label: '탭',        desc: '탭 컨테이너 — 선택 시 :::tab 골격 삽입',  icon: 'mdi mdi-tab',            scaffold: BLOCK_SCAFFOLDS.tabs      },
-        { id: 'accordion', label: '아코디언',  desc: '아코디언 — 선택 시 :::item 골격 삽입',    icon: 'mdi mdi-format-list-bulleted-square', scaffold: BLOCK_SCAFFOLDS.accordion },
-        { id: 'steps',     label: '스텝퍼',    desc: '진행 단계 — 선택 시 :::step 골격 삽입',   icon: 'mdi mdi-stairs',        scaffold: BLOCK_SCAFFOLDS.steps     },
-        { id: 'meta',      label: '문서 변수', desc: '`이름 = 값` 정의 → 본문 {{{@이름}}} 참조', icon: 'mdi mdi-variable',      scaffold: BLOCK_SCAFFOLDS.meta      },
-        { id: 'until',     label: '시점 이전 표시', desc: '지정 시각 전에만 표시 (유닉스초 또는 YYYY-MM-DD)', icon: 'mdi mdi-clock-start' },
-        { id: 'after',     label: '시점 이후 표시', desc: '지정 시각 후에만 표시 (유닉스초 또는 YYYY-MM-DD)', icon: 'mdi mdi-clock-end'   },
-        { id: 'info',      label: '정보',      desc: '정보 콜아웃',                icon: 'mdi mdi-information-outline'     },
-        { id: 'tip',       label: '팁',        desc: '팁 콜아웃',                  icon: 'mdi mdi-lightbulb-on-outline'    },
-        { id: 'success',   label: '成功',      desc: '성공 콜아웃',                icon: 'mdi mdi-check-circle-outline'    },
-        { id: 'warning',   label: '주의',      desc: '주의 콜아웃',                icon: 'mdi mdi-alert-outline'           },
-        { id: 'danger',    label: '위험',      desc: '위험 콜아웃',                icon: 'mdi mdi-alert-octagon-outline'   },
-        { id: 'note',      label: '노트',      desc: '노트 콜아웃',                icon: 'mdi mdi-note-text-outline'       },
+        { id: 'card',      label: ui("m_62b41b5aaec6fef4"),      desc: ui("m_155774e65ecb6263"),           icon: 'mdi mdi-card-text-outline'       },
+        { id: 'grid',      label: ui("m_14a173232a613b6e"),    desc: ui("m_818bcff7e71931a4"), icon: 'mdi mdi-grid'                },
+        { id: 'row',       label: ui("m_4a6a4508513a1deb"), desc: ui("m_6eee93bfecdb267d"),         icon: 'mdi mdi-view-column-outline'     },
+        { id: 'center',    label: ui("m_004150139f94ab3a"), desc: ui("m_fe525c37167d2e2c"),       icon: 'mdi mdi-format-align-center'     },
+        { id: 'right',     label: ui("m_bc18fb606d1cd4a5"), desc: ui("m_993f9d86db97f941"),       icon: 'mdi mdi-format-align-right'      },
+        { id: 'left',      label: ui("m_8864f426cc18342d"), desc: ui("m_cf92ecdc8c488285"), icon: 'mdi mdi-format-align-left'  },
+        { id: 'canvas',    label: ui("m_328263b28ff57998"),    desc: ui("m_8223173395e0f378"), icon: 'mdi mdi-view-dashboard-outline', scaffold: BLOCK_SCAFFOLDS.canvas },
+        { id: 'infobox',   label: ui("m_5430ebf3366f2ff9"),  desc: ui("m_98658eb5d2388d8a"), icon: 'mdi mdi-card-account-details-outline', scaffold: BLOCK_SCAFFOLDS.infobox },
+        { id: 'float',     label: ui("m_18d0e6bc2a7f45bd"), desc: ui("m_c82e34fcdb9baac1"), icon: 'mdi mdi-dock-right'          },
+        { id: 'gallery',   label: ui("m_5cd4cd76699a6fd0"),    desc: ui("m_7619e9a7dfa77df6"), icon: 'mdi mdi-view-gallery-outline', scaffold: BLOCK_SCAFFOLDS.gallery },
+        { id: 'embed',     label: ui("m_4da85c65f840aa80"),    desc: ui("m_2a1a5d18bb46c4ec"), icon: 'mdi mdi-format-quote-close'      },
+        { id: 'tabs',      label: ui("m_28badb093c233e15"),        desc: ui("m_5ae3a1514ad2f6dd"),  icon: 'mdi mdi-tab',            scaffold: BLOCK_SCAFFOLDS.tabs      },
+        { id: 'accordion', label: ui("m_9a076cf23c023e1a"),  desc: ui("m_9fc6dbe4b783be99"),    icon: 'mdi mdi-format-list-bulleted-square', scaffold: BLOCK_SCAFFOLDS.accordion },
+        { id: 'steps',     label: ui("m_a096cdeecea40a9d"),    desc: ui("m_376fd5ff710fc52b"),   icon: 'mdi mdi-stairs',        scaffold: BLOCK_SCAFFOLDS.steps     },
+        { id: 'meta',      label: ui("m_d22e12c683a74d09"), desc: ui("m_963dbba2a659b1ff"), icon: 'mdi mdi-variable',      scaffold: BLOCK_SCAFFOLDS.meta      },
+        { id: 'until',     label: ui("m_745bc68d37465f9d"), desc: ui("m_0b159c50aac67173"), icon: 'mdi mdi-clock-start' },
+        { id: 'after',     label: ui("m_128b0dfe35235930"), desc: ui("m_573ca43f917ffb30"), icon: 'mdi mdi-clock-end'   },
+        { id: 'info',      label: ui("m_b8cf07ac906c8124"),      desc: ui("m_28fe61bef75af3d5"),                icon: 'mdi mdi-information-outline'     },
+        { id: 'tip',       label: ui("m_d9fcd43cf85293f6"),        desc: ui("m_4fa4e2ac36cd09f1"),                  icon: 'mdi mdi-lightbulb-on-outline'    },
+        { id: 'success',   label: ui("m_053461ce86d26572"),      desc: ui("m_261ff49b524384f1"),                icon: 'mdi mdi-check-circle-outline'    },
+        { id: 'warning',   label: ui("m_acc90fbf66686d20"),      desc: ui("m_833a2943e99a7d7f"),                icon: 'mdi mdi-alert-outline'           },
+        { id: 'danger',    label: ui("m_baaff05e434f85e3"),      desc: ui("m_d9fc0886a0acb827"),                icon: 'mdi mdi-alert-octagon-outline'   },
+        { id: 'note',      label: ui("m_a34b4d0aafc9ecfd"),      desc: ui("m_88530cabd97e47c4"),                icon: 'mdi mdi-note-text-outline'       },
     ] as BlockOption[],
     filtered: [] as BlockOption[],
 };
@@ -568,7 +569,7 @@ function showIconAutocomplete(query: string, type: 'bi' | 'mdi' | 'icon'): void 
             : 'mdi mdi-material-design';
     }
     if (typeLabelEl) {
-        typeLabelEl.textContent = type === 'icon' ? '아이콘 검색'
+        typeLabelEl.textContent = type === 'icon' ? ui("m_72cca7f7d985c021")
             : type === 'bi' ? 'Bootstrap Icons'
             : 'Material Design Icons';
     }
@@ -904,7 +905,7 @@ function showColorAutocomplete(query: string, type: 'bg' | 'color'): void {
     colorAc.visible = true;
 
     const typeLabelEl = document.getElementById('colorAcTypeLabel');
-    if (typeLabelEl) typeLabelEl.textContent = type === 'bg' ? '배경색 선택' : '글자색 선택';
+    if (typeLabelEl) typeLabelEl.textContent = type === 'bg' ? ui("m_d0d72f97f1cef99e") : ui("m_db0613f318fbce1d");
 
     window.positionDropdownAtCursor?.(colorAc.div, 280);
 
@@ -979,7 +980,7 @@ function _renderCalendar(): void {
     const yearPanel = document.getElementById('tsCalYearPanel');
     if (!grid || !ymBtn) return;
 
-    ymBtn.textContent = `${cal.year}년 ${_calPad(cal.month)}周一`;
+    ymBtn.textContent = ui("m_abcb334ca28cba23", [cal.year, _calPad(cal.month)]);
 
     if (cal.showingYearPanel) {
         if (calSection) calSection.style.display = 'none';
@@ -1109,7 +1110,7 @@ function showTimestampAutocomplete(trigger: string): void {
 
     if (trigger === 'age') {
         if (iconEl) iconEl.className = 'mdi mdi-cake-variant-outline';
-        if (labelEl) labelEl.textContent = '만 나이 생년월일';
+        if (labelEl) labelEl.textContent = ui("m_60fad9caf3faed31");
         if (inputEl) { inputEl.type = 'text'; inputEl.placeholder = 'YYYY-MM-DD'; inputEl.readOnly = true; }
         const initDate = _offsetYear(-20);
         cal.year = parseInt(initDate.slice(0, 4), 10);
@@ -1119,7 +1120,7 @@ function showTimestampAutocomplete(trigger: string): void {
         if (inputEl) inputEl.value = initDate;
     } else if (trigger === 'dday') {
         if (iconEl) iconEl.className = 'mdi mdi-calendar';
-        if (labelEl) labelEl.textContent = 'D-Day 날짜 선택';
+        if (labelEl) labelEl.textContent = ui("m_ec40140f5eba9621");
         if (inputEl) { inputEl.type = 'text'; inputEl.placeholder = 'YYYY-MM-DD'; inputEl.readOnly = true; }
         const initDate = _offsetDate(0);
         cal.year = parseInt(initDate.slice(0, 4), 10);
@@ -1129,7 +1130,7 @@ function showTimestampAutocomplete(trigger: string): void {
         if (inputEl) inputEl.value = initDate;
     } else if (trigger === 'calendar') {
         if (iconEl) iconEl.className = 'mdi mdi-calendar-month';
-        if (labelEl) labelEl.textContent = '캘린더 날짜 선택';
+        if (labelEl) labelEl.textContent = ui("m_73c1974526a832fb");
         if (inputEl) { inputEl.type = 'text'; inputEl.placeholder = 'YYYY-MM-DD'; inputEl.readOnly = true; }
         const initDate = _offsetDate(0);
         cal.year = parseInt(initDate.slice(0, 4), 10);
@@ -1139,16 +1140,16 @@ function showTimestampAutocomplete(trigger: string): void {
         if (inputEl) inputEl.value = initDate;
     } else {
         if (iconEl) iconEl.className = trigger === 'timer' ? 'mdi mdi-timer-outline' : 'mdi mdi-clock-outline';
-        if (labelEl) labelEl.textContent = trigger === 'timer' ? '타이머 시간 선택' : '표시 시간 선택';
-        if (inputEl) { inputEl.type = 'text'; inputEl.placeholder = 'Unix 타임스탬프 (초)'; inputEl.readOnly = false; }
+        if (labelEl) labelEl.textContent = trigger === 'timer' ? ui("m_0bf7e5778c32d7a4") : ui("m_a8cf1d2334124a36");
+        if (inputEl) { inputEl.type = 'text'; inputEl.placeholder = ui("m_95048bb4f8debef2"); inputEl.readOnly = false; }
         const now = Math.floor(Date.now() / 1000);
         const presets = [
-            { label: '지금',   value: now },
-            { label: '+1시간', value: now + 3600 },
-            { label: '+1일',   value: now + 86400 },
-            { label: '+1주',   value: now + 7 * 86400 },
-            { label: '+1달',   value: now + 30 * 86400 },
-            { label: '+1년',   value: now + 365 * 86400 },
+            { label: ui("m_df159f47a890ff65"),   value: now },
+            { label: ui("m_78f6af44ca5c8ef9"), value: now + 3600 },
+            { label: ui("m_4ec242e30c0f7971"),   value: now + 86400 },
+            { label: ui("m_3e8889e56aec25a2"),   value: now + 7 * 86400 },
+            { label: ui("m_f1f8b2018b071cb7"),   value: now + 30 * 86400 },
+            { label: ui("m_4fe4705ef5532abd"),   value: now + 365 * 86400 },
         ];
         if (presetsEl) {
             presetsEl.innerHTML = presets.map(p =>
@@ -1297,7 +1298,7 @@ function renderPaletteAcResults(): void {
     listEl.innerHTML = '';
 
     paletteAc.results.forEach((p, i) => {
-        const tag = p.source === 'preset' ? '默认' : p.source === 'override' ? '오버라이드' : '커스텀';
+        const tag = p.source === 'preset' ? ui("m_844b8cc8dff7c1d8") : p.source === 'override' ? ui("m_4be0c73b19663c54") : ui("m_d734129fabaa146b");
         // 빌트인 이름은 본문 렌더가 mark.wiki-palette-NAME 클래스(= --wiki-palette-* 토큰)로 그리므로
         // 스와치도 토큰 var() 로 칠해 색을 일치시킨다(테마/스킨/다크모드 자동 반영, 통제된 토큰이라 안전).
         const isBuiltin = !!(window.WIKI_HARDCODED_PALETTES
@@ -1410,14 +1411,14 @@ interface EditAcl { flags: EditAclFlag[]; }
 type CategoryAclMode = 'overwrite' | 'merge' | 'ignore';
 
 const CHECK_CATEGORY_FLAG_LABELS: Record<EditAclFlag, string> = {
-    aged: '가입 N일 이상',
-    page_editor: '本页编辑历史',
-    any_editor: '任意页面编辑历史',
-    admin_only: '仅管理员',
+    aged: ui("m_bf8508933cb57822"),
+    page_editor: ui("m_1067d4563021de5a"),
+    any_editor: ui("m_16e8ef1a632a2464"),
+    admin_only: ui("m_7f0dd12bee0266d4"),
 };
 
 function formatAclFlags(acl: EditAcl): string {
-    return acl.flags.map(f => CHECK_CATEGORY_FLAG_LABELS[f] ?? f).join(' 그리고 ');
+    return acl.flags.map(f => CHECK_CATEGORY_FLAG_LABELS[f] ?? f).join(ui("m_96df792915787246"));
 }
 
 async function checkCategoryWithServer(name: string): Promise<{ ok: boolean; reason?: string; edit_acl?: EditAcl | null }> {
@@ -1442,26 +1443,15 @@ async function promptCategoryAclMode(name: string, acl: EditAcl): Promise<Catego
         return 'merge';
     }
     const flagsText = formatAclFlags(acl);
-    const html = `
-        <div style="text-align: left; font-size: 0.92em;">
-            <div style="margin-bottom: 8px;">分类 <b>${escapeHtml(name)}</b> 에 다음 편집 ACL 템플릿이 설정되어 있습니다.</div>
-            <div style="margin-bottom: 14px; padding: 8px 10px; background: var(--bs-tertiary-bg, #f4f4f6); border-radius: 6px;"><i class="mdi mdi-shield-account"></i> ${escapeHtml(flagsText)} <span class="text-muted">(모두 충족 — AND)</span></div>
-            <div style="margin-bottom: 6px;">이 카테고리를 문서에 적용하면서 카테고리 ACL 을 어떻게 반영할까요?</div>
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label><input type="radio" name="catAclMode" value="merge" checked> 합치기 — 기존 문서 ACL 의 조건과 카테고리 조건을 합쳐 더 엄격하게 적용</label>
-                <label><input type="radio" name="catAclMode" value="overwrite"> 덮어쓰기 — 기존 문서 ACL 을 카테고리 ACL 로 통째 교체</label>
-                <label><input type="radio" name="catAclMode" value="ignore"> 무시 — 문서 ACL 을 그대로 유지 (이번에는 적용하지 않음)</label>
-            </div>
-        </div>
-    `;
+    const html = ui("m_f0851d614a88a2d4", [escapeHtml(name), escapeHtml(flagsText)]);
     const result = await window.Swal.fire({
-        title: '카테고리 ACL 적용',
+        title: ui("m_135e365a1ae7ac65"),
         html,
         icon: 'question',
         focusConfirm: false,
         showCancelButton: true,
-        confirmButtonText: '应用',
-        cancelButtonText: '취소 (이 카테고리 추가 안 함)',
+        confirmButtonText: ui("m_63c73c4730f4473e"),
+        cancelButtonText: ui("m_2dcf57eb172a504d"),
         preConfirm: () => {
             const el = document.querySelector('input[name="catAclMode"]:checked') as HTMLInputElement | null;
             return (el?.value ?? 'merge') as CategoryAclMode;
@@ -1568,7 +1558,7 @@ function renderCategoryTags(): void {
         const tagEl = document.createElement('span');
         tagEl.className = 'category-tag';
         if (autoCategory && tagText === autoCategory) {
-            tagEl.innerHTML = `<span>${escapeHtml(tagText)}</span> <i class="mdi mdi-lock" title="이 카테고리는 자동 적용되며 제거할 수 없습니다." style="cursor:default;opacity:.6;"></i>`;
+            tagEl.innerHTML = ui("m_a12b6dbd16de6888", [escapeHtml(tagText)]);
         } else {
             tagEl.innerHTML = `<span>${escapeHtml(tagText)}</span> <i class="mdi mdi-close" onclick="removeCategoryTag(${index})"></i>`;
         }
@@ -1593,8 +1583,8 @@ async function addCategoryTag(tag: string): Promise<void> {
     if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(cleanTag)) {
         window.Swal?.fire({
             icon: 'warning',
-            title: '不支持特殊字符',
-            text: '특수문자를 제외한 카테고리 이름을 입력해 주세요.',
+            title: ui("m_63d43c7f9b539745"),
+            text: ui("m_19823ed7547a358d"),
             toast: true,
             position: 'top-end',
             timer: 2000,
@@ -1611,14 +1601,14 @@ async function addCategoryTag(tag: string): Promise<void> {
         if (check.reason === 'admin_only') {
             window.Swal?.fire({
                 icon: 'warning',
-                title: '仅管理员 카테고리',
-                text: `"${cleanTag}" 카테고리는 관리자만 적용할 수 있습니다.`,
+                title: ui("m_70199ad768c9c1ba"),
+                text: ui("m_31429406550ed617", [cleanTag]),
             });
         } else {
             window.Swal?.fire({
                 icon: 'warning',
-                title: '카테고리 사용 불가',
-                text: `"${cleanTag}" 카테고리는 사용할 수 없습니다.`,
+                title: ui("m_1b91634007da0f71"),
+                text: ui("m_07ad18c84a8945ca", [cleanTag]),
             });
         }
         return;
@@ -1778,14 +1768,14 @@ function showAutocomplete(query: string, type: 'link' | 'template'): void {
 function renderAutocompleteResults(): void {
     if (!wikiAc.div) return;
     if (wikiAc.results.length === 0) {
-        wikiAc.div.innerHTML = '<div class="list-group-item text-muted" style="font-size:0.85rem">没有结果</div>';
+        wikiAc.div.innerHTML = ui("m_d938160683e35283");
         return;
     }
     wikiAc.div.innerHTML = wikiAc.results.map((item, index) => `
         <div class="list-group-item autocomplete-item" data-index="${index}" onclick="selectAutocomplete(${index})">
             <i class="mdi ${wikiAc.type === 'template' ? 'mdi-toy-brick-outline' : 'mdi-file-document-outline'}"></i>
             <span class="item-title">${escapeHtml(item.slug)}</span>
-            <span class="item-type">${wikiAc.type === 'template' ? '틀' : '页面'}</span>
+            <span class="item-type">${wikiAc.type === 'template' ? '틀' : ui("m_452c7b10d57a86a7")}</span>
         </div>
     `).join('');
     wikiAc.selectedIndex = 0;
@@ -2146,7 +2136,7 @@ function attachAutocomplete(viaFallback = false): void {
     if (!editor || typeof editor.on !== 'function') return;
     _autocompleteAttached = true;
     if (viaFallback) {
-        console.warn('[edit] 자동완성이 폴링 안전망으로 부착됨 — 정상 트리거가 누락되었을 가능성. _attachAttempts=' + _attachAttempts);
+        console.warn(ui("m_b868014175376f4d") + _attachAttempts);
     }
     _resolveAutocompleteDivs();
 

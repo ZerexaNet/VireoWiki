@@ -8,6 +8,7 @@
 // 스냅샷과 일치할 때만 UPDATE 한다 (WHERE 절로 이전 값을 확인). 일치하지 않으면
 // 다시 읽어서 재시도. 두 명의 관리자가 동시에 공지를 발행해도 한쪽이 덮어쓰지 않는다.
 
+import { ui } from '../i18n/server';
 export interface Announcement {
     id: number;
     title: string;
@@ -132,7 +133,7 @@ export async function mutateAnnouncements(
         // 다른 writer 가 같은 시점에 settings 를 갱신해 CAS 가 실패. 짧게 백오프 후 재시도.
         await new Promise(r => setTimeout(r, 5 + Math.random() * 15));
     }
-    throw new AnnouncementMutationError('announcement 갱신 충돌이 반복되어 실패했습니다. 잠시 후 다시 시도해주세요.');
+    throw new AnnouncementMutationError(ui("m_5c438cfbb32c4572"));
 }
 
 /** 블로그 포스트 soft-delete 시 호출. 해당 postId 항목을 모두 제거.

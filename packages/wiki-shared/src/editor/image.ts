@@ -1,29 +1,4 @@
-/**
- * 이미지 업로드 / 기존 이미지 검색 / 이미지 편집기 (크롭 + 90도 회전, 터치 지원).
- * 기존 public/js/edit-image.js 의 ES 모듈 이전.
- *
- * edit.html / blog-edit.html 양쪽에서 로드 (양 페이지 동일한 #imageEditorModal 마크업).
- *
- * 외부 노출 (브리지):
- *   - window.openExistingImageSearch(callback)  ← edit.js 가 호출
- *   - window.handleImageUpload(blob, callback)   ← edit.js 가 호출
- *
- *   ImageEditor 는 모듈 내부에서만 사용 (handleImageUpload 가 직접 참조). 외부 어떤
- *   raw script 도 ImageEditor 글로벌을 직접 사용하지 않음을 grep 으로 확인했으므로
- *   window 노출 불필요.
- *
- * 외부 의존:
- *   - window.Swal (CDN sweetalert2)
- *   - window.mountMediaTagInput (common.js)
- *   - window.bootstrap.Modal (CDN bootstrap)
- *   - DOM: #imageEditorModal 외 (edit.html / blog-edit.html 양쪽 동일)
- *
- * 모듈 평가 타이밍:
- *   type="module" 스크립트는 deferred — 모든 classic top-level 실행 후, 어떤
- *   DOMContentLoaded 핸들러보다 앞이다. 따라서 브리지 노출과 ImageEditor 의
- *   내부 setTimeout(init, 300) 모두 안전.
- */
-
+import { ui } from '../i18n/client';
 import './types';
 import type { MediaTagWidget } from './types';
 
@@ -112,41 +87,15 @@ async function openExistingImageSearch(callback: ImageInsertCallback): Promise<v
 
     let pickedItem: MediaItem | null = null;
 
-    const tagFilterHtml = _searchFetcher ? '' : `
-                <div class="existing-img-tag-filter" style="margin-top:8px;">
-                    <label style="display:block; font-size:0.82rem; color:var(--wiki-text-muted,#888); margin-bottom:4px; text-align:left;">
-                        <i class="mdi mdi-tag-multiple-outline"></i> 태그 검색
-                    </label>
-                    <div class="category-tag-container" id="existingImgTagContainer" style="max-width:100%;">
-                        <input type="text" id="existingImgTagInput" class="category-tag-input" placeholder="(엔터/쉼표로 추가)">
-                    </div>
-                </div>`;
+    const tagFilterHtml = _searchFetcher ? '' : ui("m_13ef923140bdadfe");
 
     await Swal.fire({
-        title: '기존 이미지 검색',
+        title: ui("m_28eb97fae6405a87"),
         width: 720,
         showCancelButton: true,
         showConfirmButton: false,
-        cancelButtonText: '닫기',
-        html: `
-            <div class="existing-img-search-wrap">
-                <div class="existing-img-search-bar">
-                    <input type="text" id="existingImgSearchInput" class="form-control"
-                           placeholder="파일명 검색" autocomplete="off">
-                    <button type="button" class="btn btn-primary" id="existingImgSearchBtn">
-                        <i class="mdi mdi-magnify"></i>
-                    </button>
-                </div>
-                ${tagFilterHtml}
-                <div id="existingImgSearchInfo" class="existing-img-search-info"></div>
-                <div id="existingImgSearchGrid" class="existing-img-search-grid"></div>
-                <div id="existingImgSearchMore" class="existing-img-search-more" style="display:none;">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="existingImgMoreBtn">
-                        더 불러오기
-                    </button>
-                </div>
-            </div>
-        `,
+        cancelButtonText: ui("m_1e8c10206f5b35bd"),
+        html: ui("m_4e4aa3dda3ff54ae", [tagFilterHtml]),
         didOpen: () => {
             const input = document.getElementById('existingImgSearchInput') as HTMLInputElement | null;
             const searchBtn = document.getElementById('existingImgSearchBtn');
@@ -219,7 +168,7 @@ async function openExistingImageSearch(callback: ImageInsertCallback): Promise<v
                 const res = await fetch(`/api/media/search?${params.toString()}`);
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({})) as MediaSearchResponse;
-                    throw new Error(data.error || '검색 실패');
+                    throw new Error(data.error || ui("m_e92a0544c85716d0"));
                 }
                 const data = await res.json() as MediaSearchResponse;
                 resultTotal = data.total || 0;
@@ -235,8 +184,8 @@ async function openExistingImageSearch(callback: ImageInsertCallback): Promise<v
 
             renderGrid(grid);
             info.textContent = total > 0
-                ? `총 ${total}개 중 ${items.length}개 표시`
-                : '결과가 없습니다.';
+                ? ui("m_2d0270718450107d", [total, items.length])
+                : ui("m_7ec78a5826a6fbcf");
             moreWrap.style.display = finished ? 'none' : '';
         } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -251,7 +200,7 @@ async function openExistingImageSearch(callback: ImageInsertCallback): Promise<v
     function renderGrid(grid: HTMLElement): void {
         if (!items.length) {
             grid.innerHTML = '<div class="existing-img-search-empty">'
-                + window.uiEmptyState({ icon: 'bi bi-images', title: '이미지가 없습니다', compact: true })
+                + window.uiEmptyState({ icon: 'bi bi-images', title: ui("m_4e35e2915449a848"), compact: true })
                 + '</div>';
             return;
         }
@@ -262,7 +211,7 @@ async function openExistingImageSearch(callback: ImageInsertCallback): Promise<v
             const extra = (m.tags && m.tags.length > 4) ? `<span class="existing-img-tile-tag-more">+${m.tags.length - 4}</span>` : '';
             const tagLine = (m.tags && m.tags.length) ? `<div class="existing-img-tile-tags">${tagBadges}${extra}</div>` : '';
             const titleAttr = (m.tags && m.tags.length)
-                ? `${m.filename}\n태그: ${m.tags.join(', ')}`
+                ? ui("m_bb909f283a1fc5c9", [m.filename, m.tags.join(', ')])
                 : m.filename;
             return `
             <div class="existing-img-tile" data-id="${m.id}" title="${escapeHtml(titleAttr)}">
@@ -288,22 +237,11 @@ async function openExistingImageSearch(callback: ImageInsertCallback): Promise<v
 
     async function askImageSize(picked: MediaItem): Promise<string | null> {
         const result = await Swal!.fire<string>({
-            title: '이미지 크기 선택',
-            html: `
-                <div class="existing-img-size-preview">
-                    <img src="${escapeHtml(picked.url)}" alt="${escapeHtml(picked.filename)}">
-                    <div class="existing-img-size-filename">${escapeHtml(picked.filename)}</div>
-                </div>
-                <div class="existing-img-size-options">
-                    <label><input type="radio" name="existingImgSize" value="icon"> 아이콘</label>
-                    <label><input type="radio" name="existingImgSize" value="small"> 작게</label>
-                    <label><input type="radio" name="existingImgSize" value="medium"> 중간</label>
-                    <label><input type="radio" name="existingImgSize" value="full" checked> 크게 (기본)</label>
-                </div>
-            `,
+            title: ui("m_b1ebd39a6e828143"),
+            html: ui("m_067ee424bdc93ea7", [escapeHtml(picked.url), escapeHtml(picked.filename), escapeHtml(picked.filename)]),
             showCancelButton: true,
-            confirmButtonText: '삽입',
-            cancelButtonText: '취소',
+            confirmButtonText: ui("m_0d635eda295a08c8"),
+            cancelButtonText: ui("m_be876433993ab7ba"),
             preConfirm: () => {
                 const sel = document.querySelector<HTMLInputElement>('input[name="existingImgSize"]:checked');
                 return sel ? sel.value : 'full';
@@ -337,15 +275,15 @@ type FilenameValidation =
 function validateUploadFilenameClient(raw: string): FilenameValidation {
     const normalized = normalizeUploadFilename(raw);
     if (!normalized) {
-        return { ok: false, error: '파일명을 입력해주세요.' };
+        return { ok: false, error: ui("m_a55030239d03452b") };
     }
     const matches = normalized.match(FILENAME_FORBIDDEN_CHARS);
     if (matches) {
         const unique = Array.from(new Set(matches)).join(' ');
-        return { ok: false, error: `파일명에 사용할 수 없는 문자가 있습니다: ${unique}` };
+        return { ok: false, error: ui("m_ab2e0b9772ce93a3", [unique]) };
     }
     if (normalized.length > FILENAME_MAX_LENGTH) {
-        return { ok: false, error: `파일명은 최대 ${FILENAME_MAX_LENGTH}자까지 입력할 수 있습니다.` };
+        return { ok: false, error: ui("m_c9c598c90e74c0b2", [FILENAME_MAX_LENGTH]) };
     }
     return { ok: true, value: normalized };
 }
@@ -362,7 +300,7 @@ async function handleImageUpload(
     const Swal = window.Swal;
 
     if (blob.size > 15 * 1024 * 1024) {
-        Swal?.fire('오류', '파일 크기는 15MB 이하만 허용됩니다.', 'warning');
+        Swal?.fire(ui("m_b49f20d86148ddfd"), ui("m_b338a7efc6ad1e66"), 'warning');
         return;
     }
 
@@ -375,7 +313,7 @@ async function handleImageUpload(
             | { sanitize(dirty: string, cfg?: Record<string, unknown>): string }
             | undefined;
         if (!DOMPurify || typeof DOMPurify.sanitize !== 'function') {
-            Swal?.fire('오류', 'SVG 보안 정제 라이브러리를 로드할 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.', 'error');
+            Swal?.fire(ui("m_b49f20d86148ddfd"), ui("m_eba914ae07bfbadf"), 'error');
             return;
         }
         const svgText = await (workingBlob as File).text();
@@ -397,32 +335,20 @@ async function handleImageUpload(
     const initialNormalized = normalizeUploadFilename(nameWithoutExt);
     const nameDefaultAttr = escapeHtml(initialNormalized || nameWithoutExt);
     const FILENAME_HELP_DEFAULT =
-        '공백은 <code>-</code> 로 변환되고, 양 끝의 공백·<code>-</code> 는 제거됩니다. ' +
+        ui("m_16a254e99098adf0") +
         '<code>[</code> <code>]</code> <code>(</code> <code>)</code> <code>#</code> <code>%</code> <code>|</code> ' +
-        '<code>&lt;</code> <code>&gt;</code> <code>^</code> <code>/</code> <code>\\</code> <code>.</code> <code>?</code> 는 사용할 수 없습니다.';
+        ui("m_5d704cd6c4bfa10f");
 
     const showTags = !_searchFetcher;
-    const tagSectionHtml = showTags ? `
-                <label class="form-label fw-bold" style="display:block; margin-bottom:4px;">태그 (선택)</label>
-                <div class="category-tag-container" id="uploadTagContainer" style="max-width:100%;">
-                    <input type="text" id="uploadTagInput" class="category-tag-input" placeholder="태그 입력 후 엔터나 쉼표">
-                </div>
-                <div class="form-text text-muted" style="margin-top:4px; font-size:0.82rem;">한글/영문/숫자/공백/_/./- 만 사용 가능 · 최대 20개</div>` : '';
+    const tagSectionHtml = showTags ? ui("m_a1f6b16b2c3b2a38") : '';
 
     let tagWidget: MediaTagWidget | null = null;
     const result = await (Swal?.fire<{ filename: string; tags: string[] }>({
-        title: '이미지 업로드',
-        html: `
-            <div style="text-align:left;">
-                <label for="uploadFilenameInput" class="form-label fw-bold" style="display:block; margin-bottom:4px;">파일명 (확장자 제외)</label>
-                <input type="text" id="uploadFilenameInput" class="swal2-input" style="margin:0; width:100%;" placeholder="파일명을 입력하세요" value="${nameDefaultAttr}" maxlength="120">
-                <div id="uploadFilenameFeedback" class="form-text text-muted" style="margin:4px 0 14px 0; font-size:0.82rem; min-height:1.2em;">${FILENAME_HELP_DEFAULT}</div>
-                ${tagSectionHtml}
-            </div>
-        `,
+        title: ui("m_cead00a863df4d5d"),
+        html: ui("m_ba18fae2953eebf1", [nameDefaultAttr, FILENAME_HELP_DEFAULT, tagSectionHtml]),
         showCancelButton: true,
-        confirmButtonText: '업로드',
-        cancelButtonText: '취소',
+        confirmButtonText: ui("m_0a1ac7eec7b927f7"),
+        cancelButtonText: ui("m_be876433993ab7ba"),
         focusConfirm: false,
         didOpen: () => {
             const fnInput = document.getElementById('uploadFilenameInput') as HTMLInputElement | null;
@@ -449,7 +375,7 @@ async function handleImageUpload(
                     fnFeedback.innerHTML = FILENAME_HELP_DEFAULT;
                     fnFeedback.className = 'form-text text-muted';
                 } else {
-                    fnFeedback.innerHTML = `저장될 파일명: <code>${escapeHtml(v.value)}</code>`;
+                    fnFeedback.innerHTML = ui("m_e6481000e178501b", [escapeHtml(v.value)]);
                     fnFeedback.className = 'form-text text-success';
                 }
             };
@@ -498,7 +424,7 @@ async function handleImageUpload(
 
         if (!res.ok) {
             const data = await res.json() as MediaUploadResponse;
-            throw new Error(data.error || '업로드 실패');
+            throw new Error(data.error || ui("m_f302c6e835b3628e"));
         }
 
         const data = await res.json() as MediaUploadResponse;
@@ -509,7 +435,7 @@ async function handleImageUpload(
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(err);
-        Swal?.fire('오류', msg, 'error');
+        Swal?.fire(ui("m_b49f20d86148ddfd"), msg, 'error');
     }
 }
 
@@ -579,7 +505,7 @@ const ImageEditor = (() => {
         selectedSize = 'full';
         const toggleBtn = document.getElementById('btnImgEditorSizeToggle');
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="mdi mdi-arrow-expand-all me-1"></i>크게(기본)';
+            toggleBtn.innerHTML = ui("m_6de19876d0e0a5c0");
         }
         const cropOverlay = document.getElementById('cropOverlay') as HTMLElement | null;
         if (cropOverlay) cropOverlay.style.display = 'none';
@@ -716,7 +642,7 @@ const ImageEditor = (() => {
         const sh = Math.round(crop.h * scaleY);
 
         if (sw < 10 || sh < 10) {
-            window.Swal?.fire('오류', '크롭 영역이 너무 작습니다.', 'warning');
+            window.Swal?.fire(ui("m_b49f20d86148ddfd"), ui("m_1ef78e7f5b9a3e71"), 'warning');
             return;
         }
 

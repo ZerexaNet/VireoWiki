@@ -19,6 +19,7 @@ enabled = true
 head_sampling_rate = 1.0
 
 [vars]
+DEFAULT_LOCALE = "zh-CN"
 WIKI_HOME_PAGE = ""
 RAG_SEARCH_ENABLED = "false"
 RAG_AUTORAG_NAME = ""

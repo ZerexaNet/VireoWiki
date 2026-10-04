@@ -11,6 +11,7 @@
 //    파일 끝에서 window.* 로 노출한다.
 
 // 모바일 전용 "최근 변경" 사이드바 로더. (기존 .wiki-article 내부 인라인 블록)
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 document.addEventListener('DOMContentLoaded', async function () {
     if (!document.querySelector('.recent-changes-container') || window.__searchRecentChangesLoaded) {
         return;
@@ -160,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const searchInput = document.getElementById('searchInput');
     if (searchInput) searchInput.value = q;
-    document.getElementById('searchQuery').textContent = q ? `"${q}" 搜索结果` : '';
+    document.getElementById('searchQuery').textContent = q ? ui("m_fa5e72001a30fe24", [q]) : '';
 
     // 필터 컨트롤을 URL 값으로 초기화하고, 모드에 따라 필터 바/네임스페이스 칩 상태를 갱신한다.
     syncFilterControls();
@@ -384,7 +385,7 @@ async function performSearch(q, mode, page) {
         const res = await fetch(`/api/search?${qs.toString()}`, { signal: controller.signal });
 
         if (!res.ok) {
-            let errorMessage = `搜索请求失败. (HTTP ${res.status})`;
+            let errorMessage = ui("m_2a43d31482d591ec", [res.status]);
 
             try {
                 const errorData = await res.json();
@@ -416,9 +417,9 @@ async function performSearch(q, mode, page) {
         loadingEl.classList.add('d-none');
         listEl.innerHTML = '';
         setTopNotices('');
-        setNoResultsState('搜索请求失败', err instanceof Error && err.message
+        setNoResultsState(ui("m_c08f6d4c32ac6f78"), err instanceof Error && err.message
             ? err.message
-            : '请稍后再试。', 'bi bi-exclamation-triangle');
+            : ui("m_5ddbb7be6b11cc08"), 'bi bi-exclamation-triangle');
         noResultsEl.classList.remove('d-none');
         console.error('搜索失败', err);
     }
@@ -506,7 +507,7 @@ function computeTopNotices(q, currentPage, data) {
             ? `<div class="small text-muted mt-1"><code>${window.escapeHtml(exactMatchPage.slug)}</code></div>`
             : '';
         html += buildSearchNoticeCard({
-            label: '<i class="mdi mdi-magnify"></i> 标题完全匹配的页面',
+            label: ui("m_3643bc2159ea4122"),
             bodyHtml: `
                 <h4 class="mb-0 fs-5">
                     <a class="text-decoration-none text-primary fw-semibold" href="/w/${encodeURIComponent(exactMatchPage.slug)}">${window.escapeHtml(displayName)}</a>
@@ -519,17 +520,17 @@ function computeTopNotices(q, currentPage, data) {
     if (isMapNamespaceQuery) {
         // ② map 가상 뷰는 생성 불가 — 이동 버튼만 노출(존재 여부와 무관, 일반 검색 폴스루 시에도 동일).
         html += buildSearchNoticeCard({
-            bodyHtml: `<span><strong>"${window.escapeHtml(queryTrimmed)}"</strong> 문서 구조 보기로 이동할 수 있습니다.</span>`,
-            actionsHtml: `<a class="btn btn-wiki" href="${gotoUrl}"><i class="bi bi-diagram-3"></i> 해당 문서로 이동</a>`,
+            bodyHtml: ui("m_e574f453798cd394", [window.escapeHtml(queryTrimmed)]),
+            actionsHtml: ui("m_6a46fc7816cdc1c5", [gotoUrl]),
         });
     } else if (!hasExactMatch && !data.image_mode && !data.category_mode && !isImageNamespaceQuery) {
         // ③ 정확 일치 문서가 없을 때: 위키 링크 [[...]] 로 바로 이동 + (권한 있으면) 새 문서 만들기 동시 노출.
-        const gotoBtn = `<a class="btn btn-wiki-outline" href="${gotoUrl}"><i class="bi bi-box-arrow-up-right"></i> ${window.escapeHtml(queryTrimmed)}로 이동</a>`;
+        const gotoBtn = ui("m_aea08df6a31783ad", [gotoUrl, window.escapeHtml(queryTrimmed)]);
         const createBtn = canCreate
-            ? `<button class="btn btn-wiki" onclick="window.location.href='/edit?slug=${encodeURIComponent(queryTrimmed).replace(/'/g, "%27")}'"><i class="bi bi-pencil-square"></i> 新页面 만들기</button>`
+            ? ui("m_5db58d79fbd69b98", [encodeURIComponent(queryTrimmed).replace(/'/g, "%27")])
             : '';
         html += buildSearchNoticeCard({
-            bodyHtml: `<span><strong>"${window.escapeHtml(queryTrimmed)}"</strong> 문서가 아직 존재하지 않습니다.</span>`,
+            bodyHtml: ui("m_ceb9802a06cd52ee", [window.escapeHtml(queryTrimmed)]),
             actionsHtml: `${gotoBtn}${createBtn}`,
         });
     }
@@ -570,11 +571,11 @@ function renderSearchResponse(q, requestedPage, data) {
         if (hasExactCard) {
             noResultsEl.classList.add('d-none');
         } else {
-            setNoResultsState('没有搜索结果', '试试其他关键词。');
+            setNoResultsState(ui("m_4e90152337531b53"), ui("m_04a3a3bc62a960ae"));
             noResultsEl.classList.remove('d-none');
         }
         document.getElementById('searchTitle').innerHTML =
-            `<i class="mdi mdi-magnify"></i> 搜索结果`;
+            ui("m_50f691453ce7bd0b");
         return;
     }
 
@@ -623,10 +624,10 @@ function renderSearchResponse(q, requestedPage, data) {
         // 카테고리도 포함되며, 클릭 시 /w/카테고리:<이름> 의 가상 카테고리 페이지로 이동한다.
         itemsHtml = data.results.map(r => {
             const descBadge = r.has_description
-                ? '<span class="badge bg-light text-dark border ms-2">有说明</span>'
-                : '<span class="badge bg-light text-muted border ms-2">无说明</span>';
+                ? ui("m_ec8b36f71bd8f29f")
+                : ui("m_57b34b3c9db06fa1");
             const countText = typeof r.page_count === 'number'
-                ? `<p class="text-body-secondary mb-0 small"><i class="mdi mdi-file-document-multiple-outline"></i> ${r.page_count}개 문서</p>`
+                ? ui("m_9c0a7ae3f49a776b", [r.page_count])
                 : '';
             return `
             <div class="search-result-item mb-3 pb-2 border-bottom">
@@ -645,7 +646,7 @@ function renderSearchResponse(q, requestedPage, data) {
             <div class="search-result-item mb-3 pb-2 border-bottom">
                 <h4 class="mb-0 fs-5">
                     <a class="text-decoration-none text-primary fw-semibold" href="/w/${encodeURIComponent(r.slug)}">${window.escapeHtml(r.slug)}</a>
-                    ${r.isDeleted ? '<span class="badge bg-danger ms-2">已删除</span>' : ''}
+                    ${r.isDeleted ? ui("m_06060c524b20bea1") : ''}
                 </h4>
             </div>
         `).join('');
@@ -676,7 +677,7 @@ function renderSearchResponse(q, requestedPage, data) {
             <div class="search-result-item mb-4 pb-3 border-bottom">
                 <h4 class="mb-2 fs-5">
                     <a class="text-decoration-none text-primary fw-semibold" href="${docUrl}">${window.escapeHtml(displayName)}</a>
-                    ${r.isDeleted ? '<span class="badge bg-danger ms-2">已删除</span>' : ''}
+                    ${r.isDeleted ? ui("m_06060c524b20bea1") : ''}
                 </h4>
                 <a class="search-result-body-link d-block text-decoration-none" href="${bodyHref}">
                     ${slugSubLabel}
@@ -690,7 +691,7 @@ function renderSearchResponse(q, requestedPage, data) {
     listEl.innerHTML = itemsHtml + paginationHtml;
 
     document.getElementById('searchTitle').innerHTML =
-        `<i class="mdi mdi-magnify"></i> 搜索结果 (${total}건)`;
+        ui("m_eccd5743fbcc6b50", [total]);
 }
 
 // 현재 페이지 기준 ±WINDOW 만 노출, 양 끝은 1/totalPages 를 고정하고 사이 간격은 ellipsis 로 축약.
@@ -715,13 +716,7 @@ function renderPagination(currentPage, totalPages) {
     const nextHref = nextDisabled ? '#' : buildUrl(nextPage);
 
     const items = [];
-    items.push(`
-        <li class="page-item ${prevDisabled ? 'disabled' : ''}">
-            <a class="page-link" href="${prevHref}" data-page="${prevPage}" aria-label="이전"${prevDisabled ? ' tabindex="-1" aria-disabled="true"' : ''}>
-                <span aria-hidden="true">&laquo;</span>
-            </a>
-        </li>
-    `);
+    items.push(ui("m_c2756648fbeb37b2", [prevDisabled ? 'disabled' : '', prevHref, prevPage, prevDisabled ? ' tabindex="-1" aria-disabled="true"' : '']));
 
     // 현재 페이지 주변의 페이지 번호 계산
     const pages = new Set();
@@ -735,11 +730,7 @@ function renderPagination(currentPage, totalPages) {
     let prev = 0;
     for (const p of sorted) {
         if (prev && p - prev > 1) {
-            items.push(`
-                <li class="page-item disabled">
-                    <span class="page-link">&hellip;</span>
-                </li>
-            `);
+            items.push(ui("m_1f3e64f7c9c18646"));
         }
         const pageControl = p === currentPage
             ? `<span class="page-link" aria-current="page">${p}</span>`
@@ -752,21 +743,9 @@ function renderPagination(currentPage, totalPages) {
         prev = p;
     }
 
-    items.push(`
-        <li class="page-item ${nextDisabled ? 'disabled' : ''}">
-            <a class="page-link" href="${nextHref}" data-page="${nextPage}" aria-label="다음"${nextDisabled ? ' tabindex="-1" aria-disabled="true"' : ''}>
-                <span aria-hidden="true">&raquo;</span>
-            </a>
-        </li>
-    `);
+    items.push(ui("m_790a9445c5493326", [nextDisabled ? 'disabled' : '', nextHref, nextPage, nextDisabled ? ' tabindex="-1" aria-disabled="true"' : '']));
 
-    return `
-        <nav aria-label="搜索结果 페이지" class="mt-4">
-            <ul class="pagination justify-content-center" id="searchPagination">
-                ${items.join('')}
-            </ul>
-        </nav>
-    `;
+    return ui("m_a165ae23c8508921", [items.join('')]);
 }
 
 // 페이지네이션 링크 클릭: URL 갱신 후 해당 페이지를 서버에서 재조회(캐시 히트 시 네트워크 생략)

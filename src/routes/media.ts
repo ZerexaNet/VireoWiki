@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { requireAuth, requirePermission } from '../middleware/session';
@@ -31,8 +32,8 @@ const SVG_FORBIDDEN_PATTERNS: { re: RegExp; label: string }[] = [
     { re: /<!DOCTYPE/i, label: '<!DOCTYPE>' },
     { re: /<!ENTITY/i, label: '<!ENTITY>' },
     // 속성 경계(공백/따옴표/슬래시/태그 시작) 다음에 오는 on* 이벤트 핸들러
-    { re: /[\s"'/<]on[a-z]+\s*=/i, label: 'on* 이벤트 핸들러' },
-    { re: /javascript:/i, label: 'javascript: URL' },
+    { re: /[\s"'/<]on[a-z]+\s*=/i, label: ui("m_70f6bd48df9de855") },
+    { re: /javascript:/i, label: ui("m_9165b0be705d22d2") },
 ];
 
 /**
@@ -48,13 +49,13 @@ const FILENAME_FORBIDDEN = /[\[\]()#%|<>^\x00-\x1F\x7F\/\\.?\s"']/;
 function validateUploadFilename(name: string): { ok: true; value: string } | { ok: false; error: string } {
     const trimmed = name.trim();
     if (!trimmed) {
-        return { ok: false, error: '파일명을 입력해주세요.' };
+        return { ok: false, error: ui("m_a55030239d03452b") };
     }
     if (FILENAME_FORBIDDEN.test(trimmed)) {
-        return { ok: false, error: '파일명에 사용할 수 없는 문자가 포함되어 있습니다. ([ ] ( ) # % | < > ^ / \\ . ? " \' 공백 등은 사용할 수 없습니다)' };
+        return { ok: false, error: ui("m_383f5da44ca83bfa") };
     }
     if (trimmed.length > 100) {
-        return { ok: false, error: '파일명은 최대 100자까지 입력할 수 있습니다.' };
+        return { ok: false, error: ui("m_49e06d52b004e661") };
     }
     return { ok: true, value: trimmed };
 }
@@ -71,12 +72,12 @@ media.post('/api/media', requireAuth, requirePermission('media:upload'), async (
     try {
         formData = await c.req.formData();
     } catch {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 400);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 400);
     }
 
     const input = formData.get('file');
     if (!input || typeof input === 'string') {
-        return c.json({ error: '파일이 없습니다.' }, 400);
+        return c.json({ error: ui("m_709923cc1913c54a") }, 400);
     }
     const file = input as unknown as File;
 
@@ -95,7 +96,7 @@ media.post('/api/media', requireAuth, requirePermission('media:upload'), async (
     // 타입 검증
     if (!ALLOWED_TYPES.has(file.type)) {
         return c.json(
-            { error: `허용되지 않는 파일 형식입니다. (허용: ${[...ALLOWED_TYPES].join(', ')})` },
+            { error: ui("m_4dc3da9504a07d7e", [[...ALLOWED_TYPES].join(', ')]) },
             400
         );
     }
@@ -104,7 +105,7 @@ media.post('/api/media', requireAuth, requirePermission('media:upload'), async (
     const MAX_SIZE = parseInt(c.env.MAX_UPLOAD_SIZE || '15728640', 10);
     if (file.size > MAX_SIZE) {
         const maxSizeMb = MAX_SIZE / (1024 * 1024);
-        return c.json({ error: `파일 크기는 ${maxSizeMb}MB 이하만 허용됩니다.` }, 400);
+        return c.json({ error: ui("m_50d94ab00cdbc89f", [maxSizeMb]) }, 400);
     }
 
     // SVG 보안 검증: 클라이언트 정제(DOMPurify)를 우회한 직접 호출에 대비해
@@ -115,7 +116,7 @@ media.post('/api/media', requireAuth, requirePermission('media:upload'), async (
         const hit = SVG_FORBIDDEN_PATTERNS.find((p) => p.re.test(svgBody!));
         if (hit) {
             return c.json(
-                { error: `보안상 허용되지 않는 SVG입니다. (${hit.label} 포함)` },
+                { error: ui("m_27debb2125262c5f", [hit.label]) },
                 400
             );
         }
@@ -266,7 +267,7 @@ media.get('/api/media/search', requireAuth, requirePermission('media:upload'), a
  */
 media.get('/api/media/all', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const db = c.env.DB;
     const { results } = await db
@@ -325,7 +326,7 @@ media.get('/api/media/search-tags', requireAuth, requirePermission('media:upload
  */
 media.get('/api/media/doc/:filename', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const filename = c.req.param('filename');
     const row = await c.env.DB.prepare(
@@ -339,7 +340,7 @@ media.get('/api/media/doc/:filename', async (c) => {
     }>();
 
     if (!row) {
-        return c.json({ error: '이미지를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_9c0935a851d6062d") }, 404);
     }
 
     const tagMap = await fetchMediaTagMap(c.env.DB, [row.id]);
@@ -373,7 +374,7 @@ media.get('/api/media/doc/:filename', async (c) => {
  */
 media.get('/api/media/doc/:filename/backlinks', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const filename = c.req.param('filename');
     const db = c.env.DB;
@@ -387,7 +388,7 @@ media.get('/api/media/doc/:filename/backlinks', async (c) => {
     const mediaRow = await db.prepare('SELECT r2_key FROM media WHERE filename = ? LIMIT 1')
         .bind(filename).first<{ r2_key: string }>();
     if (!mediaRow) {
-        return c.json({ error: '이미지를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_9c0935a851d6062d") }, 404);
     }
 
     let pageQuery = `
@@ -547,7 +548,7 @@ media.put('/api/media/doc/:filename', requireAuth, requirePermission('wiki:edit'
     try {
         body = await c.req.json();
     } catch {
-        return c.json({ error: '유효하지 않은 요청입니다.' }, 400);
+        return c.json({ error: ui("m_0b0a009c6e0d2392") }, 400);
     }
     // CRLF/CR → LF 정규화. 클라이언트에서 \r 가 섞여 들어와도 렌더 파이프라인이
     // 일관되게 동작하도록 저장 시점에 정규화한다.
@@ -555,13 +556,13 @@ media.put('/api/media/doc/:filename', requireAuth, requirePermission('wiki:edit'
 
     // 길이 제한 (과도한 저장 방지)
     if (content.length > 20000) {
-        return c.json({ error: '본문은 최대 20000자까지 입력할 수 있습니다.' }, 400);
+        return c.json({ error: ui("m_a1637f65b48e9a28") }, 400);
     }
 
     const row = await c.env.DB.prepare('SELECT id FROM media WHERE filename = ? LIMIT 1')
         .bind(filename).first<{ id: number }>();
     if (!row) {
-        return c.json({ error: '이미지를 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_9c0935a851d6062d") }, 404);
     }
 
     await c.env.DB.prepare('UPDATE media SET content = ? WHERE id = ?')
@@ -588,17 +589,17 @@ media.get('/media/*', async (c) => {
 
     // 보안: images/ 경로 외 접근 차단
     if (!key.startsWith('images/')) {
-        return c.json({ error: '접근이 거부되었습니다.' }, 403);
+        return c.json({ error: ui("m_a5fe16f447fa51b3") }, 403);
     }
 
     // 보안: Path Traversal 방지
     if (key.includes('..')) {
-        return c.json({ error: '잘못된 경로입니다.' }, 400);
+        return c.json({ error: ui("m_ac4b2abda2994c79") }, 400);
     }
 
     const object = await c.env.MEDIA.get(key);
     if (!object) {
-        return c.json({ error: '파일을 찾을 수 없습니다.' }, 404);
+        return c.json({ error: ui("m_126d6015a3288239") }, 404);
     }
 
     const headers = new Headers();

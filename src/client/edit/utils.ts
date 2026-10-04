@@ -35,6 +35,7 @@
  *       글로벌 property 쓰기로 동작 — 모든 raw script 에 'use strict' 없음 확인됨.
  */
 
+import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 import { escapeHtml } from '../utils/html';
 import './types';
 import type { CMView, DraftPayload, SectionRange } from './types';
@@ -78,20 +79,20 @@ function ensureCounterEls(): CounterEls | null {
 }
 
 function fmtCount(n: number): string {
-    return n.toLocaleString();
+    return n.toLocaleString(getLocale());
 }
 
 function setCheapCounts(els: CounterEls, lines: number, charsWithSpaces: number): void {
-    if (els.lines) els.lines.textContent = `${fmtCount(lines)}行`;
-    if (els.charsWithSpaces) els.charsWithSpaces.textContent = `${fmtCount(charsWithSpaces)}자(含空格)`;
+    if (els.lines) els.lines.textContent = ui("m_90261fcce39fc898", [fmtCount(lines)]);
+    if (els.charsWithSpaces) els.charsWithSpaces.textContent = ui("m_411b2c6b766399b8", [fmtCount(charsWithSpaces)]);
 }
 
 function setHeavyCountsFromText(els: CounterEls, str: string): void {
     const chars = str.replace(/\s/g, '').length;
     const trimmed = str.trim();
     const words = trimmed ? trimmed.split(/\s+/).length : 0;
-    if (els.chars) els.chars.textContent = `${fmtCount(chars)}자`;
-    if (els.words) els.words.textContent = `${fmtCount(words)}词`;
+    if (els.chars) els.chars.textContent = ui("m_3f461b232fc684b2", [fmtCount(chars)]);
+    if (els.words) els.words.textContent = ui("m_1838d440c8d73857", [fmtCount(words)]);
 }
 
 function cancelHeavy(): void {
@@ -427,7 +428,7 @@ function saveDraftToLocal(): boolean {
     if (!content || !content.trim()) {
         window.Swal?.fire({
             icon: 'info',
-            title: '저장할 내용이 없습니다',
+            title: ui("m_f5c3734f1842d175"),
             timer: 1200,
             showConfirmButton: false,
         });
@@ -449,8 +450,8 @@ function saveDraftToLocal(): boolean {
         localStorage.setItem(draftKey, JSON.stringify(payload));
         window.Swal?.fire({
             icon: 'success',
-            title: '초안 저장됨',
-            text: '이 브라우저에 임시 저장했습니다.',
+            title: ui("m_ffe73dd0b9913359"),
+            text: ui("m_4a0c4ffb632258ff"),
             toast: true,
             position: 'top-end',
             timer: 1500,
@@ -460,8 +461,8 @@ function saveDraftToLocal(): boolean {
     } catch {
         window.Swal?.fire({
             icon: 'error',
-            title: '초안 保存失败',
-            text: '브라우저 저장소에 기록할 수 없습니다. (용량 초과 가능성)',
+            title: ui("m_0fdee520a75bf81b"),
+            text: ui("m_0d3fa0fb13f01944"),
         });
         return false;
     }
@@ -525,12 +526,12 @@ async function checkDraft(): Promise<void> {
 
     if (versionChanged) {
         const result = await swal.fire({
-            title: '문서가 그 사이 편집되었습니다',
-            text: '마지막으로 초안을 저장한 이후 문서가 편집되었습니다. 초안을 불러오시겠습니까?',
+            title: ui("m_02d29b4444c4bc35"),
+            text: ui("m_8c6275b0525f518a"),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: '예, 불러오기 (충돌 해결)',
-            cancelButtonText: '아니오, 초안 삭제',
+            confirmButtonText: ui("m_8673367aa168346a"),
+            cancelButtonText: ui("m_644e6e73401bc4b5"),
         });
         if (!result.isConfirmed) {
             localStorage.removeItem(draftKey);
@@ -618,12 +619,12 @@ async function checkDraft(): Promise<void> {
 
     // 버전 동일 → 평소처럼 불러오기 여부만 확인
     const result = await swal.fire({
-        title: '저장된 초안이 있습니다',
-        text: '이전에 저장한 초안을 불러오시겠습니까?',
+        title: ui("m_81d70d3ce436e08d"),
+        text: ui("m_3debe2c26e180005"),
         icon: 'info',
         showCancelButton: true,
-        confirmButtonText: '예, 불러오기',
-        cancelButtonText: '아니오, 삭제',
+        confirmButtonText: ui("m_4615af86275a1ed2"),
+        cancelButtonText: ui("m_ca8ae38121505dba"),
     });
 
     if (result.isConfirmed) {
@@ -631,8 +632,8 @@ async function checkDraft(): Promise<void> {
         window.scrollToBottom?.();
         await swal.fire({
             icon: 'success',
-            title: '불러옴',
-            text: '저장된 초안을 불러왔습니다.',
+            title: ui("m_4b6e64b01208ec5b"),
+            text: ui("m_dd15748fb340ff41"),
             toast: true,
             position: 'top-end',
             timer: 1500,
@@ -699,7 +700,7 @@ async function checkSectionDrafts(): Promise<void> {
         // 불러와 에디터 내용을 바꿨을 수도 있으므로 originalContent 가 아닌 editor 기준이 안전하다.
         const baseContent = editor.getMarkdown();
         const range: SectionRange | null = findSectionRange(baseContent, sIdx, sHeading);
-        const headingDisplay = (range && range.headingText) || sHeading || `섹션 #${sIdx + 1}`;
+        const headingDisplay = (range && range.headingText) || sHeading || ui("m_dbfe8bc53f299dac", [sIdx + 1]);
 
         // 현재 본문의 해당 섹션 텍스트와 초안이 동일하면 의미 없음 — 정리
         if (range) {
@@ -713,26 +714,26 @@ async function checkSectionDrafts(): Promise<void> {
 
         if (!range) {
             const result = await swal.fire({
-                title: '섹션 위치를 찾지 못했습니다',
-                html: `<b>${escapeHtml(headingDisplay)}</b> 섹션의 저장된 초안이 있지만 문서 구조가 변경되어 위치를 찾을 수 없습니다.`,
+                title: ui("m_bb23db5abfb5746e"),
+                html: ui("m_8857aa2850c69203", [escapeHtml(headingDisplay)]),
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: '초안 삭제',
-                cancelButtonText: '나중에',
+                confirmButtonText: ui("m_15a73ae33375c3b1"),
+                cancelButtonText: ui("m_a12252500035668f"),
             });
             if (result.isConfirmed) localStorage.removeItem(key);
             continue;
         }
 
         const result = await swal.fire({
-            title: '저장된 섹션 초안',
-            html: `<b>${escapeHtml(headingDisplay)}</b> 에 저장된 초안이 있습니다.<br>본문에 불러오시겠습니까?`,
+            title: ui("m_9ec3652c9d614929"),
+            html: ui("m_6506287817248afd", [escapeHtml(headingDisplay)]),
             icon: 'info',
             showCancelButton: true,
             showDenyButton: true,
-            confirmButtonText: '예, 불러오기',
-            denyButtonText: '아니오, 삭제',
-            cancelButtonText: '나중에',
+            confirmButtonText: ui("m_4615af86275a1ed2"),
+            denyButtonText: ui("m_ca8ae38121505dba"),
+            cancelButtonText: ui("m_a12252500035668f"),
         });
 
         if (result.isConfirmed) {
@@ -741,8 +742,8 @@ async function checkSectionDrafts(): Promise<void> {
             localStorage.removeItem(key);
             await swal.fire({
                 icon: 'success',
-                title: '불러옴',
-                text: `'${headingDisplay}' 섹션 초안을 본문에 병합했습니다.`,
+                title: ui("m_4b6e64b01208ec5b"),
+                text: ui("m_a1a6f7bd639bc549", [headingDisplay]),
                 toast: true,
                 position: 'top-end',
                 timer: 1500,

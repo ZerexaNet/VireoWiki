@@ -15,6 +15,7 @@
  * 입력 등 동적 문자열을 넣을 때는 호출 측에서 먼저 escapeHtml 해야 한다.
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 export interface EmptyStateCta {
     /** 버튼 라벨 (신뢰 리터럴; 동적이면 호출부에서 이스케이프) */
     label: string;
@@ -85,7 +86,7 @@ export function emptyState(opts: EmptyStateOptions): string {
  * 이미 테마가 적용된 부트스트랩 `.spinner-border` 를 재사용한다.
  */
 export function inlineLoading(opts: InlineLoadingOptions = {}): string {
-    const text = opts.text === undefined ? '正在加载...' : opts.text;
+    const text = opts.text === undefined ? ui("m_7545b39503978718") : opts.text;
     const sizeClass = opts.size === 'md' ? '' : ' spinner-border-sm';
     const blockClass = opts.block ? ' loading-block' : '';
     const label = text ? `<span>${text}</span>` : '';

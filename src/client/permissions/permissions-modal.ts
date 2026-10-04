@@ -18,6 +18,7 @@
  * window.openPermissionsModal(slug) 으로만 노출 — 페이지 로드시 자동 실행되지 않는다.
  */
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import '../utils/swal';
 
 import { normalizeSlug } from '../utils/slug';
@@ -81,10 +82,10 @@ interface ModalState {
 }
 
 const ACL_FLAG_LABELS: Record<EditAclFlag, string> = {
-    aged: '가입 N일 이상',
-    page_editor: '본 문서 편집 이력',
-    any_editor: '임의 문서 편집 이력',
-    admin_only: '관리자 전용',
+    aged: ui("m_bf8508933cb57822"),
+    page_editor: ui("m_6e8b991fd801742e"),
+    any_editor: ui("m_33a7ab7ce21a4ef0"),
+    admin_only: ui("m_593efa9a64e89c3f"),
 };
 
 const ACL_FLAG_ORDER: EditAclFlag[] = ['aged', 'page_editor', 'any_editor', 'admin_only'];
@@ -114,8 +115,8 @@ function parseEditAclFromRaw(raw: string | null | undefined): EditAcl | null {
 }
 
 function aclSummary(acl: EditAcl | null): string {
-    if (!acl || acl.flags.length === 0) return '비활성';
-    return acl.flags.map(f => ACL_FLAG_LABELS[f]).join(' 그리고 ');
+    if (!acl || acl.flags.length === 0) return ui("m_ffdbb50e2aa475ec");
+    return acl.flags.map(f => ACL_FLAG_LABELS[f]).join(ui("m_96df792915787246"));
 }
 
 function aclEqual(a: EditAcl | null, b: EditAcl | null): boolean {
@@ -138,11 +139,11 @@ async function fetchCurrentPage(slug: string): Promise<CurrentPage | { error: st
     const res = await fetch(`/api/w/${encodeURIComponent(slug)}?redirect=no&nocache=true`);
     if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
-        return { error: err.error || `문서 조회 실패 (${res.status})` };
+        return { error: err.error || ui("m_15f4f9a5c6e140e5", [res.status]) };
     }
     const data = (await res.json()) as { id?: number; is_private?: number; edit_acl?: string | null };
     const id = Number(data.id);
-    if (!Number.isFinite(id)) return { error: '문서 메타를 읽지 못했습니다.' };
+    if (!Number.isFinite(id)) return { error: ui("m_3cb0ef453b7ddab2") };
     return {
         id,
         slug,
@@ -166,7 +167,7 @@ async function patchPageFlags(slug: string, body: { is_private: 0 | 1 }): Promis
     });
     if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
-        return { ok: false, error: err.error || `오류 (${res.status})` };
+        return { ok: false, error: err.error || ui("m_f887c5441fa72e31", [res.status]) };
     }
     const data = (await res.json()) as { is_private: 0 | 1 };
     return { ok: true, data: { is_private: data.is_private } };
@@ -180,7 +181,7 @@ async function putPageEditAcl(slug: string, acl: EditAcl | null): Promise<{ ok: 
     });
     if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
-        return { ok: false, error: err.error || `오류 (${res.status})` };
+        return { ok: false, error: err.error || ui("m_f887c5441fa72e31", [res.status]) };
     }
     const data = (await res.json()) as { edit_acl: EditAcl | null };
     return { ok: true, acl: data.edit_acl ?? null };
@@ -202,7 +203,7 @@ async function fetchSubpages(prefix: string): Promise<{ items: SubpageItem[] } |
     const res = await fetch(`/api/admin/doc-setting-prefix-rules/subpages?prefix=${encodeURIComponent(prefix)}`);
     if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
-        return { error: err.error || `오류 (${res.status})` };
+        return { error: err.error || ui("m_f887c5441fa72e31", [res.status]) };
     }
     return (await res.json()) as { items: SubpageItem[] };
 }
@@ -211,7 +212,7 @@ async function fetchSubpages(prefix: string): Promise<{ items: SubpageItem[] } |
 
 function privateBadge(flag: 0 | 1): string {
     if (!flag) return '<span class="bulkcat-cat-chip" style="opacity: .4;">—</span>';
-    return '<span class="bulkcat-cat-chip is-danger" title="비공개"><i class="mdi mdi-eye-off"></i> 비공개</span>';
+    return ui("m_04493f83d34189ef");
 }
 
 function aclBadge(acl: EditAcl | null): string {
@@ -221,8 +222,8 @@ function aclBadge(acl: EditAcl | null): string {
 
 function rulePrivateLabel(v: FlagValue): string {
     if (v === null || v === undefined) return '<span style="opacity: .4;">—</span>';
-    if (v === 1) return '<i class="mdi mdi-eye-off"></i> ON';
-    return '<i class="mdi mdi-eye-outline"></i> OFF';
+    if (v === 1) return ui("m_473159f674ff67ca");
+    return ui("m_0a7103cfc0743130");
 }
 
 function ruleAclLabel(raw: string | null): string {
@@ -257,7 +258,7 @@ function ruleCategoriesLabel(raw: string | null): string {
 
 function rulesTableHtml(rules: DocSettingRule[]): string {
     if (rules.length === 0) {
-        return '<div class="bulkcat-rules-empty">이 문서와 관련된 자동 규칙이 없습니다.</div>';
+        return ui("m_217f3927ada2d495");
     }
     const rows = rules.map((r) => `
         <tr data-rule-id="${r.id}">
@@ -272,123 +273,22 @@ function rulesTableHtml(rules: DocSettingRule[]): string {
             </td>
         </tr>
     `).join('');
-    return `
-        <table class="bulkcat-rules-table">
-            <thead><tr><th>접두사</th><th>비공개</th><th>편집 ACL</th><th>카테고리</th><th aria-label="삭제"></th></tr></thead>
-            <tbody>${rows}</tbody>
-        </table>
-    `;
+    return ui("m_8270da95811fe10f", [rows]);
 }
 
 function aclFieldsetHtml(idPrefix: string, initialAcl: EditAcl | null, initiallyVisible: boolean): string {
     const flagSet = new Set(initialAcl?.flags ?? []);
-    return `
-        <fieldset class="perm-acl-fieldset" id="${idPrefix}Fieldset" style="border: 1px dashed var(--bs-border-color); padding: 8px 12px; border-radius: 6px; ${initiallyVisible ? '' : 'display: none;'}">
-            <legend class="bulkcat-section-title" style="font-size: 0.85em; padding: 0 6px;">권한</legend>
-            <div class="bulkcat-flag-row">
-                ${ACL_FLAG_ORDER.map(f => `
+    return ui("m_41e7be2dde07e3b9", [idPrefix, initiallyVisible ? '' : 'display: none;', ACL_FLAG_ORDER.map(f => `
                     <label class="form-check-inline mb-0"><input class="form-check-input ${idPrefix}-flag" type="checkbox" value="${f}"${flagSet.has(f) ? ' checked' : ''}> <span class="ms-1">${ACL_FLAG_LABELS[f]}</span></label>
-                `).join('')}
-            </div>
-            <small class="text-muted">가입일 임계값(N일)은 관리자 콘솔 &gt; 위키 설정의 <b>편집 ACL 가입 일수</b> 전역 설정을 따릅니다. <br><b>관리자 전용</b> 플래그는 일반 사용자 편집을 일괄 차단합니다.</small>
-        </fieldset>
-    `;
+                `).join('')]);
 }
 
 function buildModalHtml(slug: string, page: CurrentPage | null, pageLoadError: string | null, rules: DocSettingRule[]): string {
     const currentSection = page
-        ? `
-            <div class="bulk-modal-inline-actions" style="gap: 1rem; margin-bottom: 0.6rem;">
-                <label class="form-check mb-0">
-                    <input class="form-check-input" type="checkbox" id="permCurPrivate"${page.is_private ? ' checked' : ''}>
-                    <span class="form-check-label fw-bold text-danger ms-1"><i class="mdi mdi-eye-off"></i> 비공개 (관리자만 열람)</span>
-                </label>
-            </div>
-            <div role="radiogroup" aria-label="편집 ACL" class="bulkcat-option-row" style="margin-bottom: 0.4rem;">
-                <span class="bulkcat-option-label"><i class="mdi mdi-shield-account"></i> 편집 ACL</span>
-                <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permCurAclAction" value="none"${page.edit_acl ? '' : ' checked'}> <span class="ms-1">그대로</span></label>
-                <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permCurAclAction" value="clear"> <span class="ms-1">비활성화</span></label>
-                <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permCurAclAction" value="set"${page.edit_acl ? ' checked' : ''}> <span class="ms-1">아래 ACL 적용</span></label>
-            </div>
-            ${aclFieldsetHtml('permCurAcl', page.edit_acl, !!page.edit_acl)}
-            <div class="bulk-modal-inline-actions" style="margin-top: 0.75rem; justify-content: flex-end;">
-                <span id="permCurSaveStatus" class="bulkcat-counter"></span>
-                <button type="button" class="btn btn-sm btn-wiki" id="permCurSaveBtn">
-                    <i class="mdi mdi-content-save"></i> 현재 문서에 저장
-                </button>
-            </div>
-        `
-        : `<div class="bulkcat-warning">${escapeHtml(pageLoadError || '문서 메타 로드 실패')}</div>`;
+        ? ui("m_8edcb1517374d55f", [page.is_private ? ' checked' : '', page.edit_acl ? '' : ' checked', page.edit_acl ? ' checked' : '', aclFieldsetHtml('permCurAcl', page.edit_acl, !!page.edit_acl)])
+        : `<div class="bulkcat-warning">${escapeHtml(pageLoadError || ui("m_c5ac0714fceb948d"))}</div>`;
 
-    return `
-        <div class="bulkcat-modal">
-            <section class="bulkcat-section bulk-modal-section-card">
-                <header class="bulkcat-section-head">
-                    <h6 class="bulkcat-section-title">현재 문서</h6>
-                    <span class="bulkcat-counter">이 문서에만 적용</span>
-                </header>
-                ${currentSection}
-            </section>
-
-            <section class="bulkcat-section bulk-modal-section-card bulk-modal-section-muted">
-                <header class="bulkcat-section-head">
-                    <h6 class="bulkcat-section-title">하위 문서 일괄 적용</h6>
-                    <span class="bulkcat-counter" id="permBulkCounter">불러오는 중…</span>
-                </header>
-                <div class="bulkcat-prefix-line">
-                    <span class="bulkcat-prefix-label">prefix</span>
-                    <code class="bulkcat-prefix-code">${escapeHtml(slug)}/**</code>
-                </div>
-                <div class="bulkcat-subpages-panel" id="permBulkPanel">
-                    ${window.uiInlineLoading({ block: true })}
-                </div>
-
-                <div class="bulkcat-actions-row" style="display: flex; flex-direction: column; gap: 10px; margin-top: 0.5rem;">
-                    <div role="radiogroup" aria-label="비공개" class="bulkcat-option-row">
-                        <span class="bulkcat-option-label"><i class="mdi mdi-eye-off"></i> 비공개</span>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkPrivateAction" value="none" checked> <span class="ms-1">그대로</span></label>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkPrivateAction" value="on"> <span class="ms-1">비공개</span></label>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkPrivateAction" value="off"> <span class="ms-1">공개</span></label>
-                    </div>
-                    <div role="radiogroup" aria-label="편집 ACL" class="bulkcat-option-row">
-                        <span class="bulkcat-option-label"><i class="mdi mdi-shield-account"></i> 편집 ACL</span>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkAclAction" value="none" checked> <span class="ms-1">그대로</span></label>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkAclAction" value="clear"> <span class="ms-1">비활성화</span></label>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkAclAction" value="set"> <span class="ms-1">아래 ACL 적용</span></label>
-                    </div>
-                    ${aclFieldsetHtml('permBulkAcl', null, false)}
-                    <div role="radiogroup" aria-label="카테고리" class="bulkcat-option-row">
-                        <span class="bulkcat-option-label"><i class="mdi mdi-tag-multiple-outline"></i> 카테고리</span>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkCatAction" value="none" checked> <span class="ms-1">그대로</span></label>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkCatAction" value="add"> <span class="ms-1">아래 카테고리 추가</span></label>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkCatAction" value="set"> <span class="ms-1">아래로 교체</span></label>
-                        <label class="form-check-inline mb-0"><input class="form-check-input" type="radio" name="permBulkCatAction" value="clear"> <span class="ms-1">비움</span></label>
-                    </div>
-                    <fieldset class="perm-acl-fieldset" id="permBulkCatFieldset" style="border: 1px dashed var(--bs-border-color); padding: 8px 12px; border-radius: 6px; display: none;">
-                        <legend class="bulkcat-section-title" style="font-size: 0.85em; padding: 0 6px;">카테고리</legend>
-                        <div class="category-tag-container" id="permBulkCatContainer" onclick="document.getElementById('permBulkCatInput')?.focus()">
-                            <input type="text" class="category-tag-input" id="permBulkCatInput" placeholder="카테고리 입력 후 엔터나 쉼표 (예: 기술, API)">
-                        </div>
-                        <small class="text-muted d-block mt-1">한글/영문/숫자/공백/언더바/하이픈/마침표/쉼표만 입력 가능. 자동 규칙으로 저장 시, 이후 이 문서 하위에 새로 생성되는 문서에 자동 부여됩니다.</small>
-                    </fieldset>
-                </div>
-                <p class="bulkcat-section-hint">
-                    체크된 하위 문서에만 위 액션이 적용됩니다. <b>그대로</b> 인 항목은 변경되지 않습니다.
-                </p>
-                <label class="bulkcat-persist-row">
-                    <input class="form-check-input" type="checkbox" id="permBulkPersist">
-                    <span>자동 규칙으로 저장 <span class="bulkcat-persist-sub">(이후 이 prefix 하위에 새로 만들어지는 문서에 자동 적용)</span></span>
-                </label>
-            </section>
-
-            <section class="bulkcat-section bulk-modal-section-card">
-                <header class="bulkcat-section-head">
-                    <h6 class="bulkcat-section-title">관련 자동 규칙</h6>
-                </header>
-                <div class="bulkcat-rules-wrap" id="permRulesTable">${rulesTableHtml(rules)}</div>
-            </section>
-        </div>
-    `;
+    return ui("m_0c53e3964dd0d9de", [currentSection, escapeHtml(slug), window.uiInlineLoading({ block: true }), aclFieldsetHtml('permBulkAcl', null, false), rulesTableHtml(rules)]);
 }
 
 // ── 섹션 1: 현재 문서 단건 ─────────────────────────────────────────
@@ -440,7 +340,7 @@ async function saveCurrent(state: ModalState): Promise<void> {
     else if (aclAction === 'set') {
         nextAcl = readAclValueFrom('permCurAcl');
         if (!nextAcl) {
-            setCurSaveStatus("'아래 ACL 적용' 을 선택했지만 플래그가 비어 있습니다.", 'err');
+            setCurSaveStatus(ui("m_e549e8950801ce52"), 'err');
             return;
         }
     }
@@ -449,11 +349,11 @@ async function saveCurrent(state: ModalState): Promise<void> {
     const aclChanged = aclAction !== 'none' && !aclEqual(nextAcl, state.page.edit_acl);
 
     if (!privChanged && !aclChanged) {
-        setCurSaveStatus('변경 사항이 없습니다.', 'info');
+        setCurSaveStatus(ui("m_93b58fbaf5e77126"), 'info');
         return;
     }
 
-    setCurSaveStatus('저장 중…', 'info');
+    setCurSaveStatus(ui("m_88daaeedfe4c69c6"), 'info');
     const tasks: Promise<{ ok: boolean; error?: string }>[] = [];
     if (privChanged) {
         tasks.push(patchPageFlags(state.slug, { is_private: nextPriv }).then(r => r.ok ? { ok: true } : { ok: false, error: r.error }));
@@ -465,17 +365,17 @@ async function saveCurrent(state: ModalState): Promise<void> {
     const results = await Promise.all(tasks);
     const failed = results.find(r => !r.ok);
     if (failed) {
-        setCurSaveStatus(`저장 실패: ${failed.error}`, 'err');
+        setCurSaveStatus(ui("m_6c0f44e353829285", [failed.error]), 'err');
         return;
     }
 
     if (privChanged) state.page.is_private = nextPriv;
     if (aclAction !== 'none') state.page.edit_acl = nextAcl;
-    setCurSaveStatus('저장됨', 'ok');
+    setCurSaveStatus(ui("m_f700b8ce7c8002d7"), 'ok');
 
     // 토스트 — SweetAlert2
     const swal = window.Swal;
-    swal?.fire({ icon: 'success', title: '저장됨', toast: true, position: 'top-end', timer: 1800, showConfirmButton: false });
+    swal?.fire({ icon: 'success', title: ui("m_f700b8ce7c8002d7"), toast: true, position: 'top-end', timer: 1800, showConfirmButton: false });
 }
 
 // ── 섹션 2: 하위 일괄 적용 ─────────────────────────────────────────
@@ -588,7 +488,7 @@ function updateBulkCounter(state: ModalState): void {
     const counter = document.getElementById('permBulkCounter');
     if (counter) {
         if (state.rows.length === 0) {
-            counter.textContent = '하위 문서 없음';
+            counter.textContent = ui("m_15f2c0b076847d0c");
         } else {
             const privA = readBulkPrivateAction();
             const aclA = readBulkAclAction();
@@ -609,7 +509,7 @@ function updateBulkCounter(state: ModalState): void {
                     !arrayEqualSet(newCats, r.categories)
                 ) changeCount++;
             }
-            counter.textContent = `체크 ${checked} / ${state.rows.length} (변경 +${changeCount})`;
+            counter.textContent = ui("m_bcb2dd464c283b8b", [checked, state.rows.length, changeCount]);
         }
     }
     updateBulkMaster(state);
@@ -627,7 +527,7 @@ function setAllBulkRows(state: ModalState, checked: boolean): void {
 
 function renderBulkSubpages(items: SubpageItem[], prefix: string): string {
     if (items.length === 0) {
-        return window.uiEmptyState({ icon: 'bi bi-inbox', title: '선택 가능한 하위 문서가 없습니다', compact: true });
+        return window.uiEmptyState({ icon: 'bi bi-inbox', title: ui("m_8678a8c0ff001570"), compact: true });
     }
     const prefixWithSlash = prefix + '/';
     const rows = items.map((item) => {
@@ -646,19 +546,9 @@ function renderBulkSubpages(items: SubpageItem[], prefix: string): string {
         `;
     }).join('');
     const warning = items.length > 500
-        ? `<div class="bulkcat-warning">총 ${items.length}개 — 많을 경우 브라우저가 느려질 수 있습니다.</div>`
+        ? ui("m_22d4a168003098be", [items.length])
         : '';
-    return `
-        ${warning}
-        <div class="bulkcat-master-row">
-            <label class="bulkcat-master-label">
-                <input type="checkbox" class="form-check-input bulkcat-master-checkbox" id="permBulkMaster">
-                <span class="bulkcat-master-text">전체</span>
-            </label>
-            <span class="bulkcat-master-count">${items.length}개</span>
-        </div>
-        <table class="bulkcat-subpages-table"><tbody>${rows}</tbody></table>
-    `;
+    return ui("m_61f429d04adf9133", [warning, items.length, rows]);
 }
 
 async function loadBulkTree(state: ModalState): Promise<void> {
@@ -668,7 +558,7 @@ async function loadBulkTree(state: ModalState): Promise<void> {
     if ('error' in res) {
         panel.innerHTML = `<div class="bulkcat-warning">${escapeHtml(res.error)}</div>`;
         const counter = document.getElementById('permBulkCounter');
-        if (counter) counter.textContent = '불러오기 실패';
+        if (counter) counter.textContent = ui("m_ebaf4022cf1aed6d");
         return;
     }
     panel.innerHTML = renderBulkSubpages(res.items, state.prefix);
@@ -712,18 +602,18 @@ function hookRuleDeleteButtons(container: HTMLElement, relatedTo: string) {
             if (!Number.isFinite(id)) return;
             const swal = window.Swal;
             const confirm = await swal?.fire({
-                title: '규칙 삭제',
-                text: '이 자동 규칙을 삭제하시겠습니까? (이미 적용된 플래그는 그대로 유지됩니다)',
+                title: ui("m_7c29f4abd8717ff2"),
+                text: ui("m_eec2407187e26eff"),
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: '삭제',
-                cancelButtonText: '취소',
+                confirmButtonText: ui("m_6139b6c3ed73cd4a"),
+                cancelButtonText: ui("m_be876433993ab7ba"),
                 confirmButtonColor: '#EF4444',
             });
             if (!confirm?.isConfirmed) return;
             const ok = await deleteRule(id);
             if (!ok) {
-                swal?.fire({ icon: 'error', title: '삭제 실패', toast: true, position: 'top-end', timer: 2500, showConfirmButton: false });
+                swal?.fire({ icon: 'error', title: ui("m_154d878a1e5a9b5c"), toast: true, position: 'top-end', timer: 2500, showConfirmButton: false });
                 return;
             }
             const rules = await fetchRules(relatedTo);
@@ -740,7 +630,7 @@ export async function openPermissionsModal(rawSlug: string): Promise<void> {
     if (!swal) return;
     const slug = normalizeSlug(rawSlug || '');
     if (!slug) {
-        await swal.fire({ icon: 'warning', title: '대상 문서 없음', text: '슬러그를 확인할 수 없습니다.' });
+        await swal.fire({ icon: 'warning', title: ui("m_b64a912c7cdc706f"), text: ui("m_b90c889e61a85b91") });
         return;
     }
 
@@ -769,12 +659,12 @@ export async function openPermissionsModal(rawSlug: string): Promise<void> {
     };
 
     const result = await swal.fire({
-        title: `권한 관리 — ${slug}`,
+        title: ui("m_2e98257ab2ed913a", [slug]),
         html: buildModalHtml(slug, page, pageLoadError, rules),
         width: 820,
         showCancelButton: true,
-        confirmButtonText: '하위 일괄 적용',
-        cancelButtonText: '닫기',
+        confirmButtonText: ui("m_cb9865d6f0415fb3"),
+        cancelButtonText: ui("m_1e8c10206f5b35bd"),
         focusConfirm: false,
         didOpen: () => {
             // 섹션 1: 현재 문서
@@ -809,8 +699,8 @@ export async function openPermissionsModal(rawSlug: string): Promise<void> {
                     if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(cleanTag)) {
                         swal.fire({
                             icon: 'warning',
-                            title: '특수문자 제외',
-                            text: '특수문자를 제외한 카테고리 이름을 입력해 주세요.',
+                            title: ui("m_4907df8dbe60e7cc"),
+                            text: ui("m_19823ed7547a358d"),
                             toast: true,
                             position: 'top-end',
                             timer: 2000,
@@ -892,17 +782,17 @@ export async function openPermissionsModal(rawSlug: string): Promise<void> {
             const persist = !!persistEl?.checked;
 
             if (aclAction === 'set' && !aclValue) {
-                swal.showValidationMessage("편집 ACL '아래 ACL 적용'을 선택했지만 플래그가 비어 있습니다.");
+                swal.showValidationMessage(ui("m_452730bf876c22f5"));
                 return false;
             }
             if ((categoriesAction === 'add' || categoriesAction === 'set') && categoriesList.length === 0) {
-                swal.showValidationMessage('카테고리 액션에 입력값이 비어 있습니다. 카테고리를 추가해 주세요.');
+                swal.showValidationMessage(ui("m_f4ed3622226140c2"));
                 return false;
             }
             if (categoriesAction === 'add' || categoriesAction === 'set') {
                 const raw = readBulkCatInput();
                 if (!/^[가-힣a-zA-Z0-9\s_.,-]+$/.test(raw)) {
-                    swal.showValidationMessage('카테고리에는 지정된 문자만 사용할 수 있습니다.');
+                    swal.showValidationMessage(ui("m_35926634b2949979"));
                     return false;
                 }
             }
@@ -925,11 +815,11 @@ export async function openPermissionsModal(rawSlug: string): Promise<void> {
             const anyAction = privateAction !== 'none' || aclAction !== 'none' || categoriesAction !== 'none';
 
             if (!willApply && !persist) {
-                swal.showValidationMessage('적용할 하위 문서를 선택하거나 "자동 규칙으로 저장"을 선택해주세요.');
+                swal.showValidationMessage(ui("m_5883deb01ff006e3"));
                 return false;
             }
             if (willApply && !anyAction) {
-                swal.showValidationMessage('비공개/편집 ACL/카테고리 중 하나 이상의 액션을 선택해주세요.');
+                swal.showValidationMessage(ui("m_4ae0f2688cbcd728"));
                 return false;
             }
             if (persist) {
@@ -939,7 +829,7 @@ export async function openPermissionsModal(rawSlug: string): Promise<void> {
                 const persistHasAcl = aclAction !== 'none';
                 const persistHasCats = categoriesAction !== 'none';
                 if (!persistHasPriv && !persistHasAcl && !persistHasCats) {
-                    swal.showValidationMessage('자동 규칙을 저장하려면 비공개/편집 ACL/카테고리 중 하나 이상을 지정해야 합니다.');
+                    swal.showValidationMessage(ui("m_816a9963ad2fb3a3"));
                     return false;
                 }
             }
@@ -973,20 +863,20 @@ export async function openPermissionsModal(rawSlug: string): Promise<void> {
         });
         if (!res.ok) {
             const err = (await res.json().catch(() => ({}))) as { error?: string };
-            await swal.fire({ icon: 'error', title: '실패', text: err.error || `오류 (${res.status})` });
+            await swal.fire({ icon: 'error', title: ui("m_2743911f83e1da69"), text: err.error || ui("m_f887c5441fa72e31", [res.status]) });
             return;
         }
         const data = (await res.json()) as { scanned: number; requested: number; changed: number; ruleSaved: boolean };
         const changeMsg = willApply
-            ? `대상 ${data.scanned}개 중 <b>${data.changed}개</b> 변경되었습니다.`
+            ? ui("m_24fdc521ee0a8f67", [data.scanned, data.changed])
             : '';
         const ruleMsg = data.ruleSaved
-            ? (changeMsg ? '<br>자동 규칙도 함께 저장되었습니다.' : '자동 규칙이 저장되었습니다.')
+            ? (changeMsg ? ui("m_dfa4cd979d3624f4") : ui("m_af46859340851645"))
             : '';
-        await swal.fire({ icon: 'success', title: '적용 완료', html: changeMsg + ruleMsg || '변경 사항이 없습니다.' });
+        await swal.fire({ icon: 'success', title: ui("m_4f2ed8c604fc2f30"), html: changeMsg + ruleMsg || ui("m_93b58fbaf5e77126") });
     } catch (e) {
         console.error('permissions modal bulk-apply failed', e);
-        await swal.fire({ icon: 'error', title: '네트워크 오류', text: String(e) });
+        await swal.fire({ icon: 'error', title: ui("m_0dd9df5c73a87e5c"), text: String(e) });
     }
 }
 

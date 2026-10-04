@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import type { Env } from '../types';
 
@@ -86,7 +87,7 @@ exploreRoutes.get('/explore/summary', async (c) => {
     // 비공개 위키(WIKI_VISIBILITY=closed)에서는 비로그인 요청이 캐시를 읽기 전에 차단해
     // 문서 slug/title·토론·통계가 외부로 새지 않도록 한다(/explore 페이지 가드와 동일 정책).
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
-        return c.json({ error: '로그인이 필요합니다.' }, 401);
+        return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
 
     // 비공개 위키 응답은 세션 쿠키에 따라 달라지므로 공개 캐시 금지(로그아웃 후 브라우저/중간

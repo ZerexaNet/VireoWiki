@@ -6,6 +6,7 @@
 //
 // 일반 사용자 노출 도구는 MCP_TOOL_DEFS_ALL 에 정의하고, 관리자 전용 도구는
 // src/routes/admin-mcp.ts 에서 ADMIN_TOOL_DEFS 로 별도 정의되어 호출 시점에 합류된다.
+import { ui } from '../i18n/server';
 import type { Context } from 'hono';
 import type { Env } from '../types';
 import { renderForAI, extractTOC, extractSection, findSectionsForQuery, expandTemplates } from './aiParser';
@@ -66,17 +67,17 @@ export function bytesToBase64(bytes: Uint8Array): string {
 export function formatRelativeTime(unixSec: number | null | undefined, nowSec: number): string {
     if (unixSec === null || unixSec === undefined || !Number.isFinite(unixSec)) return '';
     const diff = Math.max(0, Math.floor(nowSec - unixSec));
-    if (diff < 60) return '방금';
-    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+    if (diff < 60) return ui("m_2fd9e7d411752b46");
+    if (diff < 3600) return ui("m_f467a4024cb27ee2", [Math.floor(diff / 60)]);
     if (diff < 86400) {
         const hours = Math.floor(diff / 3600);
         const minutes = Math.floor((diff % 3600) / 60);
-        return minutes > 0 ? `${hours}시간 ${minutes}분 전` : `${hours}시간 전`;
+        return minutes > 0 ? ui("m_3a303b18f9b646c2", [hours, minutes]) : ui("m_b101f92f6c467d74", [hours]);
     }
     const days = Math.floor(diff / 86400);
-    if (days < 30) return `${days}일 전`;
-    if (days < 365) return `${Math.floor(days / 30)}달 전`;
-    return `${Math.floor(days / 365)}년 전`;
+    if (days < 30) return ui("m_e1655b60987cbfd4", [days]);
+    if (days < 365) return ui("m_783d60738fd55f9d", [Math.floor(days / 30)]);
+    return ui("m_fd305f0b56565a13", [Math.floor(days / 365)]);
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -92,48 +93,48 @@ export interface McpToolDef {
 export const MCP_TOOL_DEFS_ALL: McpToolDef[] = [
     {
         name: 'search_title',
-        description: '위키 문서의 슬러그와 대체 제목(title)을 검색합니다. 응답의 slug 는 모든 호출 도구가 사용하는 식별자이며, title 은 표시 전용 대체 제목(없으면 null)입니다. 다른 도구의 title 인자에는 반드시 slug 값을 사용하세요.',
-        inputSchema: { type: 'object', properties: { query: { type: 'string', description: '검색어' } }, required: ['query'] }
+        description: ui("m_7466ca263ca1b8e0"),
+        inputSchema: { type: 'object', properties: { query: { type: 'string', description: ui("m_bda397fc5b2a3711") } }, required: ['query'] }
     },
     {
         name: 'search_fts',
-        description: '위키 문서의 본문을 전문 검색(FTS) 합니다. 검색 결과에는 문서 슬러그와, 검색어가 등장하는 모든 목차의 목록이 포함됩니다. 한 문서에서 여러 섹션에 걸쳐 등장하면 모든 섹션이 반환됩니다.',
-        inputSchema: { type: 'object', properties: { query: { type: 'string', description: '검색어' } }, required: ['query'] }
+        description: ui("m_5360cddf64b641a4"),
+        inputSchema: { type: 'object', properties: { query: { type: 'string', description: ui("m_bda397fc5b2a3711") } }, required: ['query'] }
     },
     {
         name: 'search_rag',
-        description: '위키 문서의 본문을 Cloudflare AI Search(RAG) 로 의미 기반 검색합니다. FTS 가 정확한 문자열 매칭이라면, 이 도구는 의미가 가까운 문서를 점수(score) 순으로 반환합니다. 응답 각 항목은 slug(식별자), title(표시 전용 대체 제목, 없으면 null), score, snippet 을 포함합니다. 다른 도구의 title 인자에는 반드시 slug 값을 사용하세요. 비공개/삭제 문서는 호출자 권한에 따라 결과에서 제외됩니다.',
-        inputSchema: { type: 'object', properties: { query: { type: 'string', description: '검색어(자연어 가능)' }, max: { type: 'number', description: '최대 반환 개수 (기본 30, 최대 50)' } }, required: ['query'] }
+        description: ui("m_d8628e79d9242ca8"),
+        inputSchema: { type: 'object', properties: { query: { type: 'string', description: ui("m_117bcb3a4635e6ec") }, max: { type: 'number', description: ui("m_6268e49bf3392fd2") } }, required: ['query'] }
     },
     {
         name: 'get_toc',
-        description: '위키 문서의 목차(section)만 불러옵니다. 목차는 계층적 번호(예: "1.", "1.1", "1.1.1")가 붙은 형식으로 반환됩니다. 첫 헤딩 이전에 본문 텍스트가 있는 경우 "0. 도입부" 항목이 맨 앞에 추가되며, read_section 에 "0" 을 지정하면 그 도입부만 읽을 수 있습니다. 긴 문서를 전부 읽기보다 get_toc 도구로 목차를 추출한 뒤 read_section 도구에 번호를 지정해 부분적으로 읽는 것을 권장합니다. raw=true 로 설정하면 {{틀}} 트랜스클루전을 펼치지 않은 원본 기준의 목차 번호가 반환됩니다 — 어드민 MCP 의 edit_section 으로 편집하려면 반드시 raw=true 의 번호를 사용해야 합니다.',
-        inputSchema: { type: 'object', properties: { title: { type: 'string', description: '문서 슬러그(=제목)' }, raw: { type: 'boolean', description: 'true 시 트랜스클루전을 펼치지 않고 원본 헤딩만으로 목차 번호 산출 (편집용)' } }, required: ['title'] }
+        description: ui("m_6f58d16cf7366f57"),
+        inputSchema: { type: 'object', properties: { title: { type: 'string', description: ui("m_e01a35a4bdb5e329") }, raw: { type: 'boolean', description: ui("m_2a34a83055a956d0") } }, required: ['title'] }
     },
     {
         name: 'read_document',
-        description: '위키 문서의 전체 본문을 읽어옵니다. raw=true로 설정 시 위키 꾸미기 문법 변환을 건너뛰고 원본 그대로 반환합니다.',
-        inputSchema: { type: 'object', properties: { title: { type: 'string', description: '문서 슬러그(=제목)' }, raw: { type: 'boolean' } }, required: ['title'] }
+        description: ui("m_f48db6e7d1b019e2"),
+        inputSchema: { type: 'object', properties: { title: { type: 'string', description: ui("m_e01a35a4bdb5e329") }, raw: { type: 'boolean' } }, required: ['title'] }
     },
     {
         name: 'read_section',
-        description: '위키 문서에서 특정 목차의 내용만 읽어옵니다. 목차는 get_toc 가 반환하는 계층적 번호(예: "1", "1.1", "1.1.1")로 지정합니다. raw=true 면 트랜스클루전을 펼치지 않은 원본 기준의 번호로 추출하고 위키 꾸미기 문법 변환도 건너뜁니다 — get_toc(raw=true) / edit_section 과 동일한 번호 체계입니다. raw=false (기본) 면 트랜스클루전을 펼친 뒤 추출하고 AI 용 렌더링을 적용합니다 — get_toc(raw=false) 와 동일.',
-        inputSchema: { type: 'object', properties: { title: { type: 'string', description: '문서 슬러그(=제목)' }, section_number: { type: 'string', description: 'get_toc 가 반환한 목차 번호 (예: "1", "1.1", "1.1.1"). "0" 은 첫 헤딩 이전 도입부. raw 옵션은 get_toc 호출 시와 동일하게 맞추세요.' }, raw: { type: 'boolean', description: 'true 시 트랜스클루전 미확장 + 원본 그대로 반환 (편집 직전 단계용)' } }, required: ['title', 'section_number'] }
+        description: ui("m_dfc10bcd0c19ab35"),
+        inputSchema: { type: 'object', properties: { title: { type: 'string', description: ui("m_e01a35a4bdb5e329") }, section_number: { type: 'string', description: ui("m_ee5600524374a4b0") }, raw: { type: 'boolean', description: ui("m_519be1bbef197558") } }, required: ['title', 'section_number'] }
     },
     {
         name: 'get_tree',
-        description: '입력한 문서를 루트로 한 하위 문서 트리를 반환합니다. 예를 들어 "A/B/C" 를 입력하면 "A/B/C" 부터 시작하는 하위 트리만 반환됩니다.',
-        inputSchema: { type: 'object', properties: { title: { type: 'string', description: '트리의 루트가 될 문서 슬러그(=제목)' } }, required: ['title'] }
+        description: ui("m_7d3cb0c9eecf0798"),
+        inputSchema: { type: 'object', properties: { title: { type: 'string', description: ui("m_5455a9d896a17ebe") } }, required: ['title'] }
     },
     {
         name: 'read_document_batch',
-        description: '여러 문서를 한 번에 최대 10개까지 읽어옵니다. 두 가지 모드를 지원합니다. (1) titles: 직접 지정한 문서 슬러그 배열을 한 번에 읽기. (2) parent_title: 지정한 문서의 하위 문서들을 일괄 읽기. parent_title 모드에서 하위 문서가 10개를 초과하면 상위 10개만 읽고, 응답에 읽은/읽지 않은 문서를 표시한 트리와 페이지네이션 정보가 포함됩니다. page 파라미터(1부터 시작)로 다음 페이지를 요청할 수 있습니다. raw=true 설정 시 위키 꾸미기 문법 변환을 건너뜁니다.',
+        description: ui("m_1f0e3b8c7cb34e46"),
         inputSchema: {
             type: 'object',
             properties: {
-                titles: { type: 'array', items: { type: 'string' }, description: '직접 지정할 문서 슬러그 목록 (최대 10개). parent_title 과 함께 지정한 경우 titles 가 우선합니다.' },
-                parent_title: { type: 'string', description: '하위 문서를 일괄 읽을 부모 문서 슬러그' },
-                page: { type: 'number', description: 'parent_title 모드의 페이지 번호 (1부터 시작, 기본 1)' },
+                titles: { type: 'array', items: { type: 'string' }, description: ui("m_be6ca15da180391b") },
+                parent_title: { type: 'string', description: ui("m_7b1b4061a9d93728") },
+                page: { type: 'number', description: ui("m_f5d76cd0078d3708") },
                 raw: { type: 'boolean' }
             },
             required: []
@@ -141,92 +142,92 @@ export const MCP_TOOL_DEFS_ALL: McpToolDef[] = [
     },
     {
         name: 'get_map',
-        description: '여러 문서의 목차(section)를 한 번에 최대 10개까지 불러와, 슬러그 계층을 따라 하나의 트리 텍스트로 반환합니다. 두 가지 모드를 지원합니다. (1) titles: 직접 지정한 문서 슬러그 배열. 슬러그 경로로 트리를 만들 수 있으면 하나의 트리, 최상위 슬러그가 다르면 여러 트리로 분리됩니다. (2) parent_title: 지정한 문서를 루트로 한 하위 문서 트리. 각 문서 노드 아래에 자식 문서들과 함께 해당 문서의 목차 항목이 "#1. 제목", "#1.1. 제목" 형식으로 형제로 표시됩니다. 문서 본문이 없는 경로 노드는 "(문서 없음)" 으로 표시됩니다. parent_title 모드에서 하위 문서가 10개를 초과하면 상위 10개만 목차를 추출하고, 나머지는 "[읽지 않음]" 으로 표시됩니다. page 파라미터(1부터 시작)로 다음 페이지를 요청할 수 있습니다.',
+        description: ui("m_a03e8ae307459459"),
         inputSchema: {
             type: 'object',
             properties: {
-                titles: { type: 'array', items: { type: 'string' }, description: '직접 지정할 문서 슬러그 목록 (최대 10개). parent_title 과 함께 지정한 경우 titles 가 우선합니다.' },
-                parent_title: { type: 'string', description: '하위 문서의 목차를 일괄 조회할 부모 문서 슬러그' },
-                page: { type: 'number', description: 'parent_title 모드의 페이지 번호 (1부터 시작, 기본 1)' }
+                titles: { type: 'array', items: { type: 'string' }, description: ui("m_be6ca15da180391b") },
+                parent_title: { type: 'string', description: ui("m_7e31d414de4babd4") },
+                page: { type: 'number', description: ui("m_f5d76cd0078d3708") }
             },
             required: []
         }
     },
     {
         name: 'search_category',
-        description: '카테고리를 이름으로 검색합니다.',
-        inputSchema: { type: 'object', properties: { query: { type: 'string', description: '검색할 카테고리 이름 (부분 문자열)' } }, required: ['query'] }
+        description: ui("m_a2bfebb02edf8fad"),
+        inputSchema: { type: 'object', properties: { query: { type: 'string', description: ui("m_4c4a27420a7aacaf") } }, required: ['query'] }
     },
     {
         name: 'get_category_info',
-        description: '해당 카테고리에 속한 문서 목록과 카테고리 설명을 반환합니다. raw=true로 설정 시 카테고리 설명의 위키 꾸미기 문법 변환을 건너뛰고 원본 그대로 반환합니다.',
-        inputSchema: { type: 'object', properties: { category: { type: 'string', description: '조회할 카테고리 이름' }, raw: { type: 'boolean' } }, required: ['category'] }
+        description: ui("m_be7ce819a1d2eec9"),
+        inputSchema: { type: 'object', properties: { category: { type: 'string', description: ui("m_2a0a4a92c35e6110") }, raw: { type: 'boolean' } }, required: ['category'] }
     },
     {
         name: 'get_document_category',
-        description: '해당 문서가 속한 카테고리 목록을 반환합니다.',
-        inputSchema: { type: 'object', properties: { title: { type: 'string', description: '조회할 문서 슬러그(=제목)' } }, required: ['title'] }
+        description: ui("m_909a66569c8d31a8"),
+        inputSchema: { type: 'object', properties: { title: { type: 'string', description: ui("m_b9aa91f27eb4194c") } }, required: ['title'] }
     },
     {
         // Deprecated alias kept for backward compatibility (rename of get_document_categoty).
         // Will be removed in a future major version. Use get_document_category instead.
         name: 'get_document_categoty',
-        description: '[Deprecated] get_document_category 의 구버전 이름입니다. 새 코드에서는 get_document_category 를 사용하세요.',
-        inputSchema: { type: 'object', properties: { title: { type: 'string', description: '조회할 문서 슬러그(=제목)' } }, required: ['title'] }
+        description: ui("m_7324061da6dacbb7"),
+        inputSchema: { type: 'object', properties: { title: { type: 'string', description: ui("m_b9aa91f27eb4194c") } }, required: ['title'] }
     },
     {
         name: 'get_backlinks',
-        description: '이 문서를 참조하는 역링크(위키링크 [[...]], 틀 트랜스클루전 {{...}}) 문서 목록을 반환합니다.',
-        inputSchema: { type: 'object', properties: { title: { type: 'string', description: '역링크를 조회할 문서 슬러그(=제목)' } }, required: ['title'] }
+        description: ui("m_ad994dbc23c4c990"),
+        inputSchema: { type: 'object', properties: { title: { type: 'string', description: ui("m_639d520572cd50f7") } }, required: ['title'] }
     },
     {
         name: 'get_recent_changes',
-        description: '위키 전체에서 최근 수정된 문서 목록을 반환합니다. 응답에는 슬러그, 작성자 이름, 편집 요약, 마지막 리비전 id (revision_id, read_revision/revert_page 와 연계) 가 포함됩니다. 필터 파라미터를 조합해 범위를 좁힐 수 있습니다.',
+        description: ui("m_baa7da4dc29d1bde"),
         inputSchema: {
             type: 'object',
             properties: {
-                limit: { type: 'number', description: '최대 반환 개수 (기본 10, 최대 100)' },
-                since: { type: 'string', description: '이 시점 이후 변경분만 (ISO 8601, 예: "2024-01-01" 또는 "2024-01-01T00:00:00Z")' },
-                author: { type: 'string', description: '특정 사용자(name 정확 일치)의 마지막 편집만' },
-                category: { type: 'string', description: '특정 카테고리에 속한 문서의 변경만' },
-                namespace: { type: 'string', description: '특정 네임스페이스(슬러그 접두사) 필터. 예: "틀:" 또는 "분류:". "/" 로 끝나면 하위 트리 매칭.' }
+                limit: { type: 'number', description: ui("m_2c2360ccdb1288bf") },
+                since: { type: 'string', description: ui("m_1c5ac590ca42742f") },
+                author: { type: 'string', description: ui("m_9d55cf684346d177") },
+                category: { type: 'string', description: ui("m_526e538baffd5c3a") },
+                namespace: { type: 'string', description: ui("m_73d79401118b9f44") }
             },
             required: []
         }
     },
     {
         name: 'list_discussions',
-        description: '특정 문서에 달린 토론 스레드 목록을 반환합니다. 각 스레드의 id, 제목, 상태(open/closed), 댓글 수, 작성일이 포함됩니다.',
-        inputSchema: { type: 'object', properties: { title: { type: 'string', description: '문서 슬러그(=제목)' } }, required: ['title'] }
+        description: ui("m_d9ffd0b16262fc2b"),
+        inputSchema: { type: 'object', properties: { title: { type: 'string', description: ui("m_e01a35a4bdb5e329") } }, required: ['title'] }
     },
     {
         name: 'read_discussion',
-        description: '특정 토론 스레드의 제목, 상태, 모든 댓글을 읽어옵니다. discussion_id 는 list_discussions 가 반환한 id를 사용합니다.',
-        inputSchema: { type: 'object', properties: { discussion_id: { type: 'number', description: 'list_discussions가 반환한 토론 id' } }, required: ['discussion_id'] }
+        description: ui("m_b33174b918700b9b"),
+        inputSchema: { type: 'object', properties: { discussion_id: { type: 'number', description: ui("m_cbffdc5c8d59c830") } }, required: ['discussion_id'] }
     },
     {
         name: 'view_image',
-        description: '위키에 업로드된 이미지를 파일명으로 조회하여 이미지 데이터로 반환합니다. 문서 본문에 ![파일명](https://도메인/media/images/파일명) 형식으로 삽입된 그 파일명(확장자 포함)을 사용합니다.',
-        inputSchema: { type: 'object', properties: { filename: { type: 'string', description: '이미지 파일명 (확장자 포함, 예: "example.png")' } }, required: ['filename'] }
+        description: ui("m_757d8d1e4210db88"),
+        inputSchema: { type: 'object', properties: { filename: { type: 'string', description: ui("m_aa2b1fba52dee466") } }, required: ['filename'] }
     },
     {
         name: 'list_blog_posts',
-        description: '블로그(/blog) 포스트 목록을 최신순으로 반환합니다. 한 페이지에 최대 20개 항목이 포함되며, 각 포스트의 id, title, 작성 시점(time_ago), 줄 수, 글자 수가 포함됩니다. 블로그 포스트는 제목이 아닌 정수 id 로 식별합니다. 다음 페이지가 있으면 응답에 next_page 가 포함됩니다.',
+        description: ui("m_f8ac6d1e08a80948"),
         inputSchema: {
             type: 'object',
             properties: {
-                page: { type: 'number', description: '페이지 번호 (1부터 시작, 기본 1)' }
+                page: { type: 'number', description: ui("m_03e894d94ff38499") }
             },
             required: []
         }
     },
     {
         name: 'read_blog_post',
-        description: '블로그 포스트의 전체 본문을 읽어옵니다. id 는 list_blog_posts 가 반환한 정수 id 를 사용합니다. raw=true 로 설정 시 마크다운/위키 문법 변환을 건너뛰고 원본 그대로 반환합니다.',
+        description: ui("m_e6dc125b6303f6e8"),
         inputSchema: {
             type: 'object',
             properties: {
-                id: { type: 'number', description: '블로그 포스트 id (정수)' },
+                id: { type: 'number', description: ui("m_f89f48c07ea32b06") },
                 raw: { type: 'boolean' }
             },
             required: ['id']
@@ -234,23 +235,23 @@ export const MCP_TOOL_DEFS_ALL: McpToolDef[] = [
     },
     {
         name: 'get_blog_toc',
-        description: '블로그 포스트의 목차(section)만 불러옵니다. 목차는 계층적 번호(예: "1.", "1.1")가 붙은 형식으로 반환됩니다. 첫 헤딩 이전에 본문 텍스트가 있으면 "0. 도입부" 항목이 맨 앞에 추가되며, read_blog_section 에 "0" 을 지정하면 그 도입부만 읽을 수 있습니다.',
+        description: ui("m_906675307ca26a8a"),
         inputSchema: {
             type: 'object',
             properties: {
-                id: { type: 'number', description: '블로그 포스트 id (정수)' }
+                id: { type: 'number', description: ui("m_f89f48c07ea32b06") }
             },
             required: ['id']
         }
     },
     {
         name: 'read_blog_section',
-        description: '블로그 포스트에서 특정 목차의 내용만 읽어옵니다. 목차 번호는 get_blog_toc 가 반환한 계층적 번호(예: "1", "1.1") 로 지정합니다. raw=true 로 설정 시 위키 문법 변환을 건너뛰고 반환합니다.',
+        description: ui("m_0ea92e2a21f5d480"),
         inputSchema: {
             type: 'object',
             properties: {
-                id: { type: 'number', description: '블로그 포스트 id (정수)' },
-                section_number: { type: 'string', description: 'get_blog_toc 가 반환한 목차 번호 (예: "1", "1.1"). "0" 은 첫 헤딩 이전 도입부.' },
+                id: { type: 'number', description: ui("m_f89f48c07ea32b06") },
+                section_number: { type: 'string', description: ui("m_8ffbe10218de0ebf") },
                 raw: { type: 'boolean' }
             },
             required: ['id', 'section_number']
@@ -267,15 +268,15 @@ export function getSharedToolDefs(env: Env['Bindings']): McpToolDef[] {
 
 export function buildInformationIntro(c: Context<Env>, toolDefs: McpToolDef[] = MCP_TOOL_DEFS_ALL): string {
     const wikiName = c.env.WIKI_NAME;
-    const syntaxNote = c.env.WIKI_SYNTAX ? `\n\n문법 가이드 문서: ${c.env.WIKI_SYNTAX}` : '';
+    const syntaxNote = c.env.WIKI_SYNTAX ? ui("m_0169b14d9e0774bd", [c.env.WIKI_SYNTAX]) : '';
     // 블로그 안내문은 전달된 정의에 실제 포함된 이름만으로 동적 구성한다 — Off된 이름이
     // 잔류하거나, 가시 블로그 도구가 있는데 안내가 통째로 사라지지 않도록.
     const BLOG_TOOL_NAMES = ['list_blog_posts', 'read_blog_post', 'get_blog_toc', 'read_blog_section'];
     const visibleBlogTools = BLOG_TOOL_NAMES.filter(n => toolDefs.some(t => t.name === n));
     const blogNote = visibleBlogTools.length > 0
-        ? `\n\n위키 문서 외에도 블로그(/blog) 포스트를 ${visibleBlogTools.join(' / ')} 도구로 탐색할 수 있습니다. 블로그 포스트는 제목이 아닌 정수 id 로 식별합니다.`
+        ? ui("m_516b6531ac86d0c6", [visibleBlogTools.join(' / ')])
         : '';
-    return `이 도구는 ${wikiName} 의 문서를 탐색할 수 있는 MCP 도구입니다.\n\n이 위키의 문법은 마크다운 기반으로, 기본적으로는 문법 가이드 문서를 읽지 않아도 내용 파악이 가능합니다. 문서를 읽을 때 raw 파라미터를 따로 활성화하지 않으면 마크다운 기반으로 정리된 내용이 반환됩니다. raw 파라미터를 사용하려면 위키 문법 문서를 먼저 읽을 것을 권장합니다.${syntaxNote}${blogNote}`;
+    return ui("m_c73abcd53e225fb1", [wikiName, syntaxNote, blogNote]);
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -301,7 +302,7 @@ export async function dispatchReadTool(
     if (toolName === 'information') {
         const intro = buildInformationIntro(c, toolDefs);
         const toolDetails = toolDefs.map(t => `## ${t.name}\n${t.description}`).join('\n\n');
-        const text = `${intro}\n\n## 사용 가능한 도구 목록\n\n${toolDetails}`;
+        const text = ui("m_8c306ae2749ce518", [intro, toolDetails]);
         return { content: [{ type: 'text', text }] };
     }
 
@@ -372,7 +373,7 @@ export async function dispatchReadTool(
 
     if (toolName === 'search_rag') {
         if (!isRagSearchEnabled(c.env)) {
-            return { content: [{ type: 'text', text: 'Error: RAG 검색이 비활성화되어 있습니다.' }], isError: true };
+            return { content: [{ type: 'text', text: ui("m_7fa8a1e0dbc5c616") }], isError: true };
         }
         const rawQuery = String(args.query || '').trim();
         if (!rawQuery) return { content: [{ type: 'text', text: '[]' }] };
@@ -383,7 +384,7 @@ export async function dispatchReadTool(
             // 비공개/삭제 사후 필터로 줄어들 분을 보전하기 위해 상한(50)까지 과다 조회.
             hits = await ragSearchBody(c.env, rawQuery, 50);
         } catch (e: any) {
-            return { content: [{ type: 'text', text: 'Error: RAG 검색 실패: ' + String(e?.message || e) }], isError: true };
+            return { content: [{ type: 'text', text: ui("m_6609e2b894160aca") + String(e?.message || e) }], isError: true };
         }
         if (hits.length === 0) return { content: [{ type: 'text', text: '[]' }] };
 
@@ -407,10 +408,10 @@ export async function dispatchReadTool(
     if (toolName === 'get_toc' || toolName === 'read_document' || toolName === 'read_section') {
         const slug = normalizeSlug(args.title || '');
         if (!isMcpReadableSlug(slug)) {
-            return { content: [{ type: 'text', text: 'raw 데이터는 읽을 수 없습니다.' }], isError: true };
+            return { content: [{ type: 'text', text: ui("m_1ed6ec4afa33ec94") }], isError: true };
         }
         const page = await db.prepare(`SELECT slug, content, last_revision_id FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`).bind(slug).first<{ slug: string, content: string, last_revision_id: number | null }>();
-        if (!page) return { content: [{ type: 'text', text: 'Error: 문서를 찾을 수 없거나 비공개/삭제 상태입니다.' }], isError: true };
+        if (!page) return { content: [{ type: 'text', text: ui("m_3c8aaba9778dff5f") }], isError: true };
 
         let actualContent = page.content;
         const origin = new URL(c.req.url).origin;
@@ -431,11 +432,11 @@ export async function dispatchReadTool(
                 .split('\n')
                 .map(line => line.replace(/\{[^}]*\}/g, '').replace(/[ \t]+/g, ' ').trimEnd())
                 .join('\n');
-            return { content: [{ type: 'text', text: tocText || '목차가 존재하지 않습니다.' }] };
+            return { content: [{ type: 'text', text: tocText || ui("m_9cf50c843d60bb0c") }] };
         }
         if (toolName === 'read_document') {
             const text = args.raw === true ? actualContent : await renderForAI(actualContent, db, 0, slug);
-            return { content: [{ type: 'text', text: text || '문서 내용이 존재하지 않습니다.' }] };
+            return { content: [{ type: 'text', text: text || ui("m_77453d7811852f91") }] };
         }
         // read_section
         // raw=true: 트랜스클루전을 펼치지 않은 원본 기준의 섹션 번호를 사용해 추출. get_toc(raw=true)
@@ -447,13 +448,13 @@ export async function dispatchReadTool(
             : await expandTemplates(actualContent, db, 0, slug);
         const sectionContent = extractSection(sourceForSection, args.section_number || '');
         const text = args.raw === true ? sectionContent : await renderForAI(sectionContent, db, 0, slug);
-        return { content: [{ type: 'text', text: text || '해당 목차를 찾을 수 없습니다.' }] };
+        return { content: [{ type: 'text', text: text || ui("m_8fb588328fcea157") }] };
     }
 
     if (toolName === 'get_tree') {
         const rootSlug = normalizeSlug(args.title || '');
         if (!rootSlug) {
-            return { content: [{ type: 'text', text: 'Error: title이 필요합니다.' }], isError: true };
+            return { content: [{ type: 'text', text: ui("m_6d994f307ce24bc5") }], isError: true };
         }
         // LIKE 대신 prefix 범위 비교 — 근거는 subtreeSlugRange 주석 참고.
         // rootSlug 는 위에서 비어 있지 않음이 보장되므로 range 는 항상 non-null.
@@ -464,11 +465,11 @@ export async function dispatchReadTool(
             db.prepare(`SELECT slug, rows, characters FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`).bind(rootSlug).first<{ slug: string; rows: number | null; characters: number | null }>()
         ]);
 
-        const formatStats = (r: number | null, ch: number | null) => ` (${r ?? 0}줄, ${ch ?? 0}자)`;
+        const formatStats = (r: number | null, ch: number | null) => ui("m_1565658bee898960", [r ?? 0, ch ?? 0]);
 
         if (subdocs.results.length === 0) {
-            const rootMarker = rootPage ? formatStats(rootPage.rows, rootPage.characters) : ' (문서 없음)';
-            return { content: [{ type: 'text', text: `${rootSlug}${rootMarker}\n하위 문서가 없습니다.` }] };
+            const rootMarker = rootPage ? formatStats(rootPage.rows, rootPage.characters) : ui("m_5f16df86699bf330");
+            return { content: [{ type: 'text', text: ui("m_c024e5d390be2e9d", [rootSlug, rootMarker]) }] };
         }
 
         const tree: any = {};
@@ -517,7 +518,7 @@ export async function dispatchReadTool(
                 const connector = isLast ? '└── ' : '├── ';
                 const childPrefix = parentPrefix + (isLast ? '    ' : '│   ');
                 const fullSlug = `${slugPrefix}/${key}`;
-                const marker = node._exists ? formatStats(node._rows, node._characters) : ' (문서 없음)';
+                const marker = node._exists ? formatStats(node._rows, node._characters) : ui("m_5f16df86699bf330");
                 if (!node._exists) missingDocs.push(fullSlug);
 
                 text += `${parentPrefix}${connector}${key}${marker}\n`;
@@ -526,10 +527,10 @@ export async function dispatchReadTool(
             return text;
         }
 
-        const rootMarker = rootPage ? formatStats(rootPage.rows, rootPage.characters) : ' (문서 없음)';
+        const rootMarker = rootPage ? formatStats(rootPage.rows, rootPage.characters) : ui("m_5f16df86699bf330");
         const treeText = `${rootSlug}${rootMarker}\n` + renderTree(tree, '', rootSlug);
         const missingSection = missingDocs.length > 0
-            ? `\n문서가 없는 항목 (${missingDocs.length}):\n${missingDocs.map(s => `- ${s}`).join('\n')}\n`
+            ? ui("m_73837db939871074", [missingDocs.length, missingDocs.map(s => `- ${s}`).join('\n')])
             : '';
         return { content: [{ type: 'text', text: treeText + missingSection }] };
     }
@@ -547,7 +548,7 @@ export async function dispatchReadTool(
         const catSlug = normalizeSlug(`카테고리:${args.category}`);
         const catPage = await db.prepare(`SELECT slug, content, last_revision_id FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`).bind(catSlug).first<{ slug: string, content: string, last_revision_id: number | null }>();
 
-        let renderedCatContent = '카테고리 문서가 존재하지 않습니다.';
+        let renderedCatContent = ui("m_7caa694effdba08e");
         if (catPage) {
             let actualContent = catPage.content;
             const origin = new URL(c.req.url).origin;
@@ -561,7 +562,7 @@ export async function dispatchReadTool(
             const categoryText = args.raw === true
                 ? actualContent
                 : await renderForAI(actualContent, db, 0, catSlug);
-            renderedCatContent = categoryText || '문서 내용이 존재하지 않습니다.';
+            renderedCatContent = categoryText || ui("m_77453d7811852f91");
         }
 
         const output = {
@@ -615,7 +616,7 @@ export async function dispatchReadTool(
             // ISO 8601 date or datetime → unix epoch seconds. 잘못된 입력은 명시적 오류.
             const parsed = Date.parse(args.since);
             if (Number.isNaN(parsed)) {
-                return { content: [{ type: 'text', text: `Error: since 가 유효한 ISO 8601 날짜가 아닙니다: ${args.since}` }], isError: true };
+                return { content: [{ type: 'text', text: ui("m_35456c06c2ad2c05", [args.since]) }], isError: true };
             }
             wheres.push('p.updated_at >= ?');
             binds.push(Math.floor(parsed / 1000));
@@ -669,7 +670,7 @@ export async function dispatchReadTool(
     if (toolName === 'list_discussions') {
         const slug = normalizeSlug(args.title || '');
         const page = await db.prepare(`SELECT id FROM pages WHERE slug = ? AND deleted_at IS NULL${privateFilter}`).bind(slug).first<{ id: number }>();
-        if (!page) return { content: [{ type: 'text', text: 'Error: 문서를 찾을 수 없거나 비공개/삭제 상태입니다.' }], isError: true };
+        if (!page) return { content: [{ type: 'text', text: ui("m_3c8aaba9778dff5f") }], isError: true };
         const { results } = await db.prepare(`
             SELECT d.id, d.title, d.status, d.created_at, d.updated_at,
                    u.name as author_name,
@@ -685,7 +686,7 @@ export async function dispatchReadTool(
     if (toolName === 'read_discussion') {
         const dId = Number(args.discussion_id);
         if (!Number.isFinite(dId)) {
-            return { content: [{ type: 'text', text: 'Error: discussion_id가 유효하지 않습니다.' }], isError: true };
+            return { content: [{ type: 'text', text: ui("m_f74b6c1d51b564ad") }], isError: true };
         }
         const discussion = await db.prepare(`
             SELECT d.id, d.title, d.status, d.created_at, d.updated_at,
@@ -696,7 +697,7 @@ export async function dispatchReadTool(
             JOIN pages p ON d.page_id = p.id
             WHERE d.id = ? AND d.deleted_at IS NULL AND p.deleted_at IS NULL${pPrivateFilter}
         `).bind(dId).first();
-        if (!discussion) return { content: [{ type: 'text', text: 'Error: 토론을 찾을 수 없거나 비공개/삭제 상태입니다.' }], isError: true };
+        if (!discussion) return { content: [{ type: 'text', text: ui("m_4330b1647ece8efb") }], isError: true };
         const { results: comments } = await db.prepare(`
             SELECT dc.id, dc.content, dc.parent_id, dc.created_at, dc.deleted_at,
                    u.name as author_name
@@ -708,7 +709,7 @@ export async function dispatchReadTool(
         const cleanedComments = comments.map(dc => ({
             id: dc.id,
             author_name: dc.deleted_at ? null : dc.author_name,
-            content: dc.deleted_at ? '(삭제된 댓글)' : dc.content,
+            content: dc.deleted_at ? ui("m_76e10614f8d4e406") : dc.content,
             parent_id: dc.parent_id,
             created_at: dc.created_at
         }));
@@ -718,7 +719,7 @@ export async function dispatchReadTool(
     if (toolName === 'view_image') {
         const filename = String(args.filename || '').trim();
         if (!filename) {
-            return { content: [{ type: 'text', text: 'Error: filename이 필요합니다.' }], isError: true };
+            return { content: [{ type: 'text', text: ui("m_f9e850c4ce13164f") }], isError: true };
         }
 
         let row = await db.prepare(
@@ -731,23 +732,23 @@ export async function dispatchReadTool(
             ).bind(filename).all<{ r2_key: string; filename: string; mime_type: string; size: number }>();
 
             if (matches.results.length === 0) {
-                return { content: [{ type: 'text', text: `Error: '${filename}' 와 일치하는 이미지를 찾을 수 없습니다.` }], isError: true };
+                return { content: [{ type: 'text', text: ui("m_7a637fcd3a575c69", [filename]) }], isError: true };
             }
             if (matches.results.length > 1) {
                 const list = matches.results.map(r => r.filename).join(', ');
-                return { content: [{ type: 'text', text: `Error: 여러 이미지가 일치합니다. 정확한 파일명을 지정해 주세요: ${list}` }], isError: true };
+                return { content: [{ type: 'text', text: ui("m_ecdb75297ff61dac", [list]) }], isError: true };
             }
             row = matches.results[0];
         }
 
         const MAX_IMAGE_RESPONSE_SIZE = 5 * 1024 * 1024;
         if (row.size > MAX_IMAGE_RESPONSE_SIZE) {
-            return { content: [{ type: 'text', text: `Error: 이미지 파일이 너무 큽니다 (${(row.size / 1024 / 1024).toFixed(1)}MB). 5MB 이하 이미지만 조회할 수 있습니다.` }], isError: true };
+            return { content: [{ type: 'text', text: ui("m_f046f1182d1ba03d", [(row.size / 1024 / 1024).toFixed(1)]) }], isError: true };
         }
 
         const obj = await c.env.MEDIA.get(row.r2_key);
         if (!obj) {
-            return { content: [{ type: 'text', text: 'Error: 이미지 파일이 스토리지에 존재하지 않습니다.' }], isError: true };
+            return { content: [{ type: 'text', text: ui("m_98b7a2103a408bb5") }], isError: true };
         }
 
         const buffer = await obj.arrayBuffer();

@@ -7,6 +7,7 @@
 // classic-script-global 호환은 필요 없다. 이 파일은 service worker 컨텍스트에서만 평가된다.
 
 /// <reference lib="webworker" />
+import { ui } from '../../packages/wiki-shared/src/i18n/client';
 declare const self: ServiceWorkerGlobalScope;
 
 type PushPayload = {
@@ -35,7 +36,7 @@ self.addEventListener('push', (event: PushEvent) => {
         payload = { body: event.data?.text() || '' };
     }
 
-    const title = payload.title || '알림';
+    const title = payload.title || ui("m_12ddd6ca69068faa");
     const options: NotificationOptions = {
         body: payload.body || '',
         tag: payload.tag,

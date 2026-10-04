@@ -22,6 +22,7 @@
 // POST /w/:slug/move 와 동일한 동작을 수행한다 — 동일한 헬퍼(buildLinkAndCategoryStatements,
 // invalidatePageCache 등)를 재사용해 FTS 트리거, 역링크 인덱스, 캐시 무효화가 일관되게
 // 적용되도록 한다.
+import { ui } from '../i18n/server';
 import { Context } from 'hono';
 import type { Env, User } from '../types';
 import { RBAC } from '../utils/role';
@@ -81,7 +82,7 @@ export async function enforceAdminOnlyCategories(
     const cats = category.split(',').map(s => s.trim()).filter(Boolean);
     for (const cat of cats) {
         if (await isAdminOnlyCategory(db, cat)) {
-            return `"${cat}" 카테고리는 관리자만 적용할 수 있습니다.`;
+            return ui("m_31429406550ed617", [cat]);
         }
     }
     return null;
@@ -120,9 +121,9 @@ async function enforceMcpEditAcl(
         const ev = await evaluateEditAcl(db, acl, user, existingPage.id, minAge, isAdmin);
         if (ev.allowed) return null;
         if (ev.decisive === 'admin_only') {
-            return '이 문서는 관리자만 편집할 수 있습니다.';
+            return ui("m_718e2147e1a2bdab");
         }
-        return `이 문서를 편집할 권한이 부족합니다 (edit_acl: ${acl.flags.join(',')}).`;
+        return ui("m_b38aea24dea3b95b", [acl.flags.join(',')]);
     }
     if (!slugForCreate) return null;
     const acl = await findPrefixRuleEditAcl(db, slugForCreate);
@@ -132,9 +133,9 @@ async function enforceMcpEditAcl(
     const ev = await evaluateEditAcl(db, acl, user, null, minAge, isAdmin);
     if (ev.allowed) return null;
     if (ev.decisive === 'admin_only') {
-        return '이 슬러그로 시작하는 문서는 관리자만 새로 생성할 수 있습니다.';
+        return ui("m_40db2d51a7822a45");
     }
-    return `이 슬러그로 시작하는 문서는 ACL 정책에 따라 편집할 수 없습니다 (${acl.flags.join(',')}).`;
+    return ui("m_d5aa081f3614ef8a", [acl.flags.join(',')]);
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -145,28 +146,28 @@ async function enforceMcpEditAcl(
 export const USER_READ_TOOL_DEFS: McpToolDef[] = [
     {
         name: 'read_revision',
-        description: '특정 리비전의 본문을 읽어옵니다. revision_id 는 get_recent_changes 응답에 포함된 정수 id 이며, title 은 그 리비전이 속한 문서 슬러그입니다. raw=true 로 설정하면 위키 문법 변환을 건너뜁니다 (기본은 위키 문법 그대로 반환). 응답에는 본문, 작성자, 생성 시각이 포함됩니다.',
+        description: ui("m_35463423c1da3db2"),
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '리비전이 속한 문서 슬러그' },
-                revision_id: { type: 'number', description: '리비전 id (정수)' }
+                title: { type: 'string', description: ui("m_eab54d7e6d46ef2e") },
+                revision_id: { type: 'number', description: ui("m_ab40a49df486a2a4") }
             },
             required: ['title', 'revision_id']
         }
     },
     {
         name: 'list_drafts',
-        description: '본인이 보유한 진행 중 draft 목록을 반환합니다. 각 항목에는 draft_id, slug, action(create/update), base_revision_id, base_version, content_length, updated_at(ISO 8601) 이 포함됩니다. draft 는 마지막 활동 이후 12시간이 지나면 자동 삭제됩니다.',
+        description: ui("m_e8f6e0fc69c68cce"),
         inputSchema: { type: 'object', properties: {}, required: [] }
     },
     {
         name: 'read_draft',
-        description: '진행 중 draft 의 전체 본문을 조회합니다. commit 직전 최종 확인 용도입니다. title 로 본인의 draft 를 찾아 반환합니다.',
+        description: ui("m_066f30f8e937ee89"),
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: 'draft 가 속한 문서 슬러그' }
+                title: { type: 'string', description: ui("m_5a07ed31a58feb5f") }
             },
             required: ['title']
         }
@@ -180,12 +181,12 @@ export const USER_READ_TOOL_DEFS: McpToolDef[] = [
 export const ADMIN_ONLY_READ_TOOL_DEFS: McpToolDef[] = [
     {
         name: 'list_deleted_pages',
-        description: '소프트 삭제된 문서 목록을 최신 삭제순으로 반환합니다. restore_page 와 함께 사용하세요. 응답에는 슬러그, 삭제 시각(deleted_at, ISO 8601), 마지막 편집자(last_editor), 마지막 편집 요약(last_summary) 이 포함됩니다.',
+        description: ui("m_be0bef7757373462"),
         inputSchema: {
             type: 'object',
             properties: {
-                limit: { type: 'number', description: '반환할 최대 개수 (기본 20, 최대 100)' },
-                since: { type: 'string', description: '이 시점 이후에 삭제된 문서만 (ISO 8601)' }
+                limit: { type: 'number', description: ui("m_d97ab144879ae08b") },
+                since: { type: 'string', description: ui("m_6892a3de2fc8f445") }
             },
             required: []
         }
@@ -198,86 +199,86 @@ export const ADMIN_ONLY_READ_TOOL_DEFS: McpToolDef[] = [
 // ────────────────────────────────────────────────────────────────
 
 const HEADING_RULE_NOTE =
-    '\n\n⚠️ 헤딩 작성 규칙: 위키는 헤딩(##, ###, ...)에 자동으로 계층 번호("1.", "1.1." 등)를 부여합니다. ' +
-    '헤딩 텍스트에 번호를 직접 적지 마세요 (예: `## 1. 개요` ❌ → `## 개요` ✅). 직접 적으면 렌더링 시 "1. 1. 개요" 처럼 중복 번호가 표시됩니다. ' +
-    '목차 내 다른 섹션을 참조할 때는 `[[문서#s-1.2]]` 형식의 섹션 앵커를 사용하세요.';
+    ui("m_9affaa695800932b") +
+    ui("m_924ee1d025cc7457") +
+    ui("m_2912b9d4b8cdae72");
 
 export const USER_EDIT_TOOL_DEFS: McpToolDef[] = [
     {
         name: 'create_or_update_page',
-        description: '위키 문서 전체 본문을 새로 만들거나 통째로 교체할 draft 를 생성합니다. ⚠️ 즉시 저장하지 않고 draft 에 누적되며, 완료 후 commit_edit(draft_id, summary) 를 호출해야 새 리비전이 생성됩니다. 이미 본인의 draft 가 같은 슬러그로 있으면 그 draft 의 본문이 이 호출의 content 로 교체됩니다. create_only=true 면 페이지가 이미 존재할 때 오류를 반환합니다 (실수 덮어쓰기 방지).\n\n응답에 draft_id 가 포함되며, 이 id 로 read_draft / commit_edit / discard_edit 를 호출합니다. draft 는 마지막 활동 이후 12시간이 지나면 자동 삭제됩니다.' + HEADING_RULE_NOTE,
+        description: ui("m_7db2629871eda279") + HEADING_RULE_NOTE,
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '문서 슬러그 (호출/식별자)' },
-                content: { type: 'string', description: '문서 전체 본문 (마크다운/위키 문법)' },
-                category: { type: 'string', description: '쉼표로 구분된 카테고리 (선택, 한글/영숫자/공백/쉼표만 허용)' },
-                redirect_to: { type: 'string', description: '리다이렉트 대상 슬러그 (선택)' },
-                create_only: { type: 'boolean', description: 'true 시 슬러그가 이미 존재하면 오류 반환 (기본 false)' },
-                display_title: { type: ['string', 'null'], description: '표시 전용 대체 제목 (선택). 슬러그와 달리 모든 특수문자 허용. null/빈 문자열이면 제거. 호출 매칭에는 사용되지 않으며 위키 링크/트랜스클루전/MCP 인자는 항상 슬러그(title 파라미터)를 사용합니다.' },
-                editor_note: { type: 'string', description: '편집자 메모 (선택). 편집기에서만 표시되는 비공개 메모로, 일반 열람에는 노출되지 않습니다. 리비전으로 추적되지 않으며, 본문 변경 없이 편집 메모만 바뀌면 가상 리비전으로 처리됩니다.' }
+                title: { type: 'string', description: ui("m_1912bfdf15320f6f") },
+                content: { type: 'string', description: ui("m_3f40303960c3dd7a") },
+                category: { type: 'string', description: ui("m_9184a0a02e3537fe") },
+                redirect_to: { type: 'string', description: ui("m_a73ce1e5ea4e4eab") },
+                create_only: { type: 'boolean', description: ui("m_f225f4981b80626a") },
+                display_title: { type: ['string', 'null'], description: ui("m_73238162a48c3cf3") },
+                editor_note: { type: 'string', description: ui("m_3d7c2b7994b3115d") }
             },
             required: ['title', 'content']
         }
     },
     {
         name: 'patch_page',
-        description: '문서의 특정 텍스트를 찾아 교체하는 부분 편집입니다 (Claude Code Edit 도구와 같은 방식). ⚠️ 즉시 저장하지 않고 draft 에 누적되며, commit_edit 호출 시 비로소 새 리비전이 생성됩니다. 같은 슬러그로 이미 본인 draft 가 있으면 그 draft 의 본문에 대해 치환을 수행합니다 (없으면 페이지 현재 본문을 자동 스냅샷해 draft 시작). old_string 은 대상 본문(=draft 또는 페이지 현재 본문)에서 정확히 한 번만 등장해야 하며, 겹치는 매치 포함 2회 이상이면 오류입니다 — 앞뒤 맥락을 더 포함해 고유하게 만드세요. new_string 이 빈 문자열이면 해당 부분이 삭제됩니다.\n\n응답에 draft_id 가 포함됩니다. 섹션 단위는 edit_section, 전체 본문 교체는 create_or_update_page 를 사용하세요.' + HEADING_RULE_NOTE,
+        description: ui("m_b311de5bec1786ff") + HEADING_RULE_NOTE,
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '편집할 문서 슬러그' },
-                old_string: { type: 'string', description: '대상 본문에서 찾을 기존 텍스트 (유일해야 함)' },
-                new_string: { type: 'string', description: 'old_string 을 대체할 새 텍스트 (빈 문자열이면 해당 부분 삭제)' }
+                title: { type: 'string', description: ui("m_34cb2b870cc0091f") },
+                old_string: { type: 'string', description: ui("m_9f0f47181df49afa") },
+                new_string: { type: 'string', description: ui("m_680108655cd6e15c") }
             },
             required: ['title', 'old_string', 'new_string']
         }
     },
     {
         name: 'edit_section',
-        description: '문서의 특정 섹션 본문을 새 내용으로 통째로 교체합니다. ⚠️ 즉시 저장하지 않고 draft 에 누적되며, commit_edit 호출 시 비로소 새 리비전이 생성됩니다. 같은 슬러그로 이미 본인 draft 가 있으면 draft 본문에 대해 섹션 치환을 수행합니다 (없으면 페이지 현재 본문을 자동 스냅샷). section_number 는 get_toc(raw=true) 또는 read_draft 의 본문에서 산출한 원본 기준 번호("1", "1.1", "0" 등) 입니다. new_content 는 read_section(raw=true) 으로 받은 형식 그대로(헤딩 라인 포함) 보내는 것을 권장합니다. 교체 범위는 지정 헤딩부터 같은 레벨 이상의 다음 헤딩 직전까지입니다 ("0" 은 첫 헤딩 이전 도입부).\n\n응답에 draft_id 가 포함됩니다.' + HEADING_RULE_NOTE,
+        description: ui("m_a4d5650e98914ad7") + HEADING_RULE_NOTE,
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '편집할 문서 슬러그' },
-                section_number: { type: 'string', description: 'get_toc(raw=true) 가 반환한 섹션 번호 (예: "1", "1.1", "0")' },
-                new_content: { type: 'string', description: '해당 섹션을 대체할 새 본문 (헤딩 라인 포함 권장)' }
+                title: { type: 'string', description: ui("m_34cb2b870cc0091f") },
+                section_number: { type: 'string', description: ui("m_2e7d5e478b0f50f9") },
+                new_content: { type: 'string', description: ui("m_08853e15284006c1") }
             },
             required: ['title', 'section_number', 'new_content']
         }
     },
     {
         name: 'commit_edit',
-        description: 'draft 에 누적된 편집을 승인 대기로 제출합니다. base_revision_id 가 그 사이 변경되었으면(=다른 사용자가 페이지를 수정) 거부합니다 — 그 경우 discard_edit 후 read_document 로 최신 상태를 다시 읽고 편집을 재구성해야 합니다. 신규 페이지 draft 인데 commit 시점에 이미 같은 슬러그가 존재하면 같은 사유로 거부합니다. summary 는 새 리비전의 편집 요약입니다 (선택, 최대 255자). 저장 시 자동으로 `[MCP] [+N줄 -M줄] ` 접두가 붙어 사람 편집과 구분되며 변경 규모를 한눈에 보여줍니다 (예: `[MCP] [+5줄 -2줄] 오타 수정`).\n\n응답에도 이전 본문 대비 라인 단위 변경량(`lines_added` / `lines_removed`)이 포함됩니다 — git diff --stat 의 +N/-M 와 동일한 의미입니다 (CRLF 정규화 후 LCS 기반으로 산출).\n\n**항상 승인 대기로 제출**됩니다. draft 는 즉시 리비전이 되지 않고 OAuth 토큰 소유자(=이 MCP 를 연결한 본인) 에게 승인 대기로 제출됩니다. 본인이 마이페이지 / 알림 / 문서 배너에서 검토 후 승인해야 비로소 리비전이 만들어집니다. 거부 시 draft 는 폐기됩니다.\n\n승인 단계 없이 즉시 반영하려면(마이페이지에서 "MCP 편집 즉시반영 허용" 을 켠 경우) commit_edit 대신 apply_edit 도구를 사용하세요 — 도구 목록에 apply_edit 이 보이면 활성 상태입니다.',
+        description: ui("m_1733ff031c83966b"),
         inputSchema: {
             type: 'object',
             properties: {
-                draft_id: { type: 'number', description: '커밋할 draft 의 id (편집 도구 응답에서 받은 값)' },
-                summary: { type: 'string', description: '편집 요약 (선택, 최대 255자, 저장 시 [MCP] 접두 자동 부여)' },
+                draft_id: { type: 'number', description: ui("m_99c040ac74eb7f5a") },
+                summary: { type: 'string', description: ui("m_d94deba089b9cc19") },
             },
             required: ['draft_id']
         }
     },
     {
         name: 'discard_edit',
-        description: 'draft 를 폐기합니다. 누적된 편집은 모두 사라지며 페이지에는 어떤 영향도 없습니다.',
+        description: ui("m_2511d64529f77c69"),
         inputSchema: {
             type: 'object',
             properties: {
-                draft_id: { type: 'number', description: '폐기할 draft 의 id' }
+                draft_id: { type: 'number', description: ui("m_df9da3b97a3d932c") }
             },
             required: ['draft_id']
         }
     },
     {
         name: 'revert_page',
-        description: '문서를 특정 과거 리비전으로 되돌립니다 (즉시 적용 — draft 모델 미사용). revision_id 는 read_revision 또는 get_recent_changes 응답에서 얻은 정수 id 입니다. 되돌리기는 새 리비전을 만들어 원래 본문 그대로 다시 저장하는 방식이며, 과거 리비전 자체를 삭제하지 않습니다.',
+        description: ui("m_8331d117bc307c22"),
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '되돌릴 대상 문서 슬러그' },
-                revision_id: { type: 'number', description: '되돌릴 기준 리비전 id (정수)' },
-                summary: { type: 'string', description: '편집 요약 (선택, 기본 "reverted to revision #N", 저장 시 [MCP] 접두 자동 부여)' }
+                title: { type: 'string', description: ui("m_954004d370420e93") },
+                revision_id: { type: 'number', description: ui("m_0f6bbfd4bfc70d40") },
+                summary: { type: 'string', description: ui("m_1a534a0c2d48c342") }
             },
             required: ['title', 'revision_id']
         }
@@ -291,95 +292,95 @@ export const USER_EDIT_TOOL_DEFS: McpToolDef[] = [
 export const ADMIN_ONLY_EDIT_TOOL_DEFS: McpToolDef[] = [
     {
         name: 'delete_page',
-        description: '위키 문서를 삭제합니다 (즉시 적용 — draft 모델 미사용). 기본은 소프트 삭제(deleted_at 설정)로, restore_page 로 복원 가능합니다. hard=true 일 때만 D1/R2 에서 영구 삭제하며, 이 경우 최고 관리자(super_admin) 권한이 필요합니다.',
+        description: ui("m_a8319bc306b93ca0"),
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '삭제할 문서 슬러그' },
-                hard: { type: 'boolean', description: 'true 시 영구 삭제 (super_admin 만 가능)' }
+                title: { type: 'string', description: ui("m_cba875e322a3b362") },
+                hard: { type: 'boolean', description: ui("m_77cd1dca513b92bf") }
             },
             required: ['title']
         }
     },
     {
         name: 'restore_page',
-        description: '소프트 삭제된 문서를 복원합니다 (즉시 적용 — draft 모델 미사용).',
+        description: ui("m_8aa291a2b51c5649"),
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '복원할 문서 슬러그' }
+                title: { type: 'string', description: ui("m_9443783ff1f6e7f3") }
             },
             required: ['title']
         }
     },
     {
         name: 'move_page',
-        description: '문서 슬러그를 변경합니다 (이동, 즉시 적용 — draft 모델 미사용). 이 문서가 가진 위키링크/틀 참조는 새 슬러그 기준으로 재작성되며, 새 리비전이 추가됩니다. update_backlinks=true (기본) 면 이 문서를 가리키던 다른 문서들의 본문도 일괄 재작성됩니다 (각 문서마다 새 리비전 생성). 백링크가 매우 많은 경우 성능상 이유로 끄려면 false 를 명시하세요.',
+        description: ui("m_4782d7c3ddde2cb5"),
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '현재 문서 슬러그' },
-                new_title: { type: 'string', description: '새 문서 슬러그' },
-                update_backlinks: { type: 'boolean', description: '역링크 문서 본문도 함께 재작성할지 (선택, 기본 true — 이동 시 백링크 자동 갱신. 끄려면 false 명시)' }
+                title: { type: 'string', description: ui("m_b7efb4c7aa9167ef") },
+                new_title: { type: 'string', description: ui("m_24cae5596547e34d") },
+                update_backlinks: { type: 'boolean', description: ui("m_3d539028bf57ada4") }
             },
             required: ['title', 'new_title']
         }
     },
     {
         name: 'create_blog_post',
-        description: '블로그(/blog) 포스트를 새로 작성합니다 (즉시 적용 — draft 모델 미사용). 응답에 새 포스트 id 가 포함됩니다. 본문에서 첫 이미지가 자동으로 썸네일로 추출되며, 이미지 역링크(page_links) 도 자동 갱신됩니다.',
+        description: ui("m_86493ccf3dd29124"),
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '포스트 제목 (1-500자)' },
-                content: { type: 'string', description: '포스트 본문 (마크다운/위키 문법)' }
+                title: { type: 'string', description: ui("m_ea1ece85c0fd0b4b") },
+                content: { type: 'string', description: ui("m_4f67d9921b617e0e") }
             },
             required: ['title', 'content']
         }
     },
     {
         name: 'update_blog_post',
-        description: '블로그 포스트의 제목 / 본문을 수정합니다 (즉시 적용 — draft 모델 미사용). title 과 content 모두 선택적이며, 적어도 하나는 지정해야 합니다. content 를 지정하면 본문이 통째로 교체되고 썸네일·이미지 역링크가 재계산됩니다. 소프트 삭제된 포스트는 수정할 수 없습니다 (먼저 restore_blog_post 로 복원하세요).',
+        description: ui("m_6f4b4056a4874cdc"),
         inputSchema: {
             type: 'object',
             properties: {
-                id: { type: 'number', description: '수정할 블로그 포스트 id (정수)' },
-                title: { type: 'string', description: '새 제목 (선택, 1-500자)' },
-                content: { type: 'string', description: '새 본문 (선택, 지정 시 통째로 교체)' }
+                id: { type: 'number', description: ui("m_963c381e30c73ad2") },
+                title: { type: 'string', description: ui("m_3a5e8e05f681f266") },
+                content: { type: 'string', description: ui("m_ecad3ddd01b1cc4b") }
             },
             required: ['id']
         }
     },
     {
         name: 'delete_blog_post',
-        description: '블로그 포스트를 소프트 삭제합니다 (즉시 적용 — draft 모델 미사용). 영구 삭제는 지원하지 않으며, restore_blog_post 로 복원할 수 있습니다. 삭제된 포스트가 사이트 공지로 발행되어 있던 경우 공지도 자동으로 취소됩니다. 본 포스트가 참조하던 이미지 역링크(page_links) 도 정리됩니다.',
+        description: ui("m_8ed5a0ca38c32806"),
         inputSchema: {
             type: 'object',
             properties: {
-                id: { type: 'number', description: '삭제할 블로그 포스트 id (정수)' }
+                id: { type: 'number', description: ui("m_59b8dd468f3c0bd5") }
             },
             required: ['id']
         }
     },
     {
         name: 'restore_blog_post',
-        description: '소프트 삭제된 블로그 포스트를 복원합니다 (즉시 적용 — draft 모델 미사용). 복원 후 이미지 역링크(page_links) 가 본문을 기준으로 재구성됩니다.',
+        description: ui("m_4e5af2aae9a06ee2"),
         inputSchema: {
             type: 'object',
             properties: {
-                id: { type: 'number', description: '복원할 블로그 포스트 id (정수)' }
+                id: { type: 'number', description: ui("m_cf198c4727854a63") }
             },
             required: ['id']
         }
     },
     {
         name: 'set_page_status',
-        description: '문서 본문은 건드리지 않고 카테고리만 변경합니다 (즉시 적용 — draft 모델 미사용, 새 리비전 생성 없음). 본문을 읽거나 수정할 필요 없이 메타데이터만 갱신할 때 사용합니다.\n\n- category: 쉼표로 구분된 카테고리 (한글/영숫자/공백/쉼표만 허용). 빈 문자열을 보내면 모든 카테고리가 제거됩니다.\n\n변경은 admin_log 에 기록되지만 리비전 이력에는 남지 않습니다 (편집 요약/저자 등록 없음).\n\n비공개 설정·편집 잠금/관리자 전용 ACL 은 별도 API 또는 권한 관리 모달에서 설정합니다.',
+        description: ui("m_636f29ef3dd55f9b"),
         inputSchema: {
             type: 'object',
             properties: {
-                title: { type: 'string', description: '대상 문서 슬러그' },
-                category: { type: 'string', description: '쉼표로 구분된 카테고리 (빈 문자열이면 카테고리 모두 제거)' }
+                title: { type: 'string', description: ui("m_11f69bd32d428f14") },
+                category: { type: 'string', description: ui("m_d5112ef535b0ce5b") }
             },
             required: ['title', 'category']
         }
@@ -411,7 +412,7 @@ export function withMcpPrefix(summary: string | null | undefined): string {
 export function validateMcpSummaryLength(summary: string | null | undefined): string | null {
     const finalLength = withMcpPrefix(summary).length;
     if (finalLength > MCP_SUMMARY_MAX_LENGTH) {
-        return `Error: summary 는 [MCP] 접두 포함 최대 ${MCP_SUMMARY_MAX_LENGTH}자입니다 (현재 ${finalLength}자).`;
+        return ui("m_9615f12f15f8e6f7", [MCP_SUMMARY_MAX_LENGTH, finalLength]);
     }
     return null;
 }
@@ -420,7 +421,7 @@ export function validateMcpSummaryLength(summary: string | null | undefined): st
 // "[+N줄 -M줄]" 형식이며 [MCP] 접두 뒤, 사용자 summary 앞에 위치한다.
 // 예) `[MCP] [+5줄 -2줄] 오타 수정`
 export function formatDiffMarker(stats: { added: number; removed: number }): string {
-    return `[+${stats.added}줄 -${stats.removed}줄]`;
+    return ui("m_4a3f2ae942af04cc", [stats.added, stats.removed]);
 }
 
 // 사용자 summary 와 diff 마커를 결합한 최종 summary 본문(=[MCP] 접두 부여 전) 을 만든다.
@@ -463,7 +464,7 @@ export async function dispatchAdminReadTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'list_drafts') {
         if (!rbac.can(user.role, 'wiki:edit')) {
-            return asTextResult('Error: wiki:edit 권한이 필요합니다.', true);
+            return asTextResult(ui("m_eaf5dbfe425cfa3f"), true);
         }
         const { results } = await db.prepare(`
             SELECT id, slug, action, base_revision_id, base_version,
@@ -493,10 +494,10 @@ export async function dispatchAdminReadTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'read_draft') {
         if (!rbac.can(user.role, 'wiki:edit')) {
-            return asTextResult('Error: wiki:edit 권한이 필요합니다.', true);
+            return asTextResult(ui("m_eaf5dbfe425cfa3f"), true);
         }
         const slug = String(args.title || '').trim();
-        if (!slug) return asTextResult('Error: title 이 필요합니다.', true);
+        if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
         const draft = await db.prepare(`
             SELECT id, slug, action, base_revision_id, base_version, content,
                    category, redirect_to, editor_note, updated_at, submitted_at, submitted_summary
@@ -507,7 +508,7 @@ export async function dispatchAdminReadTool(c: Context<Env>, user: User, toolNam
             redirect_to: string | null; editor_note: string | null; updated_at: number;
             submitted_at: number | null; submitted_summary: string | null;
         }>();
-        if (!draft) return asTextResult('Error: 해당 슬러그의 draft 를 찾을 수 없습니다.', true);
+        if (!draft) return asTextResult(ui("m_aa2df5e3971b60e7"), true);
         return asTextResult(JSON.stringify({
             draft_id: draft.id,
             slug: draft.slug,
@@ -527,7 +528,7 @@ export async function dispatchAdminReadTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'list_deleted_pages') {
         if (!rbac.can(user.role, 'admin:access')) {
-            return asTextResult('Error: admin:access 권한이 필요합니다.', true);
+            return asTextResult(ui("m_b525ffd5499fc86d"), true);
         }
         const limit = Math.min(100, Math.max(1, Number(args.limit) || 20));
         const wheres: string[] = ['p.deleted_at IS NOT NULL'];
@@ -535,7 +536,7 @@ export async function dispatchAdminReadTool(c: Context<Env>, user: User, toolNam
         if (args.since && typeof args.since === 'string') {
             const parsed = Date.parse(args.since);
             if (Number.isNaN(parsed)) {
-                return asTextResult(`Error: since 가 유효한 ISO 8601 날짜가 아닙니다: ${args.since}`, true);
+                return asTextResult(ui("m_35456c06c2ad2c05", [args.since]), true);
             }
             wheres.push('p.deleted_at >= ?');
             binds.push(Math.floor(parsed / 1000));
@@ -566,23 +567,23 @@ export async function dispatchAdminReadTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'read_revision') {
         if (!rbac.can(user.role, 'wiki:edit')) {
-            return asTextResult('Error: wiki:edit 권한이 필요합니다.', true);
+            return asTextResult(ui("m_eaf5dbfe425cfa3f"), true);
         }
         const slug = normalizeSlug(args.title || '');
         const revisionId = Number(args.revision_id);
-        if (!slug) return asTextResult('Error: title 이 필요합니다.', true);
+        if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
         if (!Number.isFinite(revisionId) || revisionId <= 0) {
-            return asTextResult('Error: revision_id 는 양의 정수여야 합니다.', true);
+            return asTextResult(ui("m_342d2c21b9f70059"), true);
         }
         const page = await db.prepare('SELECT id, slug, is_private, deleted_at FROM pages WHERE slug = ?').bind(slug).first<{ id: number; slug: string; is_private: number; deleted_at: number | null }>();
-        if (!page) return asTextResult('Error: 문서를 찾을 수 없습니다.', true);
+        if (!page) return asTextResult(ui("m_36f26fa461c07fd6"), true);
         // 페이지 단위 가시성 게이트: 비공개 문서는 wiki:private 권한, 삭제된 문서는
         // admin:access 권한이 없으면 존재하지 않는 것처럼 가린다. (read_revision 은
         // 기본 user 역할도 호출 가능하므로 페이지 가시성을 반드시 재검증한다.)
         const canSeeRevisionPrivate = rbac.can(user.role, 'wiki:private');
         const canSeeRevisionDeletedPage = rbac.can(user.role, 'admin:access');
         if ((page.is_private && !canSeeRevisionPrivate) || (page.deleted_at && !canSeeRevisionDeletedPage)) {
-            return asTextResult('Error: 문서를 찾을 수 없습니다.', true);
+            return asTextResult(ui("m_36f26fa461c07fd6"), true);
         }
 
         // 레거시 DB(is_virtual 컬럼 부재) 대비 idempotent 마이그레이션 보장 후 쿼리.
@@ -600,14 +601,14 @@ export async function dispatchAdminReadTool(c: Context<Env>, user: User, toolNam
             created_at: number; deleted_at: number | null; purged_at: number | null;
             is_virtual: number; author_name: string | null;
         }>();
-        if (!rev) return asTextResult('Error: 리비전을 찾을 수 없습니다.', true);
+        if (!rev) return asTextResult(ui("m_1c0d1ec937005f23"), true);
         if (rev.page_id !== page.id) {
-            return asTextResult('Error: 지정한 리비전이 이 문서의 것이 아닙니다.', true);
+            return asTextResult(ui("m_79a074aac12f4b03"), true);
         }
         // 비관리자 호출자에게는 삭제된 리비전이 존재하지 않는 것처럼 가린다.
         const isAdmin = rbac.can(user.role, 'admin:access');
         if (rev.deleted_at && !isAdmin) {
-            return asTextResult('Error: 리비전을 찾을 수 없습니다.', true);
+            return asTextResult(ui("m_1c0d1ec937005f23"), true);
         }
         // 가상 리비전(비-본문 변경 기록)은 본문이 없으므로 빈 본문으로 반환한다.
         // 하드 삭제된 리비전도 R2 본문이 없으므로 빈 본문으로 반환 (관리자 전용 경로).
@@ -747,7 +748,7 @@ export async function applyExistingPageUpdate(
         // 동시 수정으로 CAS 실패 — 막 만든 리비전과 R2 객체를 청소.
         await db.prepare('DELETE FROM revisions WHERE id = ?').bind(revisionId).run().catch(() => {});
         await c.env.MEDIA.delete(r2Key).catch(() => {});
-        const err: any = new Error('CONCURRENT_MODIFICATION');
+        const err: any = new Error(ui("m_0c08d9cc7b013e9a"));
         err.code = 'CONCURRENT_MODIFICATION';
         throw err;
     }
@@ -881,17 +882,17 @@ export async function applyNewPageInsert(
 // 새로 발급된 draft 응답에 포함하는 라이프사이클 가이드.
 // 같은 draft 가 이어서 갱신될 때는 더 짧은 안내(DRAFT_UPDATE_NOTE)만 보낸다.
 const DRAFT_FIRST_ISSUE_NOTE =
-    'draft 가 발급되었습니다.\n\n' +
-    '사용법:\n' +
-    '  1) 이어서 같은 title 로 patch_page / edit_section / create_or_update_page 를 호출하면 이 draft 에 누적됩니다 (사용자×슬러그당 1개).\n' +
-    '  2) read_draft(title) 로 진행 중 본문 확인.\n' +
-    '  3) 편집이 끝나면 commit_edit(draft_id, summary) 로 1개 리비전을 만들어 저장하세요.\n' +
-    '  4) 폐기하려면 discard_edit(draft_id).\n' +
-    '  5) 마지막 활동 이후 12시간이 지나면 자정 크론이 자동 삭제합니다.\n' +
-    '  6) commit 시점에 base_revision_id 가 변하면(=다른 사용자가 페이지 수정) conflict 로 거부됩니다 — discard 후 read_document 로 최신을 다시 읽어 재구성하세요.';
+    ui("m_bb6e8cdce042d5d9") +
+    ui("m_f1b2a0a0ce744f91") +
+    ui("m_5fdebda560bdaf13") +
+    ui("m_96af99f246616c9a") +
+    ui("m_14633f93c811369e") +
+    ui("m_c6df720ffe5dbfaf") +
+    ui("m_c5653e410b295271") +
+    ui("m_2dc8566bc0bc2a8b");
 
 const DRAFT_UPDATE_NOTE =
-    'draft 가 갱신되었습니다. commit_edit(draft_id, summary) 로 저장하거나 discard_edit(draft_id) 로 폐기하세요.';
+    ui("m_89fa221ff4b12753");
 
 // (user_id, slug) 의 draft 를 조회하고, 없으면 페이지에서 현재 본문을 스냅샷해 새 draft 를 생성한다.
 // 호출자는 slug 가 admin-mcp 로 편집 가능한지(이미지: 네임스페이스 거부 등)를 이미 확인했다고 가정한다.
@@ -978,7 +979,7 @@ async function markDraftSubmittedAndNotify(
         .bind(draftId)
         .first<{ user_id: number | null }>();
     if (ownerRow?.user_id) {
-        const notifContent = `MCP 서버로 제출된 "${slug}" 문서 편집안이 존재합니다.`;
+        const notifContent = ui("m_b984971f61ea5da3", [slug]);
         await createNotification(c.env, c.executionCtx, {
             userId: ownerRow.user_id,
             type: 'mcp_submission',
@@ -986,7 +987,7 @@ async function markDraftSubmittedAndNotify(
             link: '/mypage#mcp-submissions',
             refId: draftId,
             push: {
-                title: 'MCP 편집안 제출',
+                title: ui("m_e085d4d2b72069cf"),
                 body: notifContent,
                 url: '/mypage#mcp-submissions',
                 tag: `mcp_submission:${draftId}`,
@@ -1009,16 +1010,16 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         // 이 user 를 상속하므로 자동으로 통과되지만, ROLE_PERMISSIONS_JSON 으로 권한이
         // 분리된 환경에서 우회를 막는다). 비록 draft 단계라도 같은 정책 유지.
         if (!rbac.can(user.role, 'wiki:edit')) {
-            return asTextResult('Error: wiki:edit 권한이 필요합니다.', true);
+            return asTextResult(ui("m_eaf5dbfe425cfa3f"), true);
         }
         const slug = String(args.title || '').trim();
-        if (!slug) return asTextResult('Error: title 이 필요합니다.', true);
-        if (SLUG_FORBIDDEN_CHARS.test(slug)) return asTextResult('Error: 슬러그에 사용할 수 없는 특수문자가 포함되어 있습니다.', true);
-        if (slug.startsWith('이미지:')) return asTextResult('Error: "이미지:" 네임스페이스는 admin-mcp 로 편집할 수 없습니다 (이미지 문서 전용).', true);
-        if (slug.startsWith('map:')) return asTextResult('Error: "map:" 네임스페이스는 가상 트리 뷰 전용이므로 편집할 수 없습니다.', true);        if (typeof args.content !== 'string') return asTextResult('Error: content 는 문자열이어야 합니다.', true);
+        if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
+        if (SLUG_FORBIDDEN_CHARS.test(slug)) return asTextResult(ui("m_d562855ceec48d54"), true);
+        if (slug.startsWith('이미지:')) return asTextResult(ui("m_e02821f6bffe9ca0"), true);
+        if (slug.startsWith('map:')) return asTextResult(ui("m_51f6566a2dc68dac"), true);        if (typeof args.content !== 'string') return asTextResult(ui("m_b3104adc425b92b3"), true);
         if (args.category && typeof args.category === 'string') {
             if (!/^[가-힣a-zA-Z0-9\s,]+$/.test(args.category)) {
-                return asTextResult('Error: category 에는 특수문자를 사용할 수 없습니다.', true);
+                return asTextResult(ui("m_ecc6b4ed43d3fa11"), true);
             }
         }
 
@@ -1038,15 +1039,15 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         // 잘못된 타입은 string|null 외 모두 거부 — 조용한 데이터 손실(null 로 정규화 후 삭제) 방지.
         const hasTitleChange = Object.prototype.hasOwnProperty.call(args, 'display_title');
         if (hasTitleChange && args.display_title !== null && typeof args.display_title !== 'string') {
-            return asTextResult('Error: display_title 은 문자열 또는 null 이어야 합니다.', true);
+            return asTextResult(ui("m_66f6e8ed248c75ed"), true);
         }
         const requestedTitle = hasTitleChange ? normalizeTitleInput(args.display_title) : null;
         if (hasTitleChange && requestedTitle !== null) {
             if (TITLE_FORBIDDEN_CHARS.test(requestedTitle)) {
-                return asTextResult('Error: 대체 제목에 제어문자는 사용할 수 없습니다.', true);
+                return asTextResult(ui("m_c79c864cbdc920ad"), true);
             }
             if (requestedTitle.length > TITLE_MAX_LENGTH) {
-                return asTextResult(`Error: 대체 제목은 ${TITLE_MAX_LENGTH}자 이하여야 합니다.`, true);
+                return asTextResult(ui("m_1ef45f2dd443d3e9", [TITLE_MAX_LENGTH]), true);
             }
         }
 
@@ -1060,10 +1061,10 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             const selfId = existing?.id ?? null;
             const conflict = await findConflictingPage(db, requestedTitle, selfId);
             if (conflict) {
-                const deletedSuffix = conflict.isDeleted ? ' (소프트 삭제 상태 — 관리자 복원 또는 영구 삭제 필요)' : '';
+                const deletedSuffix = conflict.isDeleted ? ui("m_ecd14a0b47bd02cf") : '';
                 const msg = conflict.matchedColumn === 'slug'
-                    ? `Error: '${requestedTitle}' 는 이미 다른 문서의 슬러그로 사용 중입니다.${deletedSuffix}`
-                    : `Error: '${requestedTitle}' 는 이미 다른 문서의 대체 제목으로 사용 중입니다.${deletedSuffix}`;
+                    ? ui("m_06ab29e11e5de033", [requestedTitle, deletedSuffix])
+                    : ui("m_d37ce58985a8c6fb", [requestedTitle, deletedSuffix]);
                 return asTextResult(msg, true);
             }
         }
@@ -1072,13 +1073,13 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         if (!existing) {
             const slugTitleConflict = await findConflictingPage(db, slug, null);
             if (slugTitleConflict && slugTitleConflict.matchedColumn === 'title') {
-                const deletedSuffix = slugTitleConflict.isDeleted ? ' (소프트 삭제 상태)' : '';
-                return asTextResult(`Error: '${slug}' 는 이미 다른 문서의 대체 제목과 같아 슬러그로 사용할 수 없습니다.${deletedSuffix}`, true);
+                const deletedSuffix = slugTitleConflict.isDeleted ? ui("m_498cdf7a4578a46f") : '';
+                return asTextResult(ui("m_8d49255bd1e6c534", [slug, deletedSuffix]), true);
             }
         }
 
         if (existing && createOnly) {
-            return asTextResult('Error: 이미 존재하는 문서입니다. 수정하려면 create_only 를 false 로 설정하거나 patch_page 를 사용하세요.', true);
+            return asTextResult(ui("m_0be79ab877efcff9"), true);
         }
         // create 경로 (페이지 미존재) 에서 소프트 삭제된 동일 슬러그가 있으면 commit 시점에
         // INSERT 가 SQLite UNIQUE 제약으로 실패한다. draft 시작 단계에서 미리 감지해
@@ -1090,8 +1091,8 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
                 .first<{ id: number }>();
             if (deletedConflict) {
                 return asTextResult(
-                    'Error: 동일 슬러그의 소프트 삭제된 문서가 존재합니다. ' +
-                    'restore_page 로 복원해서 편집하거나 delete_page (hard=true) 로 영구 삭제 후 다시 생성하세요.',
+                    ui("m_1305aec62a88f8a3") +
+                    ui("m_d71e674e7fab6572"),
                     true
                 );
             }
@@ -1116,7 +1117,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             'SELECT id, action, base_revision_id, base_version, submitted_at FROM mcp_drafts WHERE user_id = ? AND slug = ?'
         ).bind(user.id, slug).first<{ id: number; action: string; base_revision_id: number | null; base_version: number; submitted_at: number | null }>();
         if (existingDraft && existingDraft.submitted_at !== null) {
-            return asTextResult('Error: 이 draft 는 이미 승인 대기로 제출된 상태입니다. 사용자가 mypage 에서 승인/거부할 때까지 수정할 수 없습니다. 폐기하려면 discard_edit 를 사용하세요.', true);
+            return asTextResult(ui("m_da391d05579986b7"), true);
         }
 
         // draft 단계의 title 저장: hasTitleChange 가 true 일 때만 적용. (false 면 commit 시점에 페이지 기존 title 유지)
@@ -1183,16 +1184,16 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'patch_page') {
         if (!rbac.can(user.role, 'wiki:edit')) {
-            return asTextResult('Error: wiki:edit 권한이 필요합니다.', true);
+            return asTextResult(ui("m_eaf5dbfe425cfa3f"), true);
         }
         const slug = String(args.title || '').trim();
-        if (!slug) return asTextResult('Error: title 이 필요합니다.', true);
-        if (slug.startsWith('이미지:')) return asTextResult('Error: "이미지:" 네임스페이스는 admin-mcp 로 편집할 수 없습니다.', true);
-        if (slug.startsWith('map:')) return asTextResult('Error: "map:" 네임스페이스는 가상 트리 뷰 전용이므로 편집할 수 없습니다.', true);        if (typeof args.old_string !== 'string' || args.old_string.length === 0) {
-            return asTextResult('Error: old_string 은 비어있지 않은 문자열이어야 합니다.', true);
+        if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
+        if (slug.startsWith('이미지:')) return asTextResult(ui("m_b553e7b7164d38ae"), true);
+        if (slug.startsWith('map:')) return asTextResult(ui("m_51f6566a2dc68dac"), true);        if (typeof args.old_string !== 'string' || args.old_string.length === 0) {
+            return asTextResult(ui("m_1892d082de75f76e"), true);
         }
         if (typeof args.new_string !== 'string') {
-            return asTextResult('Error: new_string 은 문자열이어야 합니다.', true);
+            return asTextResult(ui("m_59ce8f7fb9a9d57d"), true);
         }
 
         const oldStr = (args.old_string as string).replace(/\r\n?/g, '\n');
@@ -1202,10 +1203,10 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         // 자동으로 새 draft 를 시작한다.
         const loaded = await loadDraftOrSeedFromPage(c, user, slug);
         if (loaded.type === 'not_found') {
-            return asTextResult('Error: 문서를 찾을 수 없거나 삭제된 상태입니다. 새 페이지는 create_or_update_page 로 시작하세요.', true);
+            return asTextResult(ui("m_06adfdb126ca2f2d"), true);
         }
         if (loaded.type === 'submitted') {
-            return asTextResult('Error: 이 draft 는 이미 승인 대기로 제출된 상태입니다. 사용자가 mypage 에서 승인/거부할 때까지 수정할 수 없습니다. 폐기하려면 discard_edit 를 사용하세요.', true);
+            return asTextResult(ui("m_da391d05579986b7"), true);
         }
         // edit_acl 검사 — 기존 페이지가 있을 때만. draft 만 있는 케이스도 일치하는 페이지를 다시 조회한다.
         {
@@ -1233,7 +1234,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             if (occurrences > 1) break;
         }
         if (occurrences === 0) {
-            return asTextResult('Error: old_string 을 (draft 가 있으면 draft 본문, 없으면 페이지 본문) 에서 찾을 수 없습니다.', true);
+            return asTextResult(ui("m_5215b013ba9c5c3e"), true);
         }
         if (occurrences > 1) {
             let total = 0;
@@ -1245,8 +1246,8 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
                 from = idx + 1;
             }
             return asTextResult(
-                `Error: old_string 이 본문 내에서 ${total}번 발견되었습니다 (겹치는 매치 포함). ` +
-                `고유하게 특정할 수 있도록 앞뒤 맥락(앞/뒤 줄)을 더 포함해 주세요.`,
+                ui("m_c87c37f4896b20b5", [total]) +
+                ui("m_84109eed126cc204"),
                 true
             );
         }
@@ -1295,25 +1296,25 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'edit_section') {
         if (!rbac.can(user.role, 'wiki:edit')) {
-            return asTextResult('Error: wiki:edit 권한이 필요합니다.', true);
+            return asTextResult(ui("m_eaf5dbfe425cfa3f"), true);
         }
         const slug = String(args.title || '').trim();
-        if (!slug) return asTextResult('Error: title 이 필요합니다.', true);
-        if (slug.startsWith('이미지:')) return asTextResult('Error: "이미지:" 네임스페이스는 admin-mcp 로 편집할 수 없습니다.', true);
-        if (slug.startsWith('map:')) return asTextResult('Error: "map:" 네임스페이스는 가상 트리 뷰 전용이므로 편집할 수 없습니다.', true);        const sectionNumber = String(args.section_number || '').trim();
-        if (!sectionNumber) return asTextResult('Error: section_number 가 필요합니다.', true);
+        if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
+        if (slug.startsWith('이미지:')) return asTextResult(ui("m_b553e7b7164d38ae"), true);
+        if (slug.startsWith('map:')) return asTextResult(ui("m_51f6566a2dc68dac"), true);        const sectionNumber = String(args.section_number || '').trim();
+        if (!sectionNumber) return asTextResult(ui("m_bf29c154ae523703"), true);
         if (typeof args.new_content !== 'string') {
-            return asTextResult('Error: new_content 는 문자열이어야 합니다.', true);
+            return asTextResult(ui("m_1be69df5082dfc07"), true);
         }
 
         const newSectionContent = (args.new_content as string).replace(/\r\n?/g, '\n');
 
         const loaded = await loadDraftOrSeedFromPage(c, user, slug);
         if (loaded.type === 'not_found') {
-            return asTextResult('Error: 문서를 찾을 수 없거나 삭제된 상태입니다. 새 페이지는 create_or_update_page 로 시작하세요.', true);
+            return asTextResult(ui("m_06adfdb126ca2f2d"), true);
         }
         if (loaded.type === 'submitted') {
-            return asTextResult('Error: 이 draft 는 이미 승인 대기로 제출된 상태입니다. 사용자가 mypage 에서 승인/거부할 때까지 수정할 수 없습니다. 폐기하려면 discard_edit 를 사용하세요.', true);
+            return asTextResult(ui("m_da391d05579986b7"), true);
         }
         // edit_acl 검사 — 기존 페이지가 있을 때만 (draft 만 있는 케이스도 일치 페이지 재조회).
         {
@@ -1333,13 +1334,13 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         const newContent = replaceSection(currentContent, sectionNumber, newSectionContent);
         if (newContent === null) {
             return asTextResult(
-                `Error: 섹션 번호 "${sectionNumber}" 를 본문에서 찾을 수 없습니다. ` +
-                `read_draft 또는 get_toc(raw=true) 로 정확한 번호를 확인하세요.`,
+                ui("m_6c36b8c1eeb7f782", [sectionNumber]) +
+                ui("m_d6939b8ab743c3cb"),
                 true
             );
         }
         if (newContent === currentContent) {
-            return asTextResult('Error: 변경 사항이 없습니다 (new_content 가 기존 섹션과 동일).', true);
+            return asTextResult(ui("m_5ee1357c836e3265"), true);
         }
 
         let draftId: number;
@@ -1379,11 +1380,11 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'commit_edit') {
         if (!rbac.can(user.role, 'wiki:edit')) {
-            return asTextResult('Error: wiki:edit 권한이 필요합니다.', true);
+            return asTextResult(ui("m_eaf5dbfe425cfa3f"), true);
         }
         const draftId = Number(args.draft_id);
         if (!Number.isFinite(draftId) || draftId <= 0) {
-            return asTextResult('Error: draft_id 는 양의 정수여야 합니다.', true);
+            return asTextResult(ui("m_b61bfa2e7e9f6307"), true);
         }
         const summary = (typeof args.summary === 'string' && args.summary.length > 0) ? args.summary : null;
         const summaryLengthError = validateMcpSummaryLength(summary);
@@ -1401,13 +1402,13 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             title: string | null; has_title_change: number; editor_note: string | null;
             submitted_at: number | null;
         }>();
-        if (!draft) return asTextResult('Error: draft 를 찾을 수 없습니다 (이미 commit/discard 됐거나 12시간 TTL 만료).', true);
-        if (draft.user_id !== user.id) return asTextResult('Error: 다른 사용자의 draft 는 commit 할 수 없습니다.', true);
+        if (!draft) return asTextResult(ui("m_1e2db7eab1f0eda0"), true);
+        if (draft.user_id !== user.id) return asTextResult(ui("m_06ef274dccd56546"), true);
         // 이미 승인 대기로 제출된 draft 는 사람이 검토 중이므로 AI 가 재제출/재커밋 불가.
         // 다시 편집하려면 사람이 거부(reject) 하거나 AI 가 discard_edit 후 새로 시작.
         if (draft.submitted_at !== null) {
             return asTextResult(
-                'Error: 이 draft 는 이미 승인 대기로 제출된 상태입니다. 사용자가 mypage 에서 승인/거부할 때까지 변경할 수 없습니다. 폐기하려면 discard_edit 를 사용하세요.',
+                ui("m_0c9d736ef7c1be1c"),
                 true
             );
         }
@@ -1420,16 +1421,16 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             ).bind(slug).first<{ id: number; version: number; content: string; category: string | null; last_revision_id: number | null; title: string | null }>();
             if (!page) {
                 return asTextResult(JSON.stringify({
-                    error: 'conflict',
-                    reason: 'page_missing',
-                    message: '페이지가 존재하지 않거나 그 사이 삭제되었습니다. discard_edit 후 상태를 확인하세요.',
+                    error: "conflict",
+                    reason: "page_missing",
+                    message: ui("m_96a6516836c03caf"),
                 }, null, 2), true);
             }
             if (page.last_revision_id !== draft.base_revision_id || page.version !== draft.base_version) {
                 return asTextResult(JSON.stringify({
-                    error: 'conflict',
-                    reason: 'concurrent_modification',
-                    message: 'draft 가 시작된 시점 이후 다른 사용자가 페이지를 수정했습니다. discard_edit 후 read_document 로 최신 상태를 다시 읽고 편집을 재구성하세요.',
+                    error: "conflict",
+                    reason: "concurrent_modification",
+                    message: ui("m_90150790f9c7a71e"),
                     base_revision_id: draft.base_revision_id,
                     base_version: draft.base_version,
                     current_revision_id: page.last_revision_id,
@@ -1449,11 +1450,11 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             if (draft.has_title_change && draft.title) {
                 const titleConflict = await findConflictingPage(db, draft.title, page.id);
                 if (titleConflict) {
-                    const deletedSuffix = titleConflict.isDeleted ? ' (소프트 삭제 상태)' : '';
+                    const deletedSuffix = titleConflict.isDeleted ? ui("m_498cdf7a4578a46f") : '';
                     return asTextResult(
                         titleConflict.matchedColumn === 'slug'
-                            ? `Error: '${draft.title}' 는 이미 다른 문서의 슬러그입니다.${deletedSuffix}`
-                            : `Error: '${draft.title}' 는 이미 다른 문서의 대체 제목입니다.${deletedSuffix}`,
+                            ? ui("m_90b56fb3e80e056e", [draft.title, deletedSuffix])
+                            : ui("m_9eeaa6a50cf56682", [draft.title, deletedSuffix]),
                         true,
                     );
                 }
@@ -1489,7 +1490,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             const submittedAtRow = await markDraftSubmittedAndNotify(c, draft.id, slug, summary);
             if (!submittedAtRow) {
                 return asTextResult(
-                    'Error: 이 draft 는 이미 승인 대기로 제출된 상태입니다 (동시 호출 race).',
+                    ui("m_f2a2c84b1393640d"),
                     true
                 );
             }
@@ -1502,7 +1503,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
                 base_revision_id: draft.base_revision_id,
                 base_version: draft.base_version,
                 ...(diffStats ? { lines_added: diffStats.added, lines_removed: diffStats.removed } : {}),
-                notice: '승인 대기로 제출되었습니다. /mypage#mcp-submissions 에서 검토 후 승인하면 비로소 리비전이 생성됩니다.',
+                notice: ui("m_4f58ec5b5e4730aa"),
             }, null, 2));
         }
 
@@ -1510,16 +1511,16 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             const livePage = await db.prepare('SELECT id FROM pages WHERE slug = ? AND deleted_at IS NULL').bind(slug).first();
             if (livePage) {
                 return asTextResult(JSON.stringify({
-                    error: 'conflict',
-                    reason: 'slug_taken',
-                    message: 'draft 가 시작된 시점 이후 다른 사용자가 같은 슬러그로 페이지를 생성했습니다. discard_edit 후 read_document 로 확인하세요.',
+                    error: "conflict",
+                    reason: "slug_taken",
+                    message: ui("m_87e7f7a96beea8fb"),
                 }, null, 2), true);
             }
             const deletedConflict = await db.prepare('SELECT id FROM pages WHERE slug = ? AND deleted_at IS NOT NULL').bind(slug).first();
             if (deletedConflict) {
                 return asTextResult(
-                    'Error: 동일 슬러그의 소프트 삭제된 문서가 존재합니다. ' +
-                    'restore_page 로 복원해서 편집하거나 delete_page (hard=true) 후 다시 생성하세요.',
+                    ui("m_1305aec62a88f8a3") +
+                    ui("m_f5ce6ee4e62e8de6"),
                     true
                 );
             }
@@ -1529,7 +1530,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             const slugTitleConflict = await findConflictingPage(db, slug, null);
             if (slugTitleConflict && slugTitleConflict.matchedColumn === 'title') {
                 return asTextResult(
-                    `Error: '${slug}' 는 다른 문서의 대체 제목과 충돌해 슬러그로 사용할 수 없습니다.`,
+                    ui("m_45e2704a9530e5f8", [slug]),
                     true,
                 );
             }
@@ -1538,8 +1539,8 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
                 if (titleConflict) {
                     return asTextResult(
                         titleConflict.matchedColumn === 'slug'
-                            ? `Error: '${draft.title}' 는 이미 다른 문서의 슬러그입니다.`
-                            : `Error: '${draft.title}' 는 이미 다른 문서의 대체 제목입니다.`,
+                            ? ui("m_5797a6d9c5ecfc15", [draft.title])
+                            : ui("m_2a061c6193cd4033", [draft.title]),
                         true,
                     );
                 }
@@ -1567,7 +1568,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             const submittedAtRow = await markDraftSubmittedAndNotify(c, draft.id, slug, summary);
             if (!submittedAtRow) {
                 return asTextResult(
-                    'Error: 이 draft 는 이미 승인 대기로 제출된 상태입니다 (동시 호출 race).',
+                    ui("m_f2a2c84b1393640d"),
                     true
                 );
             }
@@ -1578,22 +1579,22 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
                 draft_id: draft.id,
                 action: 'create',
                 ...(createDiffStats ? { lines_added: createDiffStats.added, lines_removed: createDiffStats.removed } : {}),
-                notice: '승인 대기로 제출되었습니다. /mypage#mcp-submissions 에서 검토 후 승인하면 비로소 새 페이지가 생성됩니다.',
+                notice: ui("m_d43fc755953e8e89"),
             }, null, 2));
         }
 
-        return asTextResult(`Error: 알 수 없는 draft action: ${draft.action}`, true);
+        return asTextResult(ui("m_d8488b87a42a88f5", [draft.action]), true);
     }
 
     if (toolName === 'discard_edit') {
         const draftId = Number(args.draft_id);
         if (!Number.isFinite(draftId) || draftId <= 0) {
-            return asTextResult('Error: draft_id 는 양의 정수여야 합니다.', true);
+            return asTextResult(ui("m_b61bfa2e7e9f6307"), true);
         }
         const draft = await db.prepare('SELECT id, user_id, slug, submitted_at FROM mcp_drafts WHERE id = ?')
             .bind(draftId).first<{ id: number; user_id: number; slug: string; submitted_at: number | null }>();
-        if (!draft) return asTextResult('Error: draft 를 찾을 수 없습니다 (이미 commit/discard 됐거나 TTL 만료).', true);
-        if (draft.user_id !== user.id) return asTextResult('Error: 다른 사용자의 draft 는 discard 할 수 없습니다.', true);
+        if (!draft) return asTextResult(ui("m_71a4c23be8db3690"), true);
+        if (draft.user_id !== user.id) return asTextResult(ui("m_a5438b3b7fb76bf4"), true);
         // 승인 대기 상태였다면 알림도 같이 정리한다 — mypage 목록에서 사라지므로 알림만 남으면 dead link 가 된다.
         await db.batch([
             db.prepare("DELETE FROM notifications WHERE type = 'mcp_submission' AND ref_id = ?").bind(draftId),
@@ -1609,25 +1610,25 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'revert_page') {
         if (!rbac.can(user.role, 'wiki:edit')) {
-            return asTextResult('Error: wiki:edit 권한이 필요합니다.', true);
+            return asTextResult(ui("m_eaf5dbfe425cfa3f"), true);
         }
         const slug = String(args.title || '').trim();
         const revisionId = Number(args.revision_id);
-        if (!slug) return asTextResult('Error: title 이 필요합니다.', true);
+        if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
         if (!Number.isFinite(revisionId) || revisionId <= 0) {
-            return asTextResult('Error: revision_id 는 양의 정수여야 합니다.', true);
+            return asTextResult(ui("m_342d2c21b9f70059"), true);
         }
 
         const page = await db
             .prepare('SELECT id, version, content, category, is_private FROM pages WHERE slug = ? AND deleted_at IS NULL')
             .bind(slug)
             .first<{ id: number; version: number; content: string; category: string | null; is_private: number }>();
-        if (!page) return asTextResult('Error: 문서를 찾을 수 없거나 삭제된 상태입니다.', true);
+        if (!page) return asTextResult(ui("m_d023ab691dff7bd9"), true);
 
         // 비공개 문서 가시성 게이트 — 웹 POST /w/:slug/revert 와 동일. wiki:private 권한이 없으면
         // 문서가 존재하지 않는 것처럼 가린다 (revert 로 비공개 본문을 끌어오는 것을 막는다).
         if (page.is_private === 1 && !rbac.can(user.role, 'wiki:private')) {
-            return asTextResult('Error: 문서를 찾을 수 없거나 삭제된 상태입니다.', true);
+            return asTextResult(ui("m_d023ab691dff7bd9"), true);
         }
 
         // edit_acl 검사 — 되돌리기도 편집의 일종. admin_only 가 있으면 비관리자 차단.
@@ -1644,22 +1645,22 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             .prepare('SELECT id, page_id, page_version, content, r2_key, deleted_at, purged_at, is_virtual FROM revisions WHERE id = ?')
             .bind(revisionId)
             .first<{ id: number; page_id: number; page_version: number | null; content: string; r2_key: string | null; deleted_at: number | null; purged_at: number | null; is_virtual: number }>();
-        if (!rev) return asTextResult('Error: 리비전을 찾을 수 없습니다.', true);
+        if (!rev) return asTextResult(ui("m_1c0d1ec937005f23"), true);
         if (rev.page_id !== page.id) {
-            return asTextResult('Error: 지정한 리비전이 이 문서의 것이 아닙니다.', true);
+            return asTextResult(ui("m_79a074aac12f4b03"), true);
         }
         // 본문 없는/가려진 리비전으로의 되돌리기 차단 — HTTP POST /w/:slug/revert 와 동일 정책.
         //  - 가상 리비전(is_virtual)/하드 삭제(purged_at): content='' 이라 되돌리면 본문이 빈 페이지로
         //    덮어써진다(데이터 손실). 명시적으로 거부.
         //  - 소프트 삭제(deleted_at): 의도적으로 가려진 본문이므로 redaction 우회를 막기 위해 거부.
         if (rev.is_virtual) {
-            return asTextResult('Error: 가상 리비전으로는 되돌릴 수 없습니다.', true);
+            return asTextResult(ui("m_d365748ab682796b"), true);
         }
         if (rev.purged_at) {
-            return asTextResult('Error: 본문이 영구 삭제된 리비전으로는 되돌릴 수 없습니다.', true);
+            return asTextResult(ui("m_59a499ddfeccdc0d"), true);
         }
         if (rev.deleted_at) {
-            return asTextResult('Error: 숨겨진 리비전으로는 되돌릴 수 없습니다.', true);
+            return asTextResult(ui("m_55c56ac0928877ec"), true);
         }
 
         const origin = new URL(c.req.url).origin;
@@ -1691,28 +1692,28 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         } catch (e: any) {
             if (e?.code === 'CONCURRENT_MODIFICATION') {
                 return asTextResult(JSON.stringify({
-                    error: 'conflict',
-                    reason: 'concurrent_modification',
-                    message: 'revert 도중 다른 사용자가 페이지를 수정했습니다. 다시 시도하세요 (revert_page 는 호출 시점의 페이지 버전을 기준으로 CAS 적용).',
+                    error: "conflict",
+                    reason: "concurrent_modification",
+                    message: ui("m_694af6f9095a9def"),
                 }, null, 2), true);
             }
-            return asTextResult(`Error: 리비전 저장 실패 (${e?.message || e})`, true);
+            return asTextResult(ui("m_aa3a49af02c77e8c", [e?.message || e]), true);
         }
     }
 
     if (toolName === 'delete_page') {
         const slug = String(args.title || '').trim();
-        if (!slug) return asTextResult('Error: title 이 필요합니다.', true);
+        if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
         const hard = args.hard === true;
 
         const page = await db
             .prepare('SELECT id, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL')
             .bind(slug)
             .first<{ id: number; edit_acl: string | null }>();
-        if (!page) return asTextResult('Error: 문서를 찾을 수 없거나 이미 삭제된 상태입니다.', true);
+        if (!page) return asTextResult(ui("m_f4ec1684e2260eeb"), true);
 
         if (hard) {
-            if (!rbac.can(user.role, '*')) return asTextResult('Error: 영구 삭제는 super_admin 만 가능합니다.', true);
+            if (!rbac.can(user.role, '*')) return asTextResult(ui("m_a1dbee63d898ee47"), true);
             const revisionKeys = await db.prepare('SELECT r2_key FROM revisions WHERE page_id = ? AND r2_key IS NOT NULL').bind(page.id).all<{ r2_key: string }>();
             if (revisionKeys.results.length > 0) {
                 await Promise.all(revisionKeys.results.map(r => c.env.MEDIA.delete(r.r2_key)));
@@ -1729,7 +1730,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             ]);
             c.executionCtx.waitUntil(
                 db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                    .bind('hard_delete', `[admin-mcp] 문서 영구 삭제: ${slug}`, user.id)
+                    .bind('hard_delete', ui("m_c8a7907ff37ab3c3", [slug]), user.id)
                     .run().catch(() => {})
             );
             // RAG 미러 정리: 영구 삭제는 D1 에서 완전히 사라지므로 인덱스 위생을 위해 R2 객체도 제거.
@@ -1737,7 +1738,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             //  복원 시 즉시 다시 검색 가능해야 하기 때문.)
             removePageMirror(c.env, c.executionCtx, slug);
         } else {
-            if (!rbac.can(user.role, 'wiki:delete')) return asTextResult('Error: 문서 삭제 권한이 없습니다.', true);
+            if (!rbac.can(user.role, 'wiki:delete')) return asTextResult(ui("m_67fc323a30e1f44d"), true);
             // 소프트 삭제도 본문을 무력화하는 편집의 일종이므로 웹 DELETE /w/:slug 와 동일한 edit_acl
             // 게이트를 적용한다. admin_only 뿐 아니라 aged/page_editor 등 모든 ACL 규칙을 evaluate 한다
             // (enforceMcpEditAcl 가 page.edit_acl 로 판정). wiki:delete 를 비관리자 역할에 부여한
@@ -1749,7 +1750,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             await db.prepare('UPDATE pages SET deleted_at = unixepoch() WHERE id = ?').bind(page.id).run();
             c.executionCtx.waitUntil(
                 db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                    .bind('soft_delete', `[admin-mcp] 문서 삭제: ${slug}`, user.id)
+                    .bind('soft_delete', ui("m_b80e25642871183c", [slug]), user.id)
                     .run().catch(() => {})
             );
         }
@@ -1763,19 +1764,19 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'restore_page') {
         const slug = String(args.title || '').trim();
-        if (!slug) return asTextResult('Error: title 이 필요합니다.', true);
-        if (!rbac.can(user.role, 'wiki:delete')) return asTextResult('Error: 복원 권한이 없습니다.', true);
-        if (slug.startsWith('이미지:')) return asTextResult('Error: "이미지:" 네임스페이스는 일반 문서로 복원할 수 없습니다.', true);
-        if (slug.startsWith('map:')) return asTextResult('Error: "map:" 네임스페이스는 가상 트리 뷰 전용이므로 복원할 수 없습니다.', true);
+        if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
+        if (!rbac.can(user.role, 'wiki:delete')) return asTextResult(ui("m_e71689f947fff666"), true);
+        if (slug.startsWith('이미지:')) return asTextResult(ui("m_c0cae7a74ebe04c8"), true);
+        if (slug.startsWith('map:')) return asTextResult(ui("m_0c5192f5f86de2aa"), true);
 
         const page = await db.prepare('SELECT id, deleted_at FROM pages WHERE slug = ?').bind(slug).first<{ id: number; deleted_at: number | null }>();
-        if (!page) return asTextResult('Error: 문서를 찾을 수 없습니다.', true);
-        if (!page.deleted_at) return asTextResult('Error: 문서가 삭제 상태가 아닙니다.', true);
+        if (!page) return asTextResult(ui("m_36f26fa461c07fd6"), true);
+        if (!page.deleted_at) return asTextResult(ui("m_f3cd5840152553ef"), true);
 
         await db.prepare('UPDATE pages SET deleted_at = NULL WHERE id = ?').bind(page.id).run();
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('restore', `[admin-mcp] 문서 복원: ${slug}`, user.id)
+                .bind('restore', ui("m_2f067521b8876bdb", [slug]), user.id)
                 .run().catch(() => {})
         );
         c.executionCtx.waitUntil(Promise.allSettled([
@@ -1789,14 +1790,14 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
     if (toolName === 'move_page') {
         const oldSlug = String(args.title || '').trim();
         const newSlug = String(args.new_title || '').trim();
-        if (!oldSlug || !newSlug) return asTextResult('Error: title 과 new_title 이 모두 필요합니다.', true);
-        if (oldSlug === newSlug) return asTextResult('Error: 동일한 슬러그로는 이동할 수 없습니다.', true);
-        if (SLUG_FORBIDDEN_CHARS.test(newSlug)) return asTextResult('Error: 새 슬러그에 사용할 수 없는 특수문자가 포함되어 있습니다.', true);
+        if (!oldSlug || !newSlug) return asTextResult(ui("m_14e60317e5fae82c"), true);
+        if (oldSlug === newSlug) return asTextResult(ui("m_cb1a1e273aea7b04"), true);
+        if (SLUG_FORBIDDEN_CHARS.test(newSlug)) return asTextResult(ui("m_856dd2df08c4246a"), true);
         if (oldSlug.startsWith('이미지:') || newSlug.startsWith('이미지:')) {
-            return asTextResult('Error: "이미지:" 네임스페이스는 이동 대상이 될 수 없습니다.', true);
+            return asTextResult(ui("m_cc9846e90f9e828a"), true);
         }
         if (oldSlug.startsWith('map:') || newSlug.startsWith('map:')) {
-            return asTextResult('Error: "map:" 네임스페이스는 가상 트리 뷰 전용이므로 이동 대상이 될 수 없습니다.', true);
+            return asTextResult(ui("m_1cc7261dc2df7fdf"), true);
         }
 
         // 네임스페이스 이동 제한: 콜론이 포함된 문서(틀:, template:, 카테고리: 등)는
@@ -1805,7 +1806,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         const currentNamespace = isNamespaceDocument ? oldSlug.split(':')[0] : '';
         const newNamespace = newSlug.includes(':') ? newSlug.split(':')[0] : '';
         if (isNamespaceDocument && currentNamespace !== newNamespace) {
-            return asTextResult('Error: 네임스페이스가 있는 문서는 다른 네임스페이스로 이동할 수 없습니다.', true);
+            return asTextResult(ui("m_0146467f26ec73c6"), true);
         }
 
         // 기본값 true — 명시적으로 false 가 지정된 경우에만 백링크 갱신을 건너뛴다.
@@ -1816,24 +1817,24 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             .prepare('SELECT id, version, content, category, last_revision_id, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL')
             .bind(oldSlug)
             .first<{ id: number; version: number; content: string; category: string | null; last_revision_id: number | null; edit_acl: string | null }>();
-        if (!page) return asTextResult('Error: 문서를 찾을 수 없거나 삭제된 상태입니다.', true);
+        if (!page) return asTextResult(ui("m_d023ab691dff7bd9"), true);
 
         // admin_only ACL 문서 이동은 관리자만 가능 (구 wiki:lock 검사 대체).
         const movePageIsAdmin = rbac.can(user.role, 'admin:access');
         if (!movePageIsAdmin) {
             const aclMove = parseEditAcl(page.edit_acl);
             if (aclMove && aclMove.flags.includes('admin_only')) {
-                return asTextResult('Error: 관리자 전용 문서는 관리자만 이동할 수 있습니다.', true);
+                return asTextResult(ui("m_0b5af618752913e3"), true);
             }
         }
 
         // 새 슬러그가 다른 문서의 slug 또는 title 과 충돌하는지 검사. 소프트 삭제 행도 포함.
         const moveConflict = await findConflictingPage(db, newSlug, page.id);
         if (moveConflict) {
-            const deletedSuffix = moveConflict.isDeleted ? ' (소프트 삭제 상태)' : '';
+            const deletedSuffix = moveConflict.isDeleted ? ui("m_498cdf7a4578a46f") : '';
             const msg = moveConflict.matchedColumn === 'slug'
-                ? `Error: 새 슬러그가 이미 존재합니다.${deletedSuffix}`
-                : `Error: '${newSlug}' 는 이미 다른 문서의 대체 제목과 같아 사용할 수 없습니다.${deletedSuffix}`;
+                ? ui("m_fdfa5a2d5f78e542", [deletedSuffix])
+                : ui("m_5c8f76d6c556ba92", [newSlug, deletedSuffix]);
             return asTextResult(msg, true);
         }
 
@@ -1884,7 +1885,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
                 // (HTTP POST /w/:slug/move · 대량 이동과 동일). 본문이 바뀌는 분기는 위에서
                 // 이미 [move] 본문 리비전을 만들므로 별도 가상 리비전이 필요 없다.
                 try {
-                    await insertVirtualRevision(db, page.id, withMcpPrefix(`[이동] 주소 변경: ${oldSlug} → ${newSlug}`), user.id);
+                    await insertVirtualRevision(db, page.id, withMcpPrefix(ui("m_f9b2c39ea47d991a", [oldSlug, newSlug])), user.id);
                 } catch (e) {
                     console.error('Failed to write virtual revision for MCP slug-only move:', e);
                 }
@@ -1892,7 +1893,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         } catch (e: any) {
             const msg = String(e?.message || e);
             if (/UNIQUE|constraint/i.test(msg)) {
-                return asTextResult('Error: 새 슬러그가 다른 문서와 충돌합니다. 다시 시도해주세요.', true);
+                return asTextResult(ui("m_8f525ba61830ea2f"), true);
             }
             throw e;
         }
@@ -1949,7 +1950,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('move', `[admin-mcp] 문서 이동: ${oldSlug} → ${newSlug}${updateBacklinks ? ` (역링크 ${updatedSlugs.length}개 갱신)` : ''}`, user.id)
+                .bind('move', ui("m_ff744d061f41f00f", [oldSlug, newSlug, updateBacklinks ? ui("m_dd24a86b62797590", [updatedSlugs.length]) : '']), user.id)
                 .run().catch(() => {})
         );
         c.executionCtx.waitUntil(Promise.allSettled([
@@ -1980,16 +1981,16 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
     if (toolName === 'create_blog_post' || toolName === 'update_blog_post'
         || toolName === 'delete_blog_post' || toolName === 'restore_blog_post') {
         if (!rbac.can(user.role, 'admin:access')) {
-            return asTextResult('Error: admin:access 권한이 필요합니다.', true);
+            return asTextResult(ui("m_b525ffd5499fc86d"), true);
         }
     }
 
     if (toolName === 'create_blog_post') {
-        if (typeof args.title !== 'string') return asTextResult('Error: title 은 문자열이어야 합니다.', true);
-        if (typeof args.content !== 'string') return asTextResult('Error: content 는 문자열이어야 합니다.', true);
+        if (typeof args.title !== 'string') return asTextResult(ui("m_2f1b7032fa67d995"), true);
+        if (typeof args.content !== 'string') return asTextResult(ui("m_b3104adc425b92b3"), true);
         const title = args.title.trim();
-        if (!title) return asTextResult('Error: 제목을 입력해주세요.', true);
-        if (title.length > 500) return asTextResult('Error: 제목은 500자 이내여야 합니다.', true);
+        if (!title) return asTextResult(ui("m_9952e26982704b4f"), true);
+        if (title.length > 500) return asTextResult(ui("m_e602bd6e22f66637"), true);
 
         // routes/blog.ts 와 동일하게 CRLF → LF 정규화. 줄 수/글자 수도 동일 기준으로 계산.
         const content = (args.content as string).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -2002,12 +2003,12 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
             .bind(title, content, rows, characters, thumbnail)
             .run();
         const newId = Number(result.meta?.last_row_id || 0);
-        if (!newId) return asTextResult('Error: 저장 실패', true);
+        if (!newId) return asTextResult(ui("m_455e32fcc4e8b0c4"), true);
 
         c.executionCtx.waitUntil(rebuildBlogImageLinks(db, newId, content));
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('blog_create', `[admin-mcp] 블로그 작성: ${title}`, user.id)
+                .bind('blog_create', ui("m_9e203cd85a24d16a", [title]), user.id)
                 .run().catch((e: any) => console.error('admin-mcp blog_create admin_log write failed:', e))
         );
 
@@ -2024,29 +2025,29 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
     if (toolName === 'update_blog_post') {
         const id = Number(args.id);
         if (!Number.isFinite(id) || !Number.isInteger(id) || id <= 0) {
-            return asTextResult('Error: id 는 양의 정수여야 합니다.', true);
+            return asTextResult(ui("m_6dcf73d828a63cfe"), true);
         }
         const wantsTitle = args.title !== undefined;
         const wantsContent = args.content !== undefined;
         if (!wantsTitle && !wantsContent) {
-            return asTextResult('Error: title 또는 content 중 하나 이상을 지정해야 합니다.', true);
+            return asTextResult(ui("m_a2251307d59448a7"), true);
         }
         if (wantsTitle && typeof args.title !== 'string') {
-            return asTextResult('Error: title 은 문자열이어야 합니다.', true);
+            return asTextResult(ui("m_2f1b7032fa67d995"), true);
         }
         if (wantsContent && typeof args.content !== 'string') {
-            return asTextResult('Error: content 는 문자열이어야 합니다.', true);
+            return asTextResult(ui("m_b3104adc425b92b3"), true);
         }
 
         const existing = await db
             .prepare('SELECT id, title FROM blog_posts WHERE id = ? AND deleted_at IS NULL')
             .bind(id)
             .first<{ id: number; title: string }>();
-        if (!existing) return asTextResult('Error: 블로그 포스트를 찾을 수 없거나 삭제된 상태입니다.', true);
+        if (!existing) return asTextResult(ui("m_6eec2c670cd0b15c"), true);
 
         const newTitle = wantsTitle ? (args.title as string).trim() : existing.title;
-        if (!newTitle) return asTextResult('Error: 제목을 입력해주세요.', true);
-        if (newTitle.length > 500) return asTextResult('Error: 제목은 500자 이내여야 합니다.', true);
+        if (!newTitle) return asTextResult(ui("m_9952e26982704b4f"), true);
+        if (newTitle.length > 500) return asTextResult(ui("m_e602bd6e22f66637"), true);
 
         if (wantsContent) {
             const content = (args.content as string).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -2061,7 +2062,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
             c.executionCtx.waitUntil(
                 db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                    .bind('blog_update', `[admin-mcp] 블로그 수정: ${newTitle}`, user.id)
+                    .bind('blog_update', ui("m_c0149a7404a737ca", [newTitle]), user.id)
                     .run().catch((e: any) => console.error('admin-mcp blog_update admin_log write failed:', e))
             );
 
@@ -2077,7 +2078,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         ).bind(newTitle, id).run();
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('blog_update', `[admin-mcp] 블로그 수정: ${newTitle}`, user.id)
+                .bind('blog_update', ui("m_c0149a7404a737ca", [newTitle]), user.id)
                 .run().catch((e: any) => console.error('admin-mcp blog_update admin_log write failed:', e))
         );
         return asTextResult(JSON.stringify({
@@ -2088,14 +2089,14 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
     if (toolName === 'delete_blog_post') {
         const id = Number(args.id);
         if (!Number.isFinite(id) || !Number.isInteger(id) || id <= 0) {
-            return asTextResult('Error: id 는 양의 정수여야 합니다.', true);
+            return asTextResult(ui("m_6dcf73d828a63cfe"), true);
         }
         const existing = await db
             .prepare('SELECT id, title, deleted_at FROM blog_posts WHERE id = ?')
             .bind(id)
             .first<{ id: number; title: string; deleted_at: number | null }>();
-        if (!existing) return asTextResult('Error: 블로그 포스트를 찾을 수 없습니다.', true);
-        if (existing.deleted_at) return asTextResult('Error: 이미 삭제된 포스트입니다.', true);
+        if (!existing) return asTextResult(ui("m_2387e771a93389a0"), true);
+        if (existing.deleted_at) return asTextResult(ui("m_a92db503150b6878"), true);
 
         await db.prepare('UPDATE blog_posts SET deleted_at = unixepoch() WHERE id = ?').bind(id).run();
 
@@ -2108,7 +2109,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('blog_delete', `[admin-mcp] 블로그 삭제: ${existing.title}`, user.id)
+                .bind('blog_delete', ui("m_f0f10112368b9417", [existing.title]), user.id)
                 .run().catch((e: any) => console.error('admin-mcp blog_delete admin_log write failed:', e))
         );
 
@@ -2124,14 +2125,14 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
     if (toolName === 'restore_blog_post') {
         const id = Number(args.id);
         if (!Number.isFinite(id) || !Number.isInteger(id) || id <= 0) {
-            return asTextResult('Error: id 는 양의 정수여야 합니다.', true);
+            return asTextResult(ui("m_6dcf73d828a63cfe"), true);
         }
         const existing = await db
             .prepare('SELECT id, title, content, deleted_at FROM blog_posts WHERE id = ?')
             .bind(id)
             .first<{ id: number; title: string; content: string; deleted_at: number | null }>();
-        if (!existing) return asTextResult('Error: 블로그 포스트를 찾을 수 없습니다.', true);
-        if (!existing.deleted_at) return asTextResult('Error: 삭제 상태가 아닌 포스트입니다.', true);
+        if (!existing) return asTextResult(ui("m_2387e771a93389a0"), true);
+        if (!existing.deleted_at) return asTextResult(ui("m_a27088cdebc322b3"), true);
 
         await db.prepare('UPDATE blog_posts SET deleted_at = NULL, updated_at = unixepoch() WHERE id = ?').bind(id).run();
 
@@ -2140,7 +2141,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('blog_restore', `[admin-mcp] 블로그 복원: ${existing.title}`, user.id)
+                .bind('blog_restore', ui("m_43d079b80e1d56b8", [existing.title]), user.id)
                 .run().catch((e: any) => console.error('admin-mcp blog_restore admin_log write failed:', e))
         );
 
@@ -2149,38 +2150,38 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
     if (toolName === 'set_page_status') {
         const slug = String(args.title || '').trim();
-        if (!slug) return asTextResult('Error: title 이 필요합니다.', true);
+        if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
 
         if (typeof args.category !== 'string') {
-            return asTextResult('Error: category 를 지정해야 합니다.', true);
+            return asTextResult(ui("m_f16fe8e4ae090a74"), true);
         }
 
         // 이미지 네임스페이스는 별도 미디어 문서이므로 admin-mcp 메타 변경에서도 제외한다.
         if (slug.startsWith('이미지:')) {
-            return asTextResult('Error: "이미지:" 네임스페이스는 admin-mcp 로 상태를 변경할 수 없습니다.', true);
+            return asTextResult(ui("m_f0c82c07ff59de9e"), true);
         }
         // map 네임스페이스는 가상 트리 뷰 전용이므로 메타 변경 대상이 아니다.
         if (slug.startsWith('map:')) {
-            return asTextResult('Error: "map:" 네임스페이스는 가상 트리 뷰 전용이므로 상태를 변경할 수 없습니다.', true);
+            return asTextResult(ui("m_42d48256ecd34d50"), true);
         }
 
         const trimmedCategory = (args.category as string).trim();
         const newCategory = trimmedCategory ? trimmedCategory : null;
         if (newCategory && !/^[가-힣a-zA-Z0-9\s,]+$/.test(newCategory)) {
-            return asTextResult('Error: category 에는 특수문자를 사용할 수 없습니다.', true);
+            return asTextResult(ui("m_ecc6b4ed43d3fa11"), true);
         }
 
         const page = await db
             .prepare('SELECT id, category, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL')
             .bind(slug)
             .first<{ id: number; category: string | null; edit_acl: string | null }>();
-        if (!page) return asTextResult('Error: 문서를 찾을 수 없거나 삭제된 상태입니다.', true);
+        if (!page) return asTextResult(ui("m_d023ab691dff7bd9"), true);
 
         // admin_only ACL 문서의 메타데이터 변경은 관리자만 가능 (구 wiki:lock 검사 대체).
         if (!rbac.can(user.role, 'admin:access')) {
             const aclSet = parseEditAcl(page.edit_acl);
             if (aclSet && aclSet.flags.includes('admin_only')) {
-                return asTextResult('Error: 관리자 전용 문서의 상태는 관리자만 변경할 수 있습니다.', true);
+                return asTextResult(ui("m_78742118a5af3c36"), true);
             }
         }
 
@@ -2194,7 +2195,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         const categoryChanged = (finalCategory ?? null) !== (page.category ?? null);
 
         if (!categoryChanged) {
-            return asTextResult(JSON.stringify({ slug, changed: false, note: '요청된 카테고리가 이미 현재 값과 동일합니다.', category: finalCategory }, null, 2));
+            return asTextResult(JSON.stringify({ slug, changed: false, note: ui("m_83c94bc5f7b7e6de"), category: finalCategory }, null, 2));
         }
 
         // pages.category 와 page_categories 인덱스를 한 batch 로 묶어 트랜잭션으로 적용한다.
@@ -2215,11 +2216,11 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         }
         await db.batch(txStmts);
 
-        const changeDesc = `category: ${page.category ?? '(없음)'} → ${finalCategory ?? '(없음)'}`;
+        const changeDesc = `category: ${page.category ?? ui("m_2c5539adbf825ee1")} → ${finalCategory ?? ui("m_2c5539adbf825ee1")}`;
 
         c.executionCtx.waitUntil(
             db.prepare('INSERT INTO admin_log (type, log, user) VALUES (?, ?, ?)')
-                .bind('page_status', `[admin-mcp] 문서 상태 변경: ${slug} (${changeDesc})`, user.id)
+                .bind('page_status', ui("m_d1d6083885279cd5", [slug, changeDesc]), user.id)
                 .run().catch((e: any) => console.error('admin-mcp set_page_status admin_log write failed:', e))
         );
 
@@ -2262,7 +2263,7 @@ export function buildUserEditInformationSuffix(userName: string, enabledNames?: 
     // 비어 있는 하위 섹션은 헤더째 생략한다 — Off된 도구의 이름이 안내문에 남지 않도록.
     const parts: string[] = [];
     if (visibleRead.length > 0) {
-        parts.push(`\n\n## 편집 보조 읽기 도구 (현재 인증된 사용자: ${userName})\n${visibleRead.map(t => `- ${t.name}`).join('\n')}`);
+        parts.push(ui("m_52ab88f8136b6083", [userName, visibleRead.map(t => `- ${t.name}`).join('\n')]));
     }
     if (visibleEdit.length > 0) {
         // 장문 prose 가 하드코딩으로 언급하는 도구들. 하나라도 Off 면 Off된 이름이
@@ -2274,28 +2275,28 @@ export function buildUserEditInformationSuffix(userName: string, enabledNames?: 
         ];
         const fullProse = !enabledNames || PROSE_NAMED_TOOLS.every(n => enabledNames.has(n));
         if (!fullProse) {
-            parts.push(`\n\n## 편집 도구\n\n사용 가능한 편집 도구는 다음과 같습니다.\n\n` +
+            parts.push(ui("m_52daaee07eb4aa72") +
                 visibleEdit.map(t => `- ${t.name}`).join('\n') +
-                `\n\n리비전 summary 에 [MCP] 접두가 붙습니다 (draft 단계는 기록 없음).`);
+                ui("m_a995ff0df25d25e8"));
         } else {
         // revert_page 가 Off 면 즉시 적용 안내 문장도 함께 생략한다.
         const instantApplyNote = visibleEdit.some(t => t.name === 'revert_page')
-            ? `**즉시 적용** (draft 모델 미사용): revert_page.\n\n`
+            ? ui("m_eaecb784ae99da46")
             : '';
-        parts.push(`\n\n## 편집 도구\n\n` +
-            `**stateful draft 모델**: create_or_update_page / patch_page / edit_section 은 즉시 저장하지 않고 \`mcp_drafts\` 에 누적합니다 ` +
-            `(같은 슬러그에 대해 사용자별 1개). 응답으로 \`draft_id\` 를 받고, 편집이 끝나면 commit_edit(draft_id, summary) 를 호출해 ` +
-            `승인 대기로 제출합니다 — 사용자가 /mypage#mcp-submissions 에서 승인해야 비로소 리비전이 생성됩니다. 시작 시점 이후 다른 사용자가 페이지를 수정했으면 commit_edit 가 충돌로 거부합니다 ` +
-            `(이 경우 discard_edit 후 read_document 로 최신 상태를 다시 읽고 편집을 재구성). draft 는 마지막 활동 이후 12시간이 지나면 자동 삭제됩니다.\n\n` +
-            `**⚠️ 헤딩 작성 규칙**: 위키는 헤딩(##, ###, ...)에 자동으로 계층 번호("1.", "1.1." 등)를 부여합니다. ` +
-            `헤딩 텍스트에 번호를 직접 적지 마세요 (예: \`## 1. 개요\` ❌ → \`## 개요\` ✅). 직접 적으면 렌더링 시 "1. 1. 개요" 처럼 중복 번호가 표시됩니다. ` +
-            `목차 내 다른 섹션을 참조할 때는 \`[[문서#s-1.2]]\` 형식의 섹션 앵커를 사용하세요.\n\n` +
-            `**항상 승인 대기로 제출**: commit_edit 를 호출하면 draft 는 즉시 리비전이 되지 않고 OAuth 토큰 소유자(=이 MCP 를 연결한 본인) 에게 승인 대기로 제출됩니다. ` +
-            `본인이 마이페이지 / 알림 / 문서 배너에서 검토 후 승인해야 비로소 리비전이 만들어집니다. 거부 시 draft 는 폐기됩니다. ` +
-            `승인 대기 상태 draft 는 list_drafts / read_draft 의 \`status\` 필드가 \`pending_approval\` 로 표시되며, AI 측에서는 더 이상 수정할 수 없습니다 (discard_edit 로 폐기만 가능).\n\n` +
+        parts.push(ui("m_784c7704a3a2f0ae") +
+            ui("m_1e1c4a998b7b2f1c") +
+            ui("m_da4c2b335f807689") +
+            ui("m_dde3f09c6f760e12") +
+            ui("m_a1d93a929874828a") +
+            ui("m_df9d818634c94050") +
+            ui("m_924ee1d025cc7457") +
+            ui("m_edb211a446241a10") +
+            ui("m_2364117719f3a8b3") +
+            ui("m_6bd1943582da2fb4") +
+            ui("m_3018916d76962e2b") +
             instantApplyNote +
             visibleEdit.map(t => `- ${t.name}`).join('\n') +
-            `\n\n리비전 summary 에 [MCP] 접두가 붙습니다 (draft 단계는 기록 없음).`);
+            ui("m_a995ff0df25d25e8"));
         }
     }
     return parts.join('');
@@ -2314,10 +2315,10 @@ export function buildAdminOnlyInformationSuffix(userName: string, enabledNames?:
     // 비어 있는 하위 섹션은 헤더째 생략한다.
     const parts: string[] = [];
     if (visibleRead.length > 0) {
-        parts.push(`\n\n## 관리자 전용 읽기 도구 (현재 인증된 관리자: ${userName})\n${visibleRead.map(t => `- ${t.name}`).join('\n')}`);
+        parts.push(ui("m_6bb8551b26be9ae0", [userName, visibleRead.map(t => `- ${t.name}`).join('\n')]));
     }
     if (visibleEdit.length > 0) {
-        parts.push(`\n\n## 관리자 전용 편집 도구 (즉시 적용)\n` +
+        parts.push(ui("m_7434f1ab7d74a574") +
             visibleEdit.map(t => `- ${t.name}`).join('\n'));
     }
     return parts.join('');

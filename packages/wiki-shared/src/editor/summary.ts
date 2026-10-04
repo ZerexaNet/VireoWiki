@@ -1,38 +1,4 @@
-/**
- * 편집 요약 자동 작성 (기존 public/js/edit-summary.js 의 ES 모듈 이전).
- *
- * 자동요약은 더 이상 summaryInput 입력 칸에 표시하지 않는다. refreshAutoSummary 가
- * 백그라운드에서 자동요약을 재계산해 모듈 변수(currentAutoSummary)에 보관하고,
- * 저장 시점에 main.ts / ws-edit.ts 가 getAutoEditSummary() 로 읽어
- * "<사용자입력> / <자동요약>" 형식으로 병합한다(둘 중 하나만 있으면 해당 부분만).
- * 입력 칸(summaryInput)은 사용자 입력 전용이며 maxlength 길이 제한은 사용자
- * 입력분에만 적용된다. 병합되는 자동요약분에는 길이 제한을 적용하지 않는다.
- *
- * 자동요약 규칙:
- *   - 섹션 편집 모드: "'<섹션 헤딩 텍스트>' 편집"
- *                    헤딩 텍스트 자체가 바뀌면 "'OLD' → 'NEW' 섹션 이름 변경"
- *                    섹션 내부 하위 헤딩 추가/삭제도 합성
- *                    "하위 문서로 분리" 가 수행된 직후에는
- *                    "'<헤딩>' 섹션을 '<신규 슬러그>' 하위 문서로 분리" 로 덮어쓴다
- *                    (window.splitSubdocInfo 신호 — main.ts 가 set).
- *   - 신규 문서:      "문서 생성"
- *   - 기존 문서:      카테고리 추가/삭제, 넘겨주기 설정/해제, 관리자 전용(잠금) 변경,
- *                    본문 헤딩 추가/삭제/이름 변경,
- *                    공통 섹션 본문 편집("섹션 'X' 편집") 을 합성
- *
- * 사용자가 에디터 설정에서 자동 작성을 끄면(localStorage editor_auto_summary = "false")
- * refreshAutoSummary 가 보관된 자동요약을 비우고 즉시 종료한다(병합 없음).
- *
- * 브리지 (raw script ↔ ESM):
- *   - 출력: window.refreshAutoSummary(백그라운드 재계산) / window.getAutoEditSummary(병합용 읽기) 노출.
- *   - 입력: edit-utils 모듈이 초기화한 window.X 상태(originalContent, editor,
- *     sectionMode, sectionRange, originalPageMeta) + edit-autocomplete.js 의
- *     var 글로벌(categoryTags) + render.js 의 _extractMarkdownSectionRanges
- *     를 읽는다. 모든 공유 Window 프로퍼티 선언은 src/client/edit/types.ts 가
- *     단일 소스이며, 본 모듈은 import 만 한다.
- */
-
-// types.ts 의 declare global { Window {...} } 가 본 모듈 컨텍스트로 들어오도록 import.
+import { ui } from '../i18n/client';
 import './types';
 
 declare global {
@@ -186,7 +152,7 @@ function formatHeadingList<T>(items: T[], mapToLabel: (item: T) => string): stri
     const labels = items.map(mapToLabel);
     if (labels.length <= HEADING_LIST_CAP) return labels.join(', ');
     const head = labels.slice(0, HEADING_LIST_CAP).join(', ');
-    return `${head} 외 ${labels.length - HEADING_LIST_CAP}개`;
+    return ui("m_37a35f695d13de6a", [head, labels.length - HEADING_LIST_CAP]);
 }
 
 function buildHeadingDiffParts(
@@ -194,22 +160,22 @@ function buildHeadingDiffParts(
     currHeadings: HeadingForSummary[],
     opts?: BuildHeadingDiffOptions,
 ): string[] {
-    const labelPrefix = (opts && opts.labelPrefix) || '섹션';
+    const labelPrefix = (opts && opts.labelPrefix) || ui("m_6d3d57e31f94600e");
     const includeBodyEdits = !!(opts && opts.includeBodyEdits);
     const diff = diffHeadings(origHeadings, currHeadings);
     const parts: string[] = [];
     if (diff.renamed.length === 1) {
         const r = diff.renamed[0];
-        parts.push(`${labelPrefix} '${r.from}' → '${r.to}' 이름 변경`);
+        parts.push(ui("m_e31c881e16db95c5", [labelPrefix, r.from, r.to]));
     } else if (diff.renamed.length > 1) {
         const list = formatHeadingList(diff.renamed, r => `'${r.from}' → '${r.to}'`);
-        parts.push(`${labelPrefix} 이름 변경 ${list}`);
+        parts.push(ui("m_e7a8a42e031bf6ea", [labelPrefix, list]));
     }
     if (diff.added.length) {
-        parts.push(`${labelPrefix} ${formatHeadingList(diff.added, h => `'${h.text}'`)} 추가`);
+        parts.push(ui("m_2f18f2b811bf77a0", [labelPrefix, formatHeadingList(diff.added, h => `'${h.text}'`)]));
     }
     if (diff.removed.length) {
-        parts.push(`${labelPrefix} ${formatHeadingList(diff.removed, h => `'${h.text}'`)} 삭제`);
+        parts.push(ui("m_f5adc7cae0cf6975", [labelPrefix, formatHeadingList(diff.removed, h => `'${h.text}'`)]));
     }
     // 헤딩이 동일한(공통) 섹션의 본문이 바뀐 경우 "섹션 'X' 편집" 으로 보고.
     // 부모-자식 섹션이 같은 변화로 중복 표시되는 잡음을 피하려고 own-body
@@ -224,7 +190,7 @@ function buildHeadingDiffParts(
             }
         }
         if (edited.length) {
-            parts.push(`${labelPrefix} ${formatHeadingList(edited, h => `'${h.text}'`)} 편집`);
+            parts.push(ui("m_aef0755c90fc2f17", [labelPrefix, formatHeadingList(edited, h => `'${h.text}'`)]));
         }
     }
     return parts;
@@ -259,7 +225,7 @@ function formatLineDiffStats(orig: string, curr: string): string {
         const oldN = countLines(orig);
         const newN = countLines(curr);
         if (oldN === newN) return '';
-        return newN > oldN ? `[+${newN - oldN}줄]` : `[-${oldN - newN}줄]`;
+        return newN > oldN ? ui("m_0ce908153b8c4723", [newN - oldN]) : ui("m_28f4885ee4cc6f4d", [oldN - newN]);
     }
     const Diff = window.Diff;
     if (!Diff || typeof Diff.diffLines !== 'function') return '';
@@ -279,9 +245,9 @@ function formatLineDiffStats(orig: string, curr: string): string {
         return '';
     }
     if (!added && !removed) return '';
-    if (added && removed) return `[+${added}줄 -${removed}줄]`;
-    if (added) return `[+${added}줄]`;
-    return `[-${removed}줄]`;
+    if (added && removed) return ui("m_4a3f2ae942af04cc", [added, removed]);
+    if (added) return ui("m_0ce908153b8c4723", [added]);
+    return ui("m_28f4885ee4cc6f4d", [removed]);
 }
 
 function appendLineStats(summary: string, stats: string): string {
@@ -318,9 +284,9 @@ function buildAutoEditSummary(): string {
             const headingRemoved = editorAvailable && !topHeading;
             const origSub = getOriginalHeadingsForSummary().slice(1);
             const currSub = headingRemoved ? currHeadings : currHeadings.slice(1);
-            const subParts = buildHeadingDiffParts(origSub, currSub, { labelPrefix: '하위 섹션' });
-            let prefix = `'${baseHeading}' 섹션을 '${splitInfo.newTitle}' 하위 문서로 분리`;
-            if (headingRemoved) prefix += ", 섹션 헤딩 삭제";
+            const subParts = buildHeadingDiffParts(origSub, currSub, { labelPrefix: ui("m_c10e2eaa0268650c") });
+            let prefix = ui("m_f359d66813daa42f", [baseHeading, splitInfo.newTitle]);
+            if (headingRemoved) prefix += ui("m_e1f660558dd31528");
             if (subParts.length) prefix += ', ' + subParts.join(', ');
             const sectionStats = editorAvailable
                 ? formatLineDiffStats(window.originalContent || '', currentContent)
@@ -351,17 +317,17 @@ function buildAutoEditSummary(): string {
         // 첫 항목(섹션 헤딩) 을 제외한 나머지를 비교한다.
         const origSub = getOriginalHeadingsForSummary().slice(1);
         const currSub = sectionStatus === 'removed' ? currHeadings : currHeadings.slice(1);
-        const subParts = buildHeadingDiffParts(origSub, currSub, { labelPrefix: '하위 섹션' });
+        const subParts = buildHeadingDiffParts(origSub, currSub, { labelPrefix: ui("m_c10e2eaa0268650c") });
 
         let prefix: string;
         if (sectionStatus === 'removed') {
-            prefix = `'${baseHeading}' 섹션 헤딩 삭제`;
+            prefix = ui("m_985a5f979ef19c05", [baseHeading]);
         } else if (sectionStatus === 'level') {
-            prefix = `'${baseHeading}' 섹션 레벨 변경 (H${baseLevel} → H${newLevel})`;
+            prefix = ui("m_cc11371b5a1dcf37", [baseHeading, baseLevel, newLevel]);
         } else if (sectionStatus === 'renamed') {
-            prefix = `'${baseHeading}' → '${newText}' 섹션 이름 변경`;
+            prefix = ui("m_8a12bc762ca4fdd5", [baseHeading, newText]);
         } else {
-            prefix = `'${baseHeading}' 편집`;
+            prefix = ui("m_3ce84c749766490c", [baseHeading]);
         }
         if (subParts.length) prefix += ', ' + subParts.join(', ');
         const sectionStats = editorAvailable
@@ -374,7 +340,7 @@ function buildAutoEditSummary(): string {
     const originalPageMeta = window.originalPageMeta;
     if (!originalPageMeta) {
         const newDocStats = editorAvailable ? formatLineDiffStats('', currentContent) : '';
-        return appendLineStats('문서 생성', newDocStats);
+        return appendLineStats(ui("m_ba5f59098d850c32"), newDocStats);
     }
 
     const origCats = originalPageMeta.category
@@ -400,21 +366,21 @@ function buildAutoEditSummary(): string {
 
     const parts: string[] = [];
     if (origTitle !== currTitle) {
-        if (!origTitle) parts.push(`대체 제목 '${currTitle}' 설정`);
-        else if (!currTitle) parts.push(`대체 제목 '${origTitle}' 해제`);
-        else parts.push(`대체 제목 '${origTitle}' → '${currTitle}' 변경`);
+        if (!origTitle) parts.push(ui("m_ae5e8a60a5e184d7", [currTitle]));
+        else if (!currTitle) parts.push(ui("m_2edd189025428bf6", [origTitle]));
+        else parts.push(ui("m_8c7c679e495c64d0", [origTitle, currTitle]));
     }
-    if (added.length) parts.push(`분류 ${added.map(c => `'${c}'`).join(', ')} 추가`);
-    if (removed.length) parts.push(`분류 ${removed.map(c => `'${c}'`).join(', ')} 삭제`);
+    if (added.length) parts.push(ui("m_6c44f3d4ed564acf", [added.map(c => `'${c}'`).join(', ')]));
+    if (removed.length) parts.push(ui("m_5a040009152a8117", [removed.map(c => `'${c}'`).join(', ')]));
     if (origRedirect !== currRedirect) {
-        parts.push(currRedirect ? `넘겨주기 '${currRedirect}' 설정` : '넘겨주기 해제');
+        parts.push(currRedirect ? ui("m_23a212a1e65a49ad", [currRedirect]) : ui("m_f6fbe6e758da10c3"));
     }
 
     if (editorAvailable) {
         const currHeadings = extractHeadingsForSummary(currentContent);
         const origHeadings = getOriginalHeadingsForSummary();
         const headingParts = buildHeadingDiffParts(origHeadings, currHeadings, {
-            labelPrefix: '섹션',
+            labelPrefix: ui("m_6d3d57e31f94600e"),
             includeBodyEdits: true,
         });
         for (const p of headingParts) parts.push(p);
@@ -425,7 +391,7 @@ function buildAutoEditSummary(): string {
         if (!headingParts.length && parts.length === 0
             && origHeadings.length === 0 && currHeadings.length === 0
             && (window.originalContent || '') !== (currentContent || '')) {
-            parts.push('본문 편집');
+            parts.push(ui("m_8029674526ac2912"));
         }
     }
 

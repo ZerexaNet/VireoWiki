@@ -3,6 +3,7 @@
 //  uiSkeletonList / uiEmptyState / goRandomPage)을 사용한다. any 형태 fetch 응답이라 타입 검사를 끈다.
 
 // ── 문서 활동(최근 수정 내역 / 모든 문서 목록) 상태 — 기존 recent-changes 페이지에서 통합 ──
+import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 const PAGE_SIZE = 10;
 let currentRecentPage = 1;
 let totalRecentPages = 0;
@@ -55,7 +56,7 @@ async function loadSummary() {
 
   try {
     const res = await fetch('/api/explore/summary');
-    if (!res.ok) throw new Error('summary load failed');
+    if (!res.ok) throw new Error(ui("m_de0eb575bed307f0"));
     const data = await res.json();
 
     renderStats(data.stats || {});
@@ -64,7 +65,7 @@ async function loadSummary() {
     renderDiscussions(discEl, data.recent_discussions || []);
   } catch (e) {
     console.error('探索数据加载失败：', e);
-    const err = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: '加载失败' });
+    const err = window.uiEmptyState({ compact: true, icon: 'bi bi-exclamation-triangle', title: ui("m_d1d044826a45ef65") });
     orphansEl.innerHTML = err;
     wantedEl.innerHTML = err;
     discEl.innerHTML = err;
@@ -74,23 +75,23 @@ async function loadSummary() {
 // ── 통계 배지 ──
 function renderStats(stats) {
   const el = document.getElementById('exploreStats');
-  const n = (v) => Number(v || 0).toLocaleString();
+  const n = (v) => Number(v || 0).toLocaleString(getLocale());
   const badge = (icon, color, label, value) =>
     `<span class="badge bg-${color} bg-opacity-10 text-${color} border px-3 py-2" style="font-size: 0.9rem;">
        <i class="bi ${icon}"></i> ${label} <strong>${n(value)}</strong></span>`;
   el.innerHTML = [
-    badge('bi-file-earmark-text', 'primary', '页面', stats.page_count),
-    badge('bi-people', 'success', '用户', stats.user_count),
-    badge('bi-pencil-square', 'info', '编辑', stats.revision_count),
-    badge('bi-image', 'secondary', '媒体', stats.media_count),
-    badge('bi-person-up', 'warning', '近 30 天活跃编辑者', stats.active_editors_30d),
+    badge('bi-file-earmark-text', 'primary', ui("m_452c7b10d57a86a7"), stats.page_count),
+    badge('bi-people', 'success', ui("m_0d0e1a86b3aa7877"), stats.user_count),
+    badge('bi-pencil-square', 'info', ui("m_051836569928a9f9"), stats.revision_count),
+    badge('bi-image', 'secondary', ui("m_fa33e10009759859"), stats.media_count),
+    badge('bi-person-up', 'warning', ui("m_d83a4ae92ee35421"), stats.active_editors_30d),
   ].join('');
 }
 
 // ── 고아 문서 ──
 function renderOrphans(el, items) {
   if (!items.length) {
-    el.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-check2-circle', title: '没有孤立页面' });
+    el.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-check2-circle', title: ui("m_4b5d12f9faf3d1db") });
     return;
   }
   el.innerHTML = items.map(it => `
@@ -103,20 +104,16 @@ function renderOrphans(el, items) {
 // ── 미작성 문서 (빨간 링크) ──
 function renderWanted(el, items) {
   if (!items.length) {
-    el.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-check2-circle', title: '没有待创建页面' });
+    el.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-check2-circle', title: ui("m_af65e4f04d01eb81") });
     return;
   }
-  el.innerHTML = items.map(it => `
-    <a href="${wikiHref(it.slug)}" class="d-flex align-items-center justify-content-between text-decoration-none px-2 py-2 border-bottom explore-row">
-      <span class="text-danger text-truncate me-2">${esc(it.slug)}</span>
-      <span class="badge bg-light text-muted border flex-shrink-0">${Number(it.ref_count || 0).toLocaleString()}곳에서 링크</span>
-    </a>`).join('');
+  el.innerHTML = items.map(it => ui("m_e095dc68c73af754", [wikiHref(it.slug), esc(it.slug), Number(it.ref_count || 0).toLocaleString(getLocale())])).join('');
 }
 
 // ── 최근 토론 활동 ──
 function renderDiscussions(el, items) {
   if (!items.length) {
-    el.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-chat-left', title: '暂无最近讨论' });
+    el.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-chat-left', title: ui("m_bf97ecf1fd60c99b") });
     return;
   }
   el.innerHTML = items.map(it => `
@@ -125,7 +122,7 @@ function renderDiscussions(el, items) {
         <span class="text-truncate me-2 fw-medium">${esc(it.page_slug)}</span>
         <span class="text-muted small flex-shrink-0">${window.getRelativeTime(it.created_at)}</span>
       </div>
-      <div class="small text-muted text-truncate">${esc(it.discussion_title)} · ${esc(it.author_name || '未知用户')}</div>
+      <div class="small text-muted text-truncate">${esc(it.discussion_title)} · ${esc(it.author_name || ui("m_1ac13841ba2ea68b"))}</div>
     </a>`).join('');
 }
 
@@ -140,7 +137,7 @@ async function loadPendingEdits() {
     const subs = Array.isArray(data.submissions) ? data.submissions : [];
     if (!subs.length) return; // 검토 대기 없음 → 섹션 숨김 유지
 
-    document.getElementById('pendingEditsCount').textContent = subs.length.toLocaleString();
+    document.getElementById('pendingEditsCount').textContent = subs.length.toLocaleString(getLocale());
     document.getElementById('pendingEditsList').innerHTML = subs.map(renderPendingEditRow).join('');
     document.getElementById('pendingEditsSection').classList.remove('d-none');
   } catch (e) {
@@ -153,12 +150,12 @@ function renderPendingEditRow(it) {
   const unix = Math.floor(new Date(it.updated_at).getTime() / 1000);
   const when = Number.isFinite(unix) ? window.getRelativeTime(unix) : '';
   const actionBadge = it.action === 'create'
-    ? '<span class="badge bg-success bg-opacity-10 text-success border flex-shrink-0">新页面</span>'
-    : '<span class="badge bg-primary bg-opacity-10 text-primary border flex-shrink-0">编辑</span>';
+    ? ui("m_be1e30363041209b")
+    : ui("m_9b9b10704163d765");
   const conflict = it.has_conflict
-    ? '<span class="badge bg-warning bg-opacity-10 text-warning border flex-shrink-0"><i class="bi bi-exclamation-triangle"></i> 충돌</span>'
+    ? ui("m_33c54070d7d8ecbb")
     : '';
-  const meta = `${esc(it.author_name || '未知用户')} 님의 편집 요청${it.summary ? ' · ' + esc(it.summary) : ''}`;
+  const meta = ui("m_4f5151dbe61f6c75", [esc(it.author_name || ui("m_1ac13841ba2ea68b")), it.summary ? ' · ' + esc(it.summary) : '']);
   return `
     <a href="${wikiHref(it.slug)}" class="d-block text-decoration-none text-body px-2 py-2 border-bottom explore-row">
       <div class="d-flex align-items-center justify-content-between gap-2">
@@ -195,7 +192,7 @@ async function loadRecentRevisions(page = 1) {
     const offset = (page - 1) * PAGE_SIZE;
     const unpatrolled = document.getElementById('unpatrolledOnly')?.checked && ['admin', 'super_admin'].includes(window.currentUser?.role);
     const res = await fetch(`/api/w/recent-revisions?offset=${offset}&limit=${PAGE_SIZE}${unpatrolled ? '&unpatrolled=1' : ''}`, { signal });
-    if (!res.ok) throw new Error('最近编辑加载失败');
+    if (!res.ok) throw new Error(ui("m_baaebc5af7766e90"));
 
     const data = await res.json();
     currentRecentPage = page;
@@ -207,38 +204,19 @@ async function loadRecentRevisions(page = 1) {
     }
 
     const itemsHtml = data.revisions.map(rev => {
-      const date = new Date(rev.created_at * 1000).toLocaleString('zh-CN');
+      const date = new Date(rev.created_at * 1000).toLocaleString(getLocale());
       const timeAgo = window.getRelativeTime(rev.created_at);
       const versionLabel = rev.page_version != null ? `v${rev.page_version}` : `#${rev.id}`;
 
-      return `
-        <div class="revision-item d-flex align-items-center justify-content-between border-bottom py-2" style="flex-wrap: nowrap;">
-          <div class="d-flex align-items-center gap-3 flex-grow-1" style="flex-wrap: nowrap; white-space: nowrap;">
-            <span class="revision-date text-muted small" title="${window.escapeHtml(date)}" style="white-space: nowrap;">${timeAgo}</span>
-            <a href="/w/${encodeURIComponent(rev.slug)}" class="text-decoration-none" style="white-space: nowrap;" title="${window.escapeHtml(rev.slug)}"
-               onclick="event.preventDefault(); window.location.href=this.href;">
-              ${window.escapeHtml(rev.slug)}
-            </a>
-            ${rev.author_id ? `<a href="/profile/${rev.author_id}" class="revision-author badge bg-light text-dark border text-decoration-none" style="white-space: nowrap;">${window.escapeHtml(rev.author_name || '未知用户')}${window.renderUserRoleIcon(rev.author_role)}</a>` : `<span class="revision-author badge bg-light text-dark border" style="white-space: nowrap;">${window.escapeHtml(rev.author_name || '未知用户')}${window.renderUserRoleIcon(rev.author_role)}</span>`}
-            <span class="revision-summary" style="white-space: nowrap;">${window.escapeHtml(rev.summary || '（无编辑摘要）')}</span>
-          </div>
-          <div class="d-flex gap-2 ms-2" style="white-space: nowrap;">
-            <span class="text-muted small">${versionLabel}</span>
-            ${['admin', 'super_admin'].includes(window.currentUser?.role) ?
-              (rev.patrolled_at ? '<span class="badge bg-success-subtle text-success">已巡查</span>' :
-              `<button type="button" class="btn btn-sm btn-outline-primary patrol-revision" data-revision-id="${rev.id}" data-slug="${window.escapeHtml(rev.slug)}" ${rev.author_id === window.currentUser.id ? 'disabled title="不能巡查自己的编辑"' : ''}>标记已巡查</button>`) : ''}
-            <a href="/w/${encodeURIComponent(rev.slug)}?mode=revisions" class="btn btn-rev-action btn-rev-view" title="编辑历史 보기">
-              <i class="bi bi-clock-history"></i> 历史
-            </a>
-          </div>
-        </div>
-      `;
+      return ui("m_67e25d7893673436", [window.escapeHtml(date), timeAgo, encodeURIComponent(rev.slug), window.escapeHtml(rev.slug), window.escapeHtml(rev.slug), rev.author_id ? `<a href="/profile/${rev.author_id}" class="revision-author badge bg-light text-dark border text-decoration-none" style="white-space: nowrap;">${window.escapeHtml(rev.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(rev.author_role)}</a>` : `<span class="revision-author badge bg-light text-dark border" style="white-space: nowrap;">${window.escapeHtml(rev.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(rev.author_role)}</span>`, window.escapeHtml(rev.summary || ui("m_b576a13957871acf")), versionLabel, ['admin', 'super_admin'].includes(window.currentUser?.role) ?
+              (rev.patrolled_at ? ui("m_75f7ca0ed6df405a") :
+              ui("m_9ff9d47a358012ee", [rev.id, window.escapeHtml(rev.slug), rev.author_id === window.currentUser.id ? ui("m_10434df2fdcb893a") : ''])) : '', encodeURIComponent(rev.slug)]);
     }).join('');
 
     listEl.innerHTML = itemsHtml;
 
     if (data.revisions.length === 0) {
-      listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: '暂无最近编辑', text: '编辑发生后会显示在这里。' });
+      listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: ui("m_742ddaa38e71f95f"), text: ui("m_ff9eb48d91acd452") });
     }
 
     renderRecentRevisionsPagination();
@@ -246,7 +224,7 @@ async function loadRecentRevisions(page = 1) {
   } catch (err) {
     if (err.name === 'AbortError') return;
     console.error(err);
-    Swal.fire('错误', '无法加载最近编辑。', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_6cba850e1617ad60"), 'error');
   }
 }
 
@@ -256,11 +234,11 @@ async function patrolRevision(event) {
   button.disabled = true;
   try {
     const res = await fetch(`/api/w/${encodeURIComponent(button.dataset.slug)}/revisions/${button.dataset.revisionId}/patrol`, { method: 'POST' });
-    if (!res.ok) throw new Error((await res.json()).error || '巡查失败');
+    if (!res.ok) throw new Error((await res.json()).error || ui("m_9f96d1f89b8d769d"));
     await loadRecentRevisions(currentRecentPage);
   } catch (error) {
     button.disabled = false;
-    window.Swal.fire('巡查失败', error.message, 'error');
+    window.Swal.fire(ui("m_9f96d1f89b8d769d"), error.message, 'error');
   }
 }
 
@@ -283,9 +261,7 @@ function renderRecentRevisionsPagination() {
   }
   const sortedPages = [...pages].sort((a, b) => a - b);
 
-  let html = `<li class="page-item ${currentRecentPage === 1 ? 'disabled' : ''}">
-    <a class="page-link" href="#" ${currentRecentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : ''} onclick="event.preventDefault(); goToRecentPage(${currentRecentPage - 1})">上一页</a>
-  </li>`;
+  let html = ui("m_cb821349c65b43f8", [currentRecentPage === 1 ? 'disabled' : '', currentRecentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : '', currentRecentPage - 1]);
 
   let prev = 0;
   for (const p of sortedPages) {
@@ -298,9 +274,7 @@ function renderRecentRevisionsPagination() {
     prev = p;
   }
 
-  html += `<li class="page-item ${currentRecentPage === totalRecentPages ? 'disabled' : ''}">
-    <a class="page-link" href="#" ${currentRecentPage === totalRecentPages ? 'tabindex="-1" aria-disabled="true"' : ''} onclick="event.preventDefault(); goToRecentPage(${currentRecentPage + 1})">下一页</a>
-  </li>`;
+  html += ui("m_8f3c3623e2665cd2", [currentRecentPage === totalRecentPages ? 'disabled' : '', currentRecentPage === totalRecentPages ? 'tabindex="-1" aria-disabled="true"' : '', currentRecentPage + 1]);
 
   ul.innerHTML = html;
 }
@@ -329,7 +303,7 @@ async function loadAllPages(page = 1) {
     document.getElementById('allPagesPagination').classList.add('d-none');
 
     const res = await fetch(`/api/w/all-pages?offset=${offset}&limit=${ALL_PAGES_SIZE}&sort=${currentSort}`, { signal });
-    if (!res.ok) throw new Error('页面列表加载失败');
+    if (!res.ok) throw new Error(ui("m_09d77311b9c4a2f0"));
 
     const data = await res.json();
     currentAllPage = page;
@@ -343,42 +317,25 @@ async function loadAllPages(page = 1) {
         loadAllPages(totalAllPages);
         return;
       }
-      listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: '暂无页面', text: '来创建第一个页面吧！' });
+      listEl.innerHTML = window.uiEmptyState({ icon: 'bi bi-inbox', title: ui("m_517ee39c282012b5"), text: ui("m_33cecb018bdc5163") });
       return;
     }
 
     listEl.innerHTML = data.pages.map(pageItem => {
-      const createdDate = new Date(pageItem.created_at * 1000).toLocaleDateString('zh-CN');
-      const updatedDate = new Date(pageItem.updated_at * 1000).toLocaleDateString('zh-CN');
+      const createdDate = new Date(pageItem.created_at * 1000).toLocaleDateString(getLocale());
+      const updatedDate = new Date(pageItem.updated_at * 1000).toLocaleDateString(getLocale());
       const categoryBadge = pageItem.category
         ? `<span class="badge bg-secondary bg-opacity-10 text-secondary border">${window.escapeHtml(pageItem.category)}</span>`
-        : `<span class="badge bg-light text-muted border">未分类</span>`;
+        : ui("m_0733e8ad76af239f");
 
-      return `
-        <div class="revision-item d-flex align-items-center justify-content-between">
-          <div class="d-flex align-items-center gap-2">
-            ${showCategory ? categoryBadge : ''}
-            <a href="/w/${encodeURIComponent(pageItem.slug)}" class="text-decoration-none fw-medium"
-               title="${window.escapeHtml(pageItem.slug)}"
-               onclick="event.preventDefault(); window.location.href=this.href;">
-              ${window.escapeHtml(pageItem.slug)}
-            </a>
-          </div>
-          <div class="d-flex gap-3 ms-4 text-muted small" style="white-space: nowrap;">
-            ${!showCategory ? categoryBadge : ''}
-            ${showChars ? `<span title="글자 수"><i class="bi bi-textarea-t"></i> ${Number(pageItem.characters || 0).toLocaleString()}자</span>` : ''}
-            <span title="생성일"><i class="bi bi-plus-circle"></i> ${createdDate}</span>
-            <span title="마지막 수정"><i class="bi bi-pencil"></i> ${updatedDate}</span>
-          </div>
-        </div>
-      `;
+      return ui("m_992ae1142c720658", [showCategory ? categoryBadge : '', encodeURIComponent(pageItem.slug), window.escapeHtml(pageItem.slug), window.escapeHtml(pageItem.slug), !showCategory ? categoryBadge : '', showChars ? ui("m_1bc8b774d178ed80", [Number(pageItem.characters || 0).toLocaleString(getLocale())]) : '', createdDate, updatedDate]);
     }).join('');
 
     renderAllPagesPagination();
   } catch (err) {
     if (err.name === 'AbortError') return;
     console.error(err);
-    Swal.fire('错误', '无法加载页面列表。', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_6b301628568971e6"), 'error');
   }
 }
 
@@ -400,9 +357,7 @@ function renderAllPagesPagination() {
   }
   const sortedPages = [...pages].sort((a, b) => a - b);
 
-  let html = `<li class="page-item ${currentAllPage === 1 ? 'disabled' : ''}">
-    <a class="page-link" href="#" ${currentAllPage === 1 ? 'tabindex="-1" aria-disabled="true"' : ''} onclick="event.preventDefault(); goToAllPage(${currentAllPage - 1})">上一页</a>
-  </li>`;
+  let html = ui("m_f4a79e31438c90ca", [currentAllPage === 1 ? 'disabled' : '', currentAllPage === 1 ? 'tabindex="-1" aria-disabled="true"' : '', currentAllPage - 1]);
 
   let prev = 0;
   for (const p of sortedPages) {
@@ -415,9 +370,7 @@ function renderAllPagesPagination() {
     prev = p;
   }
 
-  html += `<li class="page-item ${currentAllPage === totalAllPages ? 'disabled' : ''}">
-    <a class="page-link" href="#" ${currentAllPage === totalAllPages ? 'tabindex="-1" aria-disabled="true"' : ''} onclick="event.preventDefault(); goToAllPage(${currentAllPage + 1})">下一页</a>
-  </li>`;
+  html += ui("m_de1bfae7a3a20278", [currentAllPage === totalAllPages ? 'disabled' : '', currentAllPage === totalAllPages ? 'tabindex="-1" aria-disabled="true"' : '', currentAllPage + 1]);
 
   ul.innerHTML = html;
 }

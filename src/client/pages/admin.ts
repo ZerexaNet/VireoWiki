@@ -13,7 +13,8 @@
 //    window.* 로 노출한다.
 
       // ── 탭 전환 로직 ──
-      function showTab(tabId) {
+      import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
+function showTab(tabId) {
         document
           .querySelectorAll(".tab-pane")
           .forEach((p) => p.classList.remove("active"));
@@ -45,7 +46,7 @@
           window.currentUser.role !== "admin" &&
           window.currentUser.role !== "super_admin"
         ) {
-          Swal.fire("접근 제한", "관리자만 접근할 수 있습니다.", "error").then(
+          Swal.fire(ui("m_d6f5e3691cc6008b"), ui("m_25044a9beab77aac"), "error").then(
             () => {
               window.location.href = "/";
             },
@@ -70,11 +71,11 @@
             avatarSlot.appendChild(img);
           }
           nameSlot.textContent = window.currentUser.name;
-          let roleBadge = '<span class="badge bg-secondary">User</span>';
+          let roleBadge = ui("m_09aa016c5f43372b");
           if (window.currentUser.role === 'super_admin') {
-            roleBadge = '<span class="badge bg-dark">超级管理员</span>';
+            roleBadge = ui("m_0ac696c929c4a7ed");
           } else if (window.currentUser.role === 'admin') {
-            roleBadge = '<span class="badge bg-primary">관리자</span>';
+            roleBadge = ui("m_f932426b3687e632");
           }
           roleSlot.innerHTML = roleBadge;
         }
@@ -110,10 +111,10 @@
             document.getElementById("analyticsSummaryCard").style.display = "";
             document.getElementById("dashTotalViews").textContent = Number(
               data.summary.sampled_views || data.summary.total_views || 0,
-            ).toLocaleString();
+            ).toLocaleString(getLocale());
             document.getElementById("dashCountries").textContent = Number(
               data.summary.unique_countries || 0,
-            ).toLocaleString();
+            ).toLocaleString(getLocale());
             renderMiniChart("dashDailyChart", data.daily || []);
           }
           // 대시보드 로드 시 배지 갱신
@@ -162,7 +163,7 @@
           document.getElementById("userLoadMoreWrapper").style.display =
             userHasMore ? "" : "none";
         } catch (err) {
-          Swal.fire("错误", err.message, "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, "error");
         }
       }
       function loadMoreUsers() {
@@ -184,31 +185,27 @@
             const isDeleted = u.role === "deleted";
             let roleBadge = `<span class="badge bg-secondary">${u.role}</span>`;
             if (u.role === "super_admin")
-              roleBadge = '<span class="badge bg-dark">超级管理员</span>';
+              roleBadge = ui("m_0ac696c929c4a7ed");
             else if (u.role === "admin")
-              roleBadge = '<span class="badge bg-primary">관리자</span>';
+              roleBadge = ui("m_f932426b3687e632");
             else if (u.role === "discussion_manager")
-              roleBadge = '<span class="badge bg-success">讨论管理员</span>';
+              roleBadge = ui("m_e5d47a576f5bcf8e");
 
             let roleSelect = "";
             if (
               window.currentUser.role === "super_admin" &&
               u.role !== "super_admin"
             ) {
-              roleSelect = `<select class="form-select form-select-sm w-auto d-inline" onchange="changeRole(${u.id}, this.value)">
-                        <option value="user" ${u.role === "user" ? "selected" : ""}>用户</option>
-                        <option value="discussion_manager" ${u.role === "discussion_manager" ? "selected" : ""}>讨论管理员</option>
-                        <option value="admin" ${u.role === "admin" ? "selected" : ""}>관리자</option>
-                    </select>`;
+              roleSelect = ui("m_af258636a654f632", [u.id, u.role === "user" ? "selected" : "", u.role === "discussion_manager" ? "selected" : "", u.role === "admin" ? "selected" : ""]);
             } else roleSelect = roleBadge;
 
             return `<tr>
                     <td>${profile}</td>
                     <td><a href="/profile/${u.id}" class="text-decoration-none fw-bold ${isDeleted ? "text-muted" : ""}">${window.escapeHtml(u.name)}</a></td>
                     <td>${roleSelect}</td>
-                    <td>${u.banned_until ? '<span class="badge bg-danger">차단됨</span>' : '<span class="badge bg-success">정상</span>'}</td>
+                    <td>${u.banned_until ? ui("m_8199969ee24826d1") : ui("m_f7986512b3886a5c")}</td>
                     <td class="small text-muted">${joinDate}</td>
-                    <td><button class="btn btn-xs btn-outline-danger" data-uid="${u.id}" data-uname="${window.escapeHtml(u.name)}" onclick="promptBan(+this.dataset.uid, this.dataset.uname)">${u.banned_until ? "해제" : "封禁"}</button></td>
+                    <td><button class="btn btn-xs btn-outline-danger" data-uid="${u.id}" data-uname="${window.escapeHtml(u.name)}" onclick="promptBan(+this.dataset.uid, this.dataset.uname)">${u.banned_until ? ui("m_293182ec397e6b89") : ui("m_6f93ba4c79f837ca")}</button></td>
                 </tr>`;
           })
           .join("");
@@ -216,7 +213,7 @@
         else
           tbody.innerHTML =
             html ||
-            `<tr><td colspan="6">${window.uiEmptyState({ compact: true, icon: 'bi bi-inbox', title: '결과가 없습니다' })}</td></tr>`;
+            `<tr><td colspan="6">${window.uiEmptyState({ compact: true, icon: 'bi bi-inbox', title: ui("m_1ba045c3573b1251") })}</td></tr>`;
       }
       async function changeRole(id, role) {
         const res = await fetch(`/api/admin/users/${id}/role`, {
@@ -227,7 +224,7 @@
         if (res.ok)
           Swal.fire({
             icon: "success",
-            title: "변경됨",
+            title: ui("m_4b785e68bbaeafb2"),
             toast: true,
             position: "top-end",
             timer: 1500,
@@ -236,9 +233,9 @@
       }
       async function promptBan(id, name) {
         const { value: days } = await Swal.fire({
-          title: `${name} 차단`,
+          title: ui("m_f4e3ec810bc2950d", [name]),
           input: "number",
-          inputLabel: "일수 (0=해제)",
+          inputLabel: ui("m_a6e7c85021623cdb"),
           inputValue: 7,
           showCancelButton: true,
         });
@@ -292,7 +289,7 @@
           const b = document.getElementById("mcpModeDisplay");
           if (b) {
             b.textContent =
-              mcp === "open" ? "Open (전체 개방)" : "Disabled (차단)";
+              mcp === "open" ? ui("m_9aa31a355c5f1c82") : ui("m_0e1d6e435d1d8866");
             b.className =
               "badge " + (mcp === "open" ? "bg-success" : "bg-secondary");
           }
@@ -323,7 +320,7 @@
         if (label)
           label.textContent = iconClass
             ? iconClass.replace(/^(mdi mdi-|bi bi-)/, "")
-            : "默认";
+            : ui("m_844b8cc8dff7c1d8");
       }
 
       async function loadAnnouncements() {
@@ -331,11 +328,11 @@
         if (!tbody) return;
         try {
           const res = await fetch("/api/admin/announcements");
-          if (!res.ok) throw new Error("목록 조회 실패");
+          if (!res.ok) throw new Error(ui("m_eb23450bff80aeee"));
           const data = await res.json();
           renderAnnouncementsTable(data.announcements || []);
         } catch (e) {
-          tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">불러오기 실패: ${window.escapeHtml(e.message)}</td></tr>`;
+          tbody.innerHTML = ui("m_1b109fcd101882f3", [window.escapeHtml(e.message)]);
         }
       }
 
@@ -345,7 +342,7 @@
         if (!tbody) return;
         if (!list.length) {
           tbody.innerHTML =
-            `<tr><td colspan="5">${window.uiEmptyState({ compact: true, icon: 'bi bi-megaphone', title: '발행된 공지가 없습니다' })}</td></tr>`;
+            `<tr><td colspan="5">${window.uiEmptyState({ compact: true, icon: 'bi bi-megaphone', title: ui("m_fe57cc5642b72994") })}</td></tr>`;
           return;
         }
         tbody.innerHTML = list
@@ -353,27 +350,27 @@
             const iconCls = a.icon || "mdi mdi-bullhorn";
             const linkHtml = a.url
               ? `<a href="${window.escapeHtml(a.url)}" target="_blank" rel="noopener" class="text-decoration-none">${window.escapeHtml(a.url)}</a>`
-              : '<span class="text-muted">(텍스트 전용)</span>';
+              : ui("m_b88414a7c7371ad2");
             const postHtml = a.postId
-              ? `<div class="small text-muted">blog#${a.postId}${a.postDeleted ? ' <span class="badge bg-danger ms-1">已删除</span>' : ""}${a.postTitle ? " — " + window.escapeHtml(a.postTitle) : ""}</div>`
+              ? ui("m_ea6a263186c95b72", [a.postId, a.postDeleted ? ui("m_bb8c8af377862bd1") : "", a.postTitle ? " — " + window.escapeHtml(a.postTitle) : ""])
               : "";
             const time = a.announcedTime
-              ? new Date(a.announcedTime * 1000).toLocaleString("zh-CN")
+              ? new Date(a.announcedTime * 1000).toLocaleString(getLocale())
               : "";
             const isFirst = i === 0;
             const isLast = i === list.length - 1;
             return (
               `<tr data-id="${a.id}">` +
               `<td class="text-center"><i class="${window.escapeHtml(iconCls)}" style="font-size:1.2rem;"></i></td>` +
-              `<td><div class="fw-semibold">${window.escapeHtml(a.title || "(제목 없음)")}</div>${postHtml}</td>` +
+              `<td><div class="fw-semibold">${window.escapeHtml(a.title || ui("m_0cca5a2971f119fa"))}</div>${postHtml}</td>` +
               `<td class="small text-break">${linkHtml}</td>` +
               `<td class="small">${window.escapeHtml(time)}</td>` +
               `<td class="text-end">` +
               `<div class="btn-group btn-group-sm" role="group">` +
-              `<button class="btn btn-outline-secondary" ${isFirst ? "disabled" : ""} onclick="moveAnnouncement(${a.id}, 'up')" title="위로"><i class="bi bi-arrow-up"></i></button>` +
-              `<button class="btn btn-outline-secondary" ${isLast ? "disabled" : ""} onclick="moveAnnouncement(${a.id}, 'down')" title="아래로"><i class="bi bi-arrow-down"></i></button>` +
-              `<button class="btn btn-outline-primary" onclick="openAnnouncementEdit(${a.id})" title="编辑"><i class="bi bi-pencil"></i></button>` +
-              `<button class="btn btn-outline-danger" onclick="deleteAnnouncement(${a.id})" title="철회"><i class="bi bi-trash"></i></button>` +
+              ui("m_3c45a98ec04e084c", [isFirst ? "disabled" : "", a.id]) +
+              ui("m_f66e36e2558de90f", [isLast ? "disabled" : "", a.id]) +
+              ui("m_7240ba2c07574495", [a.id]) +
+              ui("m_6e59915db6f900f2", [a.id]) +
               `</div>` +
               `</td>` +
               `</tr>`
@@ -384,7 +381,7 @@
 
       async function pickIconViaModal() {
         if (typeof window.pickWikiIcon !== "function") {
-          Swal.fire("错误", "아이콘 피커가 로드되지 않았습니다.", "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_c1f3de26a5f102c6"), "error");
           return null;
         }
         return await window.pickWikiIcon();
@@ -394,7 +391,7 @@
         const title = document.getElementById("annNewTitle").value.trim();
         const url = document.getElementById("annNewUrl").value.trim();
         if (!title) {
-          Swal.fire("입력 필요", "제목을 입력하세요.", "warning");
+          Swal.fire(ui("m_547c96cbe08c4ad6"), ui("m_80a42fdc93a8b3a3"), "warning");
           return;
         }
         const body = { title, icon: annNewIconClass || null };
@@ -406,10 +403,10 @@
             body: JSON.stringify(body),
           });
           const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error || "발행 실패");
+          if (!res.ok) throw new Error(data.error || ui("m_c0fd9a542515c058"));
           Swal.fire({
             icon: "success",
-            title: "공지가 발행되었습니다.",
+            title: ui("m_da0dad56d4887e78"),
             toast: true,
             position: "top-end",
             timer: 1500,
@@ -423,17 +420,17 @@
           // 헤더 배너 즉시 반영
           await window.loadConfig();
         } catch (e) {
-          Swal.fire("错误", e.message || "발행 실패", "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message || ui("m_c0fd9a542515c058"), "error");
         }
       }
 
       async function deleteAnnouncement(id) {
         const ok = await Swal.fire({
-          title: "공지를 철회하시겠습니까?",
+          title: ui("m_710cee6baf966ad9"),
           icon: "warning",
           showCancelButton: true,
-          confirmButtonText: "철회",
-          cancelButtonText: "取消",
+          confirmButtonText: ui("m_4c84afb1ab910432"),
+          cancelButtonText: ui("m_2cd0f3be8738a86c"),
           confirmButtonColor: "#d33",
         });
         if (!ok.isConfirmed) return;
@@ -443,12 +440,12 @@
           });
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || "철회 실패");
+            throw new Error(data.error || ui("m_ed8b1ad5e3a58158"));
           }
           await loadAnnouncements();
           await window.loadConfig();
         } catch (e) {
-          Swal.fire("错误", e.message || "철회 실패", "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message || ui("m_ed8b1ad5e3a58158"), "error");
         }
       }
 
@@ -461,12 +458,12 @@
           });
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || "이동 실패");
+            throw new Error(data.error || ui("m_2ac5f029a8308b3b"));
           }
           await loadAnnouncements();
           await window.loadConfig();
         } catch (e) {
-          Swal.fire("错误", e.message || "이동 실패", "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message || ui("m_2ac5f029a8308b3b"), "error");
         }
       }
 
@@ -491,7 +488,7 @@
         const id = Number(document.getElementById("annEditId").value);
         const title = document.getElementById("annEditTitle").value.trim();
         if (!title) {
-          Swal.fire("입력 필요", "제목을 입력하세요.", "warning");
+          Swal.fire(ui("m_547c96cbe08c4ad6"), ui("m_80a42fdc93a8b3a3"), "warning");
           return;
         }
         try {
@@ -502,7 +499,7 @@
           });
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || "수정 실패");
+            throw new Error(data.error || ui("m_2b8e0177e794ff8b"));
           }
           bootstrap.Modal.getOrCreateInstance(
             document.getElementById("announcementEditModal"),
@@ -510,7 +507,7 @@
           await loadAnnouncements();
           await window.loadConfig();
         } catch (e) {
-          Swal.fire("错误", e.message || "수정 실패", "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), e.message || ui("m_2b8e0177e794ff8b"), "error");
         }
       }
 
@@ -557,7 +554,7 @@
           await navigator.clipboard.writeText(input.value);
           Swal.fire({
             icon: "success",
-            title: "복사됨",
+            title: ui("m_9693e1eb3edb1291"),
             toast: true,
             position: "top-end",
             showConfirmButton: false,
@@ -568,7 +565,7 @@
           document.execCommand("copy");
           Swal.fire({
             icon: "success",
-            title: "복사됨",
+            title: ui("m_9693e1eb3edb1291"),
             toast: true,
             position: "top-end",
             showConfirmButton: false,
@@ -612,7 +609,7 @@
         if (res.ok)
           Swal.fire({
             icon: "success",
-            title: "저장 완료",
+            title: ui("m_7027c91cb33c8afe"),
             toast: true,
             position: "top-end",
             timer: 1500,
@@ -685,23 +682,14 @@
         const tbody = document.getElementById("signupRequestsBody");
         const html = (reqs || [])
           .map(
-            (r) => `<tr>
-                <td>${r.picture ? `<img src="${r.picture}" width="24" height="24" class="rounded-circle">` : "-"}</td>
-                <td class="fw-bold small">${window.escapeHtml(r.name)}</td>
-                <td class="small">${window.escapeHtml(r.email)}</td>
-                <td><span class="badge bg-info">${r.status}</span></td>
-                <td>
-                    <button class="btn btn-xs btn-outline-success" onclick="approveSignup(${r.id})">승인</button>
-                    <button class="btn btn-xs btn-outline-danger" onclick="rejectSignup(${r.id})">거절</button>
-                </td>
-            </tr>`,
+            (r) => ui("m_6c700457992d1984", [r.picture ? `<img src="${r.picture}" width="24" height="24" class="rounded-circle">` : "-", window.escapeHtml(r.name), window.escapeHtml(r.email), r.status, r.id, r.id]),
           )
           .join("");
         if (append) tbody.insertAdjacentHTML("beforeend", html);
         else
           tbody.innerHTML =
             html ||
-            `<tr><td colspan="5">${window.uiEmptyState({ compact: true, icon: 'bi bi-inbox', title: '신청이 없습니다' })}</td></tr>`;
+            `<tr><td colspan="5">${window.uiEmptyState({ compact: true, icon: 'bi bi-inbox', title: ui("m_562d741f32937c7a") })}</td></tr>`;
       }
       async function approveSignup(id) {
         try {
@@ -714,13 +702,13 @@
           } else {
             const data = await res.json().catch(() => ({}));
             Swal.fire(
-              "错误",
-              data.error || "승인 처리 중 오류가 발생했습니다.",
+              ui("m_0bc1fb72ae1be5c5"),
+              data.error || ui("m_3552caa98eb436e3"),
               "error",
             );
           }
         } catch (err) {
-          Swal.fire("错误", err.message, "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, "error");
         }
       }
       async function rejectSignup(id) {
@@ -734,13 +722,13 @@
           } else {
             const data = await res.json().catch(() => ({}));
             Swal.fire(
-              "错误",
-              data.error || "거절 처리 중 오류가 발생했습니다.",
+              ui("m_0bc1fb72ae1be5c5"),
+              data.error || ui("m_4f16c308b26b0191"),
               "error",
             );
           }
         } catch (err) {
-          Swal.fire("错误", err.message, "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, "error");
         }
       }
 
@@ -762,33 +750,24 @@
           if (deletedPagesSearchTerm)
             params.set("search", deletedPagesSearchTerm);
           const res = await fetch(`/api/admin/pages/deleted?${params}`);
-          if (!res.ok) throw new Error("목록을 加载失败.");
+          if (!res.ok) throw new Error(ui("m_191697bdb0eece29"));
           const data = await res.json();
           deletedPagesTotal = data.total || 0;
           const html = (data.pages || [])
             .map((p) => {
               const slugAttr = JSON.stringify(p.slug).replace(/"/g, "&quot;");
-              return `<tr>
-                <td>
-                  <div class="fw-bold small">${window.escapeHtml(p.slug)}</div>
-                </td>
-                <td class="small text-muted">${new Date(p.deleted_at * 1000).toLocaleString()}</td>
-                <td>
-                  <a href="/w/${encodeURIComponent(p.slug)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline-secondary me-1" title="새 탭으로 열기" aria-label="새 탭으로 열기"><i class="mdi mdi-open-in-new"></i></a>
-                  <button class="btn btn-xs btn-outline-success" onclick="restorePage(${slugAttr})">복원</button>
-                </td>
-            </tr>`;
+              return ui("m_9d5d4fed551fb021", [window.escapeHtml(p.slug), new Date(p.deleted_at * 1000).toLocaleString(getLocale()), encodeURIComponent(p.slug), slugAttr]);
             })
             .join("");
           const tbody = document.getElementById("deletedPagesBody");
           tbody.innerHTML =
             html ||
-            `<tr><td colspan="3">${window.uiEmptyState({ compact: true, icon: 'bi bi-trash', title: '삭제된 暂无页面' })}</td></tr>`;
+            `<tr><td colspan="3">${window.uiEmptyState({ compact: true, icon: 'bi bi-trash', title: ui("m_8e33ab759d3c49a0") })}</td></tr>`;
           document.getElementById("deletedPagesTotal").textContent =
-            deletedPagesTotal > 0 ? `총 ${deletedPagesTotal}건` : "";
+            deletedPagesTotal > 0 ? ui("m_f969cc6c70f1147d", [deletedPagesTotal]) : "";
           renderDeletedPagesPagination();
         } catch (err) {
-          Swal.fire("错误", err.message, "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, "error");
         }
       }
 
@@ -846,8 +825,8 @@
         const isLast = deletedPagesPage === totalPages;
         let html =
           '<ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap">';
-        html += `<li class="page-item ${isFirst ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToDeletedPagesPage(1)" ${isFirst ? "disabled" : ""} aria-label="처음"><i class="mdi mdi-chevron-double-left"></i></button></li>`;
-        html += `<li class="page-item ${isFirst ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToDeletedPagesPage(${deletedPagesPage - 1})" ${isFirst ? "disabled" : ""} aria-label="上一页"><i class="mdi mdi-chevron-left"></i></button></li>`;
+        html += ui("m_917aa9acc9bd4f00", [isFirst ? "disabled" : "", isFirst ? "disabled" : ""]);
+        html += ui("m_db21ba87d2bb268f", [isFirst ? "disabled" : "", deletedPagesPage - 1, isFirst ? "disabled" : ""]);
         for (const p of pages) {
           if (p === "...") {
             html +=
@@ -857,20 +836,20 @@
             html += `<li class="page-item ${active}"><button type="button" class="page-link" onclick="goToDeletedPagesPage(${p})">${p}</button></li>`;
           }
         }
-        html += `<li class="page-item ${isLast ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToDeletedPagesPage(${deletedPagesPage + 1})" ${isLast ? "disabled" : ""} aria-label="下一页"><i class="mdi mdi-chevron-right"></i></button></li>`;
-        html += `<li class="page-item ${isLast ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToDeletedPagesPage(${totalPages})" ${isLast ? "disabled" : ""} aria-label="마지막"><i class="mdi mdi-chevron-double-right"></i></button></li>`;
+        html += ui("m_b88012495fd61b7f", [isLast ? "disabled" : "", deletedPagesPage + 1, isLast ? "disabled" : ""]);
+        html += ui("m_87d48311da56e798", [isLast ? "disabled" : "", totalPages, isLast ? "disabled" : ""]);
         html += "</ul>";
         container.innerHTML = html;
       }
 
       async function restorePage(slug) {
         const confirm = await Swal.fire({
-          title: "문서를 복원하시겠습니까?",
+          title: ui("m_a77e673e33df301f"),
           text: slug,
           icon: "question",
           showCancelButton: true,
-          confirmButtonText: "복원",
-          cancelButtonText: "取消",
+          confirmButtonText: ui("m_e7274914741b7904"),
+          cancelButtonText: ui("m_2cd0f3be8738a86c"),
         });
         if (!confirm.isConfirmed) return;
         try {
@@ -880,11 +859,11 @@
           );
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || "복원에 실패했습니다.");
+            throw new Error(data.error || ui("m_c00baeeecffdda4b"));
           }
           Swal.fire({
             icon: "success",
-            title: "복원 완료",
+            title: ui("m_1d358458933cf3d4"),
             toast: true,
             position: "top-end",
             timer: 1500,
@@ -892,13 +871,13 @@
           });
           loadDeletedPages(1);
         } catch (err) {
-          Swal.fire("错误", err.message, "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, "error");
         }
       }
 
       // ── 카테고리 ACL ──
       const CAT_ACL_PAGE_SIZE = 20;
-      const CAT_ACL_FLAG_LABELS = { aged: "가입 N일", page_editor: "본 编辑页面이력", any_editor: "임의 편집이력", admin_only: "仅管理员" };
+      const CAT_ACL_FLAG_LABELS = { aged: ui("m_6f5d64ead92339db"), page_editor: ui("m_1c6746a696b590ab"), any_editor: ui("m_8cf990d20980a733"), admin_only: ui("m_7f0dd12bee0266d4") };
       let catAclAllItems = [];
       let catAclPage = 1;
 
@@ -909,10 +888,10 @@
       function sortedCatAclItems() {
         const sort = getCatAclSort();
         const arr = [...catAclAllItems];
-        if (sort === "name_asc") arr.sort((a, b) => a.name.localeCompare(b.name, "ko"));
-        else if (sort === "name_desc") arr.sort((a, b) => b.name.localeCompare(a.name, "ko"));
-        else if (sort === "pages_desc") arr.sort((a, b) => (b.page_count - a.page_count) || a.name.localeCompare(b.name, "ko"));
-        else if (sort === "created_desc") arr.sort((a, b) => (b.created_at - a.created_at) || a.name.localeCompare(b.name, "ko"));
+        if (sort === "name_asc") arr.sort((a, b) => a.name.localeCompare(b.name, getLocale()));
+        else if (sort === "name_desc") arr.sort((a, b) => b.name.localeCompare(a.name, getLocale()));
+        else if (sort === "pages_desc") arr.sort((a, b) => (b.page_count - a.page_count) || a.name.localeCompare(b.name, getLocale()));
+        else if (sort === "created_desc") arr.sort((a, b) => (b.created_at - a.created_at) || a.name.localeCompare(b.name, getLocale()));
         return arr;
       }
 
@@ -951,22 +930,16 @@
         const slice = sorted.slice((catAclPage - 1) * CAT_ACL_PAGE_SIZE, catAclPage * CAT_ACL_PAGE_SIZE);
 
         if (slice.length === 0) {
-          container.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-shield-lock', title: '등록된 카테고리 ACL이 없습니다' });
+          container.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-shield-lock', title: ui("m_f71eb110c02ececf") });
         } else {
           container.innerHTML = slice.map(it => {
             const flags = (it.edit_acl && it.edit_acl.flags) || [];
             const adminOnly = flags.includes("admin_only");
             const summary = flags.length
               ? flags.map(f => CAT_ACL_FLAG_LABELS[f] || f).join(" + ")
-              : "비활성";
+              : ui("m_ffdbb50e2aa475ec");
             const href = "/w/" + encodeURIComponent("카테고리:" + it.name);
-            return `<a href="${href}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2">
-              <div>
-                <code>${window.escapeHtml(it.name)}</code>
-                <span class="badge ${adminOnly ? "bg-danger" : "bg-secondary"} ms-2">${window.escapeHtml(summary)}</span>
-              </div>
-              <span class="text-muted small">${it.page_count}개 문서</span>
-            </a>`;
+            return ui("m_a94c4ebca1afc288", [href, window.escapeHtml(it.name), adminOnly ? "bg-danger" : "bg-secondary", window.escapeHtml(summary), it.page_count]);
           }).join("");
         }
         renderCatAclPagination(totalPages);
@@ -982,7 +955,7 @@
           catAclPage = 1;
           renderCatAclList();
         } catch (e) {
-          container.innerHTML = `<div class="p-3 text-center text-danger small">목록 조회 실패: ${window.escapeHtml(String(e))}</div>`;
+          container.innerHTML = ui("m_a0e7ee7d62d7117e", [window.escapeHtml(String(e))]);
         }
       }
 
@@ -1005,13 +978,13 @@
           if (search) params.set("search", search);
           if (type && type !== "all") params.set("type", type);
           const res = await fetch(`/api/admin/logs?${params}`);
-          if (!res.ok) throw new Error("로그를 加载失败.");
+          if (!res.ok) throw new Error(ui("m_a804540cad75651f"));
           const data = await res.json();
           adminLogTotal = data.total || 0;
           const html = (data.logs || [])
             .map(
               (log) => `<tr>
-                <td class="small text-muted">${new Date(log.created_at * 1000).toLocaleString()}</td>
+                <td class="small text-muted">${new Date(log.created_at * 1000).toLocaleString(getLocale())}</td>
                 <td><span class="badge bg-secondary">${window.escapeHtml(log.type)}</span></td>
                 <td class="small">${window.escapeHtml(log.log)}</td>
                 <td class="small">${window.escapeHtml(log.user_name || "Admin")}</td>
@@ -1020,12 +993,12 @@
             .join("");
           document.getElementById("adminLogBody").innerHTML =
             html ||
-            `<tr><td colspan="4">${window.uiEmptyState({ compact: true, icon: 'bi bi-inbox', title: '로그가 없습니다' })}</td></tr>`;
+            `<tr><td colspan="4">${window.uiEmptyState({ compact: true, icon: 'bi bi-inbox', title: ui("m_1c33d57d376671cb") })}</td></tr>`;
           document.getElementById("adminLogTotal").textContent =
-            adminLogTotal > 0 ? `총 ${adminLogTotal}건` : "";
+            adminLogTotal > 0 ? ui("m_f969cc6c70f1147d", [adminLogTotal]) : "";
           renderAdminLogPagination();
         } catch (err) {
-          Swal.fire("错误", err.message, "error");
+          Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, "error");
         }
       }
 
@@ -1054,8 +1027,8 @@
         const isLast = adminLogPage === totalPages;
         let html =
           '<ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap">';
-        html += `<li class="page-item ${isFirst ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToAdminLogPage(1)" ${isFirst ? "disabled" : ""} aria-label="처음"><i class="mdi mdi-chevron-double-left"></i></button></li>`;
-        html += `<li class="page-item ${isFirst ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToAdminLogPage(${adminLogPage - 1})" ${isFirst ? "disabled" : ""} aria-label="上一页"><i class="mdi mdi-chevron-left"></i></button></li>`;
+        html += ui("m_375f2a17fd005d33", [isFirst ? "disabled" : "", isFirst ? "disabled" : ""]);
+        html += ui("m_504ade90bc80e729", [isFirst ? "disabled" : "", adminLogPage - 1, isFirst ? "disabled" : ""]);
         for (const p of pages) {
           if (p === "...") {
             html +=
@@ -1065,8 +1038,8 @@
             html += `<li class="page-item ${active}"><button type="button" class="page-link" onclick="goToAdminLogPage(${p})">${p}</button></li>`;
           }
         }
-        html += `<li class="page-item ${isLast ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToAdminLogPage(${adminLogPage + 1})" ${isLast ? "disabled" : ""} aria-label="下一页"><i class="mdi mdi-chevron-right"></i></button></li>`;
-        html += `<li class="page-item ${isLast ? "disabled" : ""}"><button type="button" class="page-link" onclick="goToAdminLogPage(${totalPages})" ${isLast ? "disabled" : ""} aria-label="마지막"><i class="mdi mdi-chevron-double-right"></i></button></li>`;
+        html += ui("m_d038bc0ad25ed9f0", [isLast ? "disabled" : "", adminLogPage + 1, isLast ? "disabled" : ""]);
+        html += ui("m_7cc01f11d9087f0a", [isLast ? "disabled" : "", totalPages, isLast ? "disabled" : ""]);
         html += "</ul>";
         container.innerHTML = html;
       }
@@ -1133,7 +1106,7 @@
         const errBody = document.getElementById("errorsContainerBody");
         if (!err.errors || err.errors.length === 0) {
           errBody.innerHTML =
-            `<tr><td colspan="4">${window.uiEmptyState({ compact: true, icon: 'bi bi-check-circle', title: '에러가 없습니다' })}</td></tr>`;
+            `<tr><td colspan="4">${window.uiEmptyState({ compact: true, icon: 'bi bi-check-circle', title: ui("m_2e1ae4c7b2dbdc8b") })}</td></tr>`;
         } else {
           errBody.innerHTML = err.errors
             .map(
@@ -1153,27 +1126,15 @@
         const perfContainer = document.getElementById("performanceContainer");
         if (!perf.summary) {
           perfContainer.innerHTML =
-            window.uiEmptyState({ compact: true, icon: 'bi bi-bar-chart', title: '데이터가 없습니다' });
+            window.uiEmptyState({ compact: true, icon: 'bi bi-bar-chart', title: ui("m_0245b23f2703421c") });
         } else {
-          perfContainer.innerHTML = `                    <div class="admin-metric-card">
-                        <div class="text-muted mb-1">평균 (Avg)</div>
-                        <div class="fw-bold">${Math.round(perf.summary.avg_response_ms || 0)} ms</div>
-                    </div>
-                    <div class="admin-metric-card">
-                        <div class="text-muted mb-1">p95</div>
-                        <div class="fw-bold">${Math.round(perf.summary.p95_response_ms || 0)} ms</div>
-                    </div>
-                    <div class="admin-metric-card">
-                        <div class="text-muted mb-1">p99</div>
-                        <div class="fw-bold">${Math.round(perf.summary.p99_response_ms || 0)} ms</div>
-                    </div>
-                `;
+          perfContainer.innerHTML = ui("m_27aa10dd2ac8a04f", [Math.round(perf.summary.avg_response_ms || 0), Math.round(perf.summary.p95_response_ms || 0), Math.round(perf.summary.p99_response_ms || 0)]);
         }
       }
       function renderAnalyticsList(id, items) {
         const el = document.getElementById(id);
         if (!items || items.length === 0) {
-          el.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-bar-chart', title: '데이터가 없습니다' });
+          el.innerHTML = window.uiEmptyState({ compact: true, icon: 'bi bi-bar-chart', title: ui("m_0245b23f2703421c") });
           return;
         }
         const max = Math.max(...items.map((i) => i.value), 1);

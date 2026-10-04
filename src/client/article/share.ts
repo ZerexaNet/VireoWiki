@@ -4,6 +4,7 @@
 // AI 질문(Claude/ChatGPT) 옵션은 ctx.includeAi 가 true 일 때만 의미를 가진다 —
 // 워크스페이스 문서는 비공개가 기본이라 외부 AI 가 URL 을 가져올 수 없어 제외한다.
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import type { ArticleContext } from './context';
 
 declare const Swal: any;
@@ -28,10 +29,10 @@ export function createShareActions(ctx: ArticleContext) {
   async function shareCopyLink() {
     try {
       await navigator.clipboard.writeText(cleanUrl());
-      toast('문서 링크가 클립보드에 복사되었습니다.');
+      toast(ui("m_63935251e583b27f"));
     } catch (err) {
       console.error('복사 실패:', err);
-      Swal.fire('错误', '클립보드 복사에 실패했습니다.', 'error');
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_ec6f40a9e763d7c1"), 'error');
     }
   }
 
@@ -43,17 +44,17 @@ export function createShareActions(ctx: ArticleContext) {
         ? window.extractPlainTextWithFootnotes(content)
         : content.innerText;
       await navigator.clipboard.writeText(text);
-      toast('문서 내용이 클립보드에 복사되었습니다.');
+      toast(ui("m_38d098ba7768a3d1"));
     } catch (err) {
       console.error('복사 실패:', err);
-      Swal.fire('错误', '클립보드 복사에 실패했습니다.', 'error');
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_ec6f40a9e763d7c1"), 'error');
     }
   }
 
   async function shareCopyMarkdown() {
     const doc = ctx.getDoc();
     if (!doc || !doc.content) {
-      Swal.fire('错误', '문서 내용을 가져올 수 없습니다.', 'error');
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_5d316b522e9b3812"), 'error');
       return;
     }
     try {
@@ -61,10 +62,10 @@ export function createShareActions(ctx: ArticleContext) {
       const pageTitle = doc.slug ? doc.slug : '';
       const markdownWithTitle = pageTitle ? pageTitle + '\n\n' + resolvedContent : resolvedContent;
       await navigator.clipboard.writeText(markdownWithTitle);
-      toast('마크다운 원문이 클립보드에 복사되었습니다.');
+      toast(ui("m_384c7951cf63c117"));
     } catch (err) {
       console.error('복사 실패:', err);
-      Swal.fire('错误', '클립보드 복사에 실패했습니다.', 'error');
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_ec6f40a9e763d7c1"), 'error');
     }
   }
 
@@ -76,7 +77,7 @@ export function createShareActions(ctx: ArticleContext) {
   async function shareCopyHtml() {
     const content = document.getElementById('articleContent');
     if (!content || typeof window.buildPortableHtml !== 'function') {
-      Swal.fire('错误', '문서 내용을 가져올 수 없습니다.', 'error');
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_5d316b522e9b3812"), 'error');
       return;
     }
     try {
@@ -96,10 +97,10 @@ export function createShareActions(ctx: ArticleContext) {
         } catch (_) { copied = false; }
       }
       if (!copied) await navigator.clipboard.writeText(html);
-      toast('문서 HTML이 클립보드에 복사되었습니다.');
+      toast(ui("m_24626229dc0b225b"));
     } catch (err) {
       console.error('복사 실패:', err);
-      Swal.fire('错误', '클립보드 복사에 실패했습니다.', 'error');
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_ec6f40a9e763d7c1"), 'error');
     }
   }
 
@@ -108,12 +109,12 @@ export function createShareActions(ctx: ArticleContext) {
   }
 
   function shareAskClaude() {
-    const prompt = '다음 위키 페이지를 읽고 내용에 대한 질문에 답해줘: ' + cleanUrl();
+    const prompt = ui("m_513eaca6e4834d62") + cleanUrl();
     window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank');
   }
 
   function shareAskChatGPT() {
-    const prompt = '다음 위키 페이지를 읽고 내용에 대한 질문에 답해줘: ' + cleanUrl();
+    const prompt = ui("m_513eaca6e4834d62") + cleanUrl();
     window.open('https://chatgpt.com/?q=' + encodeURIComponent(prompt), '_blank');
   }
 

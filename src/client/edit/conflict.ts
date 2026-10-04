@@ -35,6 +35,7 @@
  *     utils/html.ts 의 ESM escapeHtml 을 import 해서 정확한 타입으로 사용한다.
  */
 
+import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 import { escapeHtml } from '../utils/html';
 import './types';
 import type {
@@ -175,8 +176,8 @@ function buildConflictDraft(
 
     function pushConflict(oursLines: string[], theirsLines: string[]): void {
         const id = conflicts.length + 1;
-        const verLabel = serverVer != null ? `서버 v${serverVer}` : '서버 최신본';
-        result.push(`<<<<<<< 내 수정본 [#${id}]`);
+        const verLabel = serverVer != null ? ui("m_a3e580ba52097ae4", [serverVer]) : ui("m_63ec8a8f4103f19c");
+        result.push(ui("m_04d0db5ba27ace52", [id]));
         if (oursLines.length === 0) {
             // 내 쪽이 빈 영역(=내가 삭제) — 빈 줄 한 줄 두는 대신 그대로
         } else {
@@ -299,9 +300,9 @@ interface CompareSources {
 
 function getCompareSources(mode: ConflictState['compareMode']): CompareSources {
     const s = conflictState;
-    if (mode === 'mine-vs-base') return { left: s.base, right: s.ours, leftLabel: 'base', rightLabel: '내 수정본' };
-    if (mode === 'server-vs-base') return { left: s.base, right: s.theirs, leftLabel: 'base', rightLabel: '서버 최신본' };
-    return { left: s.theirs, right: s.ours, leftLabel: '서버', rightLabel: '내 수정본' };
+    if (mode === 'mine-vs-base') return { left: s.base, right: s.ours, leftLabel: 'base', rightLabel: ui("m_5166221d7a1f19c9") };
+    if (mode === 'server-vs-base') return { left: s.base, right: s.theirs, leftLabel: 'base', rightLabel: ui("m_63ec8a8f4103f19c") };
+    return { left: s.theirs, right: s.ours, leftLabel: ui("m_7d585c3842de4e43"), rightLabel: ui("m_5166221d7a1f19c9") };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -335,7 +336,7 @@ function _countLines(s: string): number {
 
 function buildExtensionDataDiffCard(oldStr: string, newStr: string): string {
     if (oldStr === newStr) {
-        return '<div class="diff-empty">변경된 내용이 없습니다.</div>';
+        return ui("m_16e9e630232b0f54");
     }
     const oldLines = _countLines(oldStr);
     const newLines = _countLines(newStr);
@@ -346,9 +347,9 @@ function buildExtensionDataDiffCard(oldStr: string, newStr: string): string {
     if (oldStr.length === 0 && newStr.length === 0) {
         sizeChangeText = '';
     } else if (oldStr.length === 0) {
-        sizeChangeText = '(신규 추가)';
+        sizeChangeText = ui("m_9b1cea26e7804e7e");
     } else if (newStr.length === 0) {
-        sizeChangeText = '(全部删除)';
+        sizeChangeText = ui("m_d5d8a5afccfbb8bc");
     } else {
         const reductionPct = (1 - newStr.length / oldStr.length) * 100;
         const sign = reductionPct >= 0 ? '−' : '+';
@@ -359,15 +360,15 @@ function buildExtensionDataDiffCard(oldStr: string, newStr: string): string {
     return (
         '<div class="ext-diff-summary">' +
         '<div class="ext-diff-summary-line">' +
-        '<b>줄 수</b>: ' + oldLines.toLocaleString() + ' → ' + newLines.toLocaleString() +
-        ' &nbsp;·&nbsp; <b>크기</b>: ' + oldKB.toFixed(1) + ' KB → ' + newKB.toFixed(1) + ' KB ' +
+        ui("m_139fe8d49d51be54") + oldLines.toLocaleString(getLocale()) + ' → ' + newLines.toLocaleString(getLocale()) +
+        ui("m_65b269a7314db913") + oldKB.toFixed(1) + ' KB → ' + newKB.toFixed(1) + ' KB ' +
         sizeChangeText +
         '</div>' +
         '<div class="ext-diff-summary-hint text-muted small mt-1">' +
-        '대용량 익스텐션 데이터는 줄 단위 diff 대신 요약만 표시합니다. 자세한 비교는 저장 후 리비전 페이지를 이용해 주세요.' +
+        ui("m_bd2774867f861fb4") +
         '</div>' +
-        '<div class="mt-2"><b>이전 본문(앞 5줄)</b><pre class="diff-removed" style="white-space:pre-wrap;margin:0">' + escapeHtml(oldHead) + '</pre></div>' +
-        '<div class="mt-2"><b>현재 본문(앞 5줄)</b><pre class="diff-added" style="white-space:pre-wrap;margin:0">' + escapeHtml(newHead) + '</pre></div>' +
+        ui("m_eef9de215a79fa02") + escapeHtml(oldHead) + '</pre></div>' +
+        ui("m_ce244feffda50d66") + escapeHtml(newHead) + '</pre></div>' +
         '</div>'
     );
 }
@@ -378,7 +379,7 @@ function buildExtensionDataDiffCard(oldStr: string, newStr: string): string {
 
 function buildDiffTable(oldStr: string, newStr: string, mode: ConflictState['diffMode']): string {
     if (oldStr === newStr) {
-        return '<div class="diff-empty">변경된 내용이 없습니다.</div>';
+        return ui("m_16e9e630232b0f54");
     }
     // 익스텐션 데이터: jsdiff structuredPatch 우회 — 요약 카드로 대체.
     if (window.isExtensionData) {
@@ -386,11 +387,11 @@ function buildDiffTable(oldStr: string, newStr: string, mode: ConflictState['dif
     }
     const Diff = window.Diff;
     if (!Diff || !Diff.structuredPatch) {
-        return '<div class="diff-empty">diff 라이브러리를 加载失败.</div>';
+        return ui("m_efc453685382dc16");
     }
     const patch = Diff.structuredPatch('a', 'b', oldStr || '', newStr || '', '', '', { context: CONFLICT_CONTEXT_LINES });
     if (!patch.hunks || patch.hunks.length === 0) {
-        return '<div class="diff-empty">변경된 내용이 없습니다.</div>';
+        return ui("m_16e9e630232b0f54");
     }
     return mode === 'split' ? buildSplitTable(patch) : buildUnifiedTable(patch);
 }
@@ -498,7 +499,7 @@ function buildLocalDiffHtml(): string {
     const originalContent = typeof window.originalContent === 'string' ? window.originalContent : '';
     const currentContent = editor ? editor.getMarkdown() : '';
     if (originalContent === currentContent) {
-        return '<span class="text-muted">변경 사항이 없습니다.</span>';
+        return ui("m_7c7d8ee9e062abf5");
     }
 
     // 익스텐션 데이터(수 MB 단위 raw 데이터)는 jsdiff LCS 가 메인 스레드를 점거해
@@ -539,7 +540,7 @@ function renderInlineDiffSummary(diffData: JsDiffPart[], contextLines: number): 
                 if (showTop) {
                     html += `<span>${escapeHtml(lines.slice(0, contextLines).join('\n') + '\n')}</span>`;
                 }
-                html += '<span style="color: grey; font-style: italic; background: #e9ecef; border-radius: 4px; padding: 0 4px;">... (생략됨) ...</span>\n';
+                html += ui("m_84bdfed82c8302b4");
                 if (showBottom) {
                     html += `<span>${escapeHtml(lines.slice(-contextLines).join('\n') + (trailing ? '\n' : ''))}</span>`;
                 }
@@ -593,9 +594,9 @@ function showConflictModal(data: ConflictPayload): void {
         serverPreviewEl.innerHTML = '';
     }
     const serverViewToggleBtn = document.getElementById('serverViewToggle');
-    if (serverViewToggleBtn) serverViewToggleBtn.innerHTML = '<i class="mdi mdi-eye"></i> 서버 본문';
+    if (serverViewToggleBtn) serverViewToggleBtn.innerHTML = ui("m_da85dc4c03a7a712");
     const serverPreviewToggleBtn = document.getElementById('serverPreviewToggle');
-    if (serverPreviewToggleBtn) serverPreviewToggleBtn.innerHTML = '<i class="mdi mdi-eye"></i> 프리뷰';
+    if (serverPreviewToggleBtn) serverPreviewToggleBtn.innerHTML = ui("m_d68d6e631dfb7e11");
     const serverRawPane = document.getElementById('conflict-server-raw-pane') as HTMLElement | null;
     if (serverRawPane) serverRawPane.style.display = 'none';
     const diffViewEl = document.getElementById('conflict-diff-view') as HTMLElement | null;
@@ -698,11 +699,11 @@ function toggleServerView(): void {
     if (conflictState.serverPaneMode === 'raw') {
         if (diffEl) diffEl.style.display = 'none';
         if (rawPane) rawPane.style.display = 'block';
-        if (btn) btn.innerHTML = '<i class="mdi mdi-compare-horizontal"></i> 查看差异';
+        if (btn) btn.innerHTML = ui("m_a37429a8e9ba6ccf");
     } else {
         if (diffEl) diffEl.style.display = '';
         if (rawPane) rawPane.style.display = 'none';
-        if (btn) btn.innerHTML = '<i class="mdi mdi-eye"></i> 서버 본문';
+        if (btn) btn.innerHTML = ui("m_da85dc4c03a7a712");
     }
 }
 
@@ -741,13 +742,13 @@ function toggleServerPreview(): void {
         window.serverViewer = sv;
         raw.style.display = 'none';
         preview.style.display = 'block';
-        if (btn) btn.innerHTML = '<i class="mdi mdi-code-tags"></i> Raw';
+        if (btn) btn.innerHTML = ui("m_8483e00a1e730d91");
         conflictState.serverPreviewMode = 'preview';
     } else {
         // preview → raw
         raw.style.display = 'block';
         preview.style.display = 'none';
-        if (btn) btn.innerHTML = '<i class="mdi mdi-eye"></i> 프리뷰';
+        if (btn) btn.innerHTML = ui("m_d68d6e631dfb7e11");
         conflictState.serverPreviewMode = 'raw';
     }
 }
@@ -769,8 +770,8 @@ function renderHunkList(): void {
 
         const label = document.createElement('span');
         label.className = 'conflict-hunk-label';
-        label.textContent = `#${c.id} — 내: ${truncate(c.ours, 40)} ↔ 서버: ${truncate(c.theirs, 40)}`;
-        label.title = '클릭하면 본문에서 해당 충돌 위치로 이동합니다';
+        label.textContent = ui("m_cc8f6131f8abc5a9", [c.id, truncate(c.ours, 40), truncate(c.theirs, 40)]);
+        label.title = ui("m_682c7c5de9a7fcf4");
         label.addEventListener('click', () => focusConflict(c.id));
         row.appendChild(label);
 
@@ -778,10 +779,10 @@ function renderHunkList(): void {
         btnGroup.className = 'btn-group btn-group-sm';
         btnGroup.role = 'group';
 
-        btnGroup.appendChild(makeHunkBtn('내 것', 'btn-outline-primary', () => applyHunkAction(c.id, 'mine')));
-        btnGroup.appendChild(makeHunkBtn('서버 것', 'btn-outline-danger', () => applyHunkAction(c.id, 'theirs')));
-        btnGroup.appendChild(makeHunkBtn('둘 다', 'btn-outline-secondary', () => applyHunkAction(c.id, 'both')));
-        btnGroup.appendChild(makeHunkBtn('직접', 'btn-outline-secondary', () => focusConflict(c.id)));
+        btnGroup.appendChild(makeHunkBtn(ui("m_c321ac68cb45a57e"), 'btn-outline-primary', () => applyHunkAction(c.id, 'mine')));
+        btnGroup.appendChild(makeHunkBtn(ui("m_90fe1c95a048d422"), 'btn-outline-danger', () => applyHunkAction(c.id, 'theirs')));
+        btnGroup.appendChild(makeHunkBtn(ui("m_3bcaa2698d5dfd4b"), 'btn-outline-secondary', () => applyHunkAction(c.id, 'both')));
+        btnGroup.appendChild(makeHunkBtn(ui("m_20c483bdda9706e4"), 'btn-outline-secondary', () => focusConflict(c.id)));
         row.appendChild(btnGroup);
 
         list.appendChild(row);
@@ -798,7 +799,7 @@ function makeHunkBtn(label: string, cls: string, handler: () => void): HTMLButto
 }
 
 function truncate(s: string, n: number): string {
-    if (!s) return '(빈 줄)';
+    if (!s) return ui("m_560bcd460b579488");
     const oneLine = s.replace(/\n/g, ' ↵ ');
     return oneLine.length > n ? oneLine.substring(0, n - 1) + '…' : oneLine;
 }
@@ -897,7 +898,7 @@ function updateMarkerCount(): void {
     const badge = document.getElementById('conflict-marker-count');
     if (!badge) return;
     const remaining = countRemainingMarkers();
-    badge.textContent = `${remaining}개 미해결`;
+    badge.textContent = ui("m_2f51d54eda85311e", [remaining]);
     badge.classList.toggle('bg-warning', remaining > 0);
     badge.classList.toggle('text-dark', remaining > 0);
     badge.classList.toggle('bg-success', remaining === 0);
@@ -918,7 +919,7 @@ function updateConflictMarkerStateFromTextarea(): void {
     const text = ce.getMarkdown();
     if (conflictState.conflicts) {
         for (const c of conflictState.conflicts) {
-            const present = text.includes(`<<<<<<< 내 수정본 [#${c.id}]`)
+            const present = text.includes(ui("m_04d0db5ba27ace52", [c.id]))
                 && text.includes(`>>>>>>> `)
                 && text.includes(`[#${c.id}]`);
             c.resolved = !present;
@@ -988,8 +989,8 @@ function resolveConflict(): void {
         window.scrollToBottom?.();
         window.Swal?.fire({
             icon: 'success',
-            title: '충돌 해결 내용 적용됨',
-            text: '에디터에서 편집을 이어가신 뒤 저장하세요.',
+            title: ui("m_fa9e02a7a346f67d"),
+            text: ui("m_660725a93b610493"),
             toast: true,
             position: 'top-end',
             timer: 2500,
@@ -1001,12 +1002,12 @@ function resolveConflict(): void {
         const swal = window.Swal;
         if (!swal) { proceed(); return; }
         void swal.fire({
-            title: '미해결 충돌이 남아있습니다',
-            html: `${remaining}개의 충돌 마커(<code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>)가 본문에 그대로 있습니다. 그래도 에디터에 적용하시겠습니까?`,
+            title: ui("m_6a349ddf665850dd"),
+            html: ui("m_5fde3e55d19cb3a5", [remaining]),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: '그대로 적용',
-            cancelButtonText: '계속 해결하기',
+            confirmButtonText: ui("m_a0262d19200d9050"),
+            cancelButtonText: ui("m_7e318ba57944486a"),
         }).then((result) => {
             if (result.isConfirmed) proceed();
         });
@@ -1020,12 +1021,12 @@ function cancelConflict(): void {
     const swal = window.Swal;
     if (!swal) { window.location.reload(); return; }
     void swal.fire({
-        title: '충돌 해결 취소',
-        text: '편집 내용을 버리고 최신 버전으로 새로고침 하시겠습니까?',
+        title: ui("m_c71ac4a126955661"),
+        text: ui("m_e6d419c14ea93de9"),
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: '새로고침 (내용 버림)',
-        cancelButtonText: '계속 해결하기',
+        confirmButtonText: ui("m_acf595c34948293d"),
+        cancelButtonText: ui("m_7e318ba57944486a"),
     }).then((result) => {
         if (result.isConfirmed) {
             window.location.reload();
@@ -1103,7 +1104,7 @@ async function checkConcurrentEditors(): Promise<void> {
                 return `${avatar}<strong>${escapeHtml(e.name)}</strong>`;
             }).join(', ');
 
-            textEl.innerHTML = `이 문서를 ${editorNames}님이 동시에 편집 중입니다. 편집 충돌이 발생할 수 있습니다.`;
+            textEl.innerHTML = ui("m_f7fa9aa6649f15e9", [editorNames]);
             banner.style.display = 'flex';
         } else {
             banner.style.display = 'none';

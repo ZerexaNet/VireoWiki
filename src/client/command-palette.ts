@@ -13,6 +13,7 @@
  * 문서/카테고리 제안은 기존 `GET /api/search/suggest` 를 그대로 재사용한다(백엔드 변경 없음).
  */
 
+import { ui } from '../../packages/wiki-shared/src/i18n/client';
 import { emptyState, skeletonList } from './utils/ui-state';
 
 // window.* 로 노출된 common.ts / index.ts 전역 브리지에 접근하기 위한 캐스팅 헬퍼.
@@ -83,13 +84,13 @@ function newDocument(): void {
     const Swal = w.Swal;
     if (!Swal || typeof Swal.fire !== 'function') return;
     Swal.fire({
-        title: '新页面 만들기',
+        title: ui("m_33dcddf15dc978d8"),
         input: 'text',
-        inputLabel: '문서 이름',
-        inputPlaceholder: '예: my-first-page',
+        inputLabel: ui("m_876c6189ce292af4"),
+        inputPlaceholder: ui("m_c9370c3f2f8dde70"),
         showCancelButton: true,
-        confirmButtonText: '만들기',
-        cancelButtonText: '取消',
+        confirmButtonText: ui("m_81b8d99b4f9bdf3c"),
+        cancelButtonText: ui("m_2cd0f3be8738a86c"),
     }).then((result) => {
         if (result.isConfirmed && result.value) {
             window.location.href = '/edit?slug=' + encodeURIComponent(result.value);
@@ -193,9 +194,9 @@ function canEditWiki(): boolean {
 const ACTIONS: PaletteAction[] = [
     {
         id: 'edit',
-        label: '현재 编辑页面',
+        label: ui("m_b68b9aa395e1d283"),
         icon: 'mdi mdi-pencil',
-        keywords: '편집 edit 수정',
+        keywords: ui("m_1d3c8bb552e44b23"),
         canRun: () => !!getEditTarget(),
         run: () => {
             const slug = getEditTarget();
@@ -204,17 +205,17 @@ const ACTIONS: PaletteAction[] = [
     },
     {
         id: 'newdoc',
-        label: '新页面 작성',
+        label: ui("m_6c0ad4da87f4b4b3"),
         icon: 'mdi mdi-file-plus-outline',
-        keywords: '새문서 작성 new create 만들기',
+        keywords: ui("m_4af2f5a4ab686f85"),
         canRun: canEditWiki,
         run: () => newDocument(),
     },
     {
         id: 'random',
-        label: '随机页面',
+        label: ui("m_cd86b10b359ba0f7"),
         icon: 'bi bi-shuffle',
-        keywords: '랜덤 무작위 random',
+        keywords: ui("m_eef9c6abde132084"),
         run: () => {
             if (typeof w.goRandomPage === 'function') w.goRandomPage();
             else window.location.href = '/api/w/random';
@@ -222,68 +223,68 @@ const ACTIONS: PaletteAction[] = [
     },
     {
         id: 'explore',
-        label: '탐색 포털',
+        label: ui("m_b8957c30d19267f3"),
         icon: 'mdi mdi-compass-outline',
-        keywords: '탐색 explore 포털',
+        keywords: ui("m_dcfde3b8d380d541"),
         run: () => go('/explore'),
     },
     {
         id: 'home',
-        label: '홈으로',
+        label: ui("m_ffe893bace2a4aba"),
         icon: 'mdi mdi-home-outline',
-        keywords: '홈 home 메인',
+        keywords: ui("m_5a269c0e2c6ac18b"),
         run: () => go('/'),
     },
     {
         id: 'admin',
-        label: '管理后台',
+        label: ui("m_87354adb1c31e43d"),
         icon: 'mdi mdi-shield-account-outline',
-        keywords: '관리자 admin 콘솔 설정',
+        keywords: ui("m_8c74baa4038b9dec"),
         canRun: isAdmin,
         run: () => go('/admin'),
     },
     {
         id: 'theme-dark',
-        label: '다크 모드',
+        label: ui("m_a7a6fa8c2a56c940"),
         icon: 'mdi mdi-moon-waxing-crescent',
-        keywords: '다크 dark 테마 theme 어두운',
+        keywords: ui("m_0b9ebbd426468b58"),
         run: () => w.setTheme?.('dark'),
     },
     {
         id: 'theme-light',
-        label: '라이트 모드',
+        label: ui("m_e44a6a58308e37db"),
         icon: 'mdi mdi-white-balance-sunny',
-        keywords: '라이트 light 테마 theme 밝은',
+        keywords: ui("m_3f13602d704b1fd0"),
         run: () => w.setTheme?.('light'),
     },
     {
         id: 'theme-auto',
-        label: '자동 테마 (시스템)',
+        label: ui("m_71d696e2079989c2"),
         icon: 'mdi mdi-circle-half-full',
-        keywords: '자동 auto 테마 theme 시스템',
+        keywords: ui("m_4e65100f2af2e903"),
         run: () => w.setTheme?.('auto'),
     },
     {
         id: 'settings',
-        label: '个人设置',
+        label: ui("m_c2952a5ffcc34883"),
         icon: 'mdi mdi-cog-outline',
-        keywords: '설정 settings 환경설정 테마 레이아웃',
+        keywords: ui("m_4550d1947c5097d8"),
         run: () => w.openSettingsModal?.(),
     },
     {
         id: 'syntax-cheatsheet',
-        label: '문법 치트시트 (문법 검색)',
+        label: ui("m_f6eeae9b0f5d9dbb"),
         icon: 'mdi mdi-book-search-outline',
-        keywords: '문법 치트시트 syntax cheatsheet 토큰 검색 삽입',
+        keywords: ui("m_2ce5a8b1a915598d"),
         // 에디터 페이지에서만 노출 (edit-cheatsheet 번들이 진입점을 정의).
         canRun: () => typeof w.openSyntaxCheatsheet === 'function',
         run: () => w.openSyntaxCheatsheet?.(),
     },
     {
         id: 'help',
-        label: '단축키 도움말',
+        label: ui("m_61935cdc25a7b5c8"),
         icon: 'mdi mdi-keyboard-outline',
-        keywords: '단축키 도움말 help shortcut keyboard',
+        keywords: ui("m_d3af477e12a7a4b3"),
         run: () => openHelpModal(),
     },
 ];
@@ -342,7 +343,7 @@ function ensureDom(): void {
     overlayEl.id = 'cmdPalette';
     overlayEl.setAttribute('role', 'dialog');
     overlayEl.setAttribute('aria-modal', 'true');
-    overlayEl.setAttribute('aria-label', '커맨드 팔레트');
+    overlayEl.setAttribute('aria-label', ui("m_51f9a31c0ae7a10b"));
     overlayEl.hidden = true;
 
     overlayEl.innerHTML =
@@ -350,16 +351,16 @@ function ensureDom(): void {
         '<div class="cmd-palette-input-wrap">' +
         '<i class="mdi mdi-magnify cmd-palette-search-icon" aria-hidden="true"></i>' +
         '<input type="text" class="cmd-palette-input" id="cmdPaletteInput" autocomplete="off" ' +
-        'placeholder="문서·명령 검색…   ( &gt; 입력 시 명령 모드 )" ' +
+        ui("m_25e2dedb7781d25c") +
         'role="combobox" aria-expanded="true" aria-controls="cmdPaletteList" aria-activedescendant="">' +
-        '<kbd class="cmd-palette-esc">Esc</kbd>' +
+        ui("m_76e21e04481b1910") +
         '</div>' +
-        '<ul class="cmd-palette-list" id="cmdPaletteList" role="listbox" aria-label="搜索结果"></ul>' +
+        ui("m_dbfc08212ac85579") +
         '<div class="cmd-palette-foot">' +
-        '<span><kbd>↑</kbd><kbd>↓</kbd> 이동</span>' +
-        '<span><kbd>Enter</kbd> 선택</span>' +
-        '<span><kbd>Tab</kbd> 전체 검색</span>' +
-        '<span><kbd>Esc</kbd> 关闭</span>' +
+        ui("m_4f255984f7f8e45a") +
+        ui("m_1596d8fae424d0ca") +
+        ui("m_115518dce9b7a39f") +
+        ui("m_2a9b0e7c31cc401b") +
         '</div>' +
         '</div>';
 
@@ -440,7 +441,7 @@ function actionItem(a: PaletteAction): PaletteItem {
 function searchAllItem(q: string): PaletteItem {
     return {
         icon: 'mdi mdi-magnify',
-        label: '<strong>“' + esc(q) + '”</strong> 전체 검색',
+        label: '<strong>“' + esc(q) + ui("m_d5fe8044502d75dd"),
         run: () => {
             closePalette();
             window.location.href = '/search?q=' + encodeURIComponent(q) + '&mode=content';
@@ -455,16 +456,16 @@ function buildSections(): PaletteSection[] {
     if (!q) {
         const recents = getRecentDocs();
         if (recents.length) {
-            sections.push({ title: '최근 방문 문서', items: recents.slice(0, 7).map(docItem) });
+            sections.push({ title: ui("m_463dd346080e7ab3"), items: recents.slice(0, 7).map(docItem) });
         }
-        sections.push({ title: '빠른 액션', items: visibleActions().map(actionItem) });
+        sections.push({ title: ui("m_7bb3f9811758f0e9"), items: visibleActions().map(actionItem) });
         return sections;
     }
 
     if (q.startsWith('>')) {
         const term = q.slice(1).trim();
         const acts = visibleActions().filter((a) => matchAction(a, term));
-        sections.push({ title: '명령', items: acts.map(actionItem) });
+        sections.push({ title: ui("m_1f12b8e23dfddbba"), items: acts.map(actionItem) });
         return sections;
     }
 
@@ -472,16 +473,16 @@ function buildSections(): PaletteSection[] {
     sections.push({ title: null, items: [searchAllItem(q)] });
 
     const acts = visibleActions().filter((a) => matchAction(a, q));
-    if (acts.length) sections.push({ title: '명령', items: acts.map(actionItem) });
+    if (acts.length) sections.push({ title: ui("m_1f12b8e23dfddbba"), items: acts.map(actionItem) });
 
     if (q.length >= 2) {
         if (loading || curSuggestions === null) {
-            sections.push({ title: '页面', loading: true });
+            sections.push({ title: ui("m_452c7b10d57a86a7"), loading: true });
         } else {
             const docs = curSuggestions.filter((s) => !s.slug.startsWith('카테고리:'));
             const cats = curSuggestions.filter((s) => s.slug.startsWith('카테고리:'));
-            if (docs.length) sections.push({ title: '页面', items: docs.map(docItem) });
-            if (cats.length) sections.push({ title: '分类', items: cats.map(docItem) });
+            if (docs.length) sections.push({ title: ui("m_452c7b10d57a86a7"), items: docs.map(docItem) });
+            if (cats.length) sections.push({ title: ui("m_515559957fd3acbd"), items: cats.map(docItem) });
         }
     }
     return sections;
@@ -512,7 +513,7 @@ function render(): void {
                 '">' +
                 '<i class="' +
                 item.icon +
-                '" aria-hidden="true"></i> ' +
+                ui("m_5a30b6ad61d39bd0") +
                 '<span class="cmd-palette-label">' +
                 item.label +
                 '</span>' +
@@ -524,7 +525,7 @@ function render(): void {
     if (!hasAny && !sections.some((s) => s.loading)) {
         html =
             '<li class="cmd-palette-empty" role="presentation">' +
-            emptyState({ icon: 'bi bi-search', title: '결과가 없습니다', text: 'Enter 로 전체 검색을 시도해 보세요.', compact: true }) +
+            emptyState({ icon: 'bi bi-search', title: ui("m_1ba045c3573b1251"), text: ui("m_a706654a5b134832"), compact: true }) +
             '</li>';
     }
 
@@ -632,13 +633,13 @@ function togglePalette(): void {
 // ───────────────────────────────────────────────────────────────────────────
 
 const SHORTCUTS: Array<{ keys: string[]; desc: string }> = [
-    { keys: ['Ctrl/⌘', 'K'], desc: '커맨드 팔레트 열기' },
-    { keys: ['/'], desc: '헤더 검색창 포커스' },
-    { keys: ['g', 'h'], desc: '홈으로 이동' },
-    { keys: ['g', 'e'], desc: '탐색 포털로 이동' },
-    { keys: ['g', 'r'], desc: '随机页面' },
-    { keys: ['e'], desc: '현재 编辑页面 (문서 열람 중)' },
-    { keys: ['?'], desc: '이 도움말 열기' },
+    { keys: ['Ctrl/⌘', 'K'], desc: ui("m_d86de434ba64df92") },
+    { keys: ['/'], desc: ui("m_e1cfad4ae66a5af3") },
+    { keys: ['g', 'h'], desc: ui("m_64a9bf4fc5ecfc98") },
+    { keys: ['g', 'e'], desc: ui("m_0a7a8e73f4902844") },
+    { keys: ['g', 'r'], desc: ui("m_cd86b10b359ba0f7") },
+    { keys: ['e'], desc: ui("m_efaf8a0202b89829") },
+    { keys: ['?'], desc: ui("m_33d377b6c9c76b81") },
 ];
 
 let helpEl: HTMLDivElement | null = null;
@@ -653,7 +654,7 @@ function openHelpModal(): void {
         helpEl.className = 'cmd-help-overlay';
         helpEl.setAttribute('role', 'dialog');
         helpEl.setAttribute('aria-modal', 'true');
-        helpEl.setAttribute('aria-label', '键盘快捷键');
+        helpEl.setAttribute('aria-label', ui("m_89ce481a4b23d2a4"));
         helpEl.hidden = true;
 
         const rows = SHORTCUTS.map(
@@ -668,8 +669,8 @@ function openHelpModal(): void {
         helpEl.innerHTML =
             '<div class="cmd-help-panel" role="document">' +
             '<div class="cmd-help-header">' +
-            '<strong><i class="mdi mdi-keyboard-outline me-1"></i>键盘快捷键</strong>' +
-            '<button type="button" class="cmd-help-close" aria-label="关闭">&times;</button>' +
+            ui("m_ee24f945b92412f6") +
+            ui("m_f17dc0280ef14b6d") +
             '</div>' +
             '<table class="cmd-help-table"><tbody>' +
             rows +

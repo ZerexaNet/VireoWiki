@@ -1,3 +1,4 @@
+import { ui } from '../i18n/server';
 import type { D1Database } from '@cloudflare/workers-types';
 import { normalizeSlug } from './slug';
 import { stripCollapseToken } from './headingTokens';
@@ -376,7 +377,7 @@ export async function renderForAI(content: string, db: D1Database, depth = 0, cu
     // 3. {중괄호} 문법 처리
     // {<}, {>}, {^}, {><} 등 표 셀 병합 문법이 포함되어 있으면 안내 문구 추가 후 제거
     if (/\{[<>^]{1,2}\}/.test(processed)) {
-        processed = '참고 : 표의 병합된 셀은 빈칸으로 표시됩니다\n\n' + processed;
+        processed = ui("m_d7cc4181206e07c5") + processed;
     }
     processed = processed.replace(/\{[<>^]{1,2}\}/g, '');
 
@@ -384,8 +385,8 @@ export async function renderForAI(content: string, db: D1Database, depth = 0, cu
     // :::card 제목 → "제목" (한 줄 남김), :::grid/:::row → 줄 삭제, 단독 ::: → 줄 삭제
     // 콜아웃(:::info 등)은 제목이 없어도 타입 라벨을 유지해 AI 컨텍스트에서 의미가 보존되도록 한다.
     const CALLOUT_LABELS: Record<string, string> = {
-        info: '정보', tip: '팁', success: '성공',
-        warning: '주의', danger: '위험', note: '노트'
+        info: ui("m_b8cf07ac906c8124"), tip: ui("m_d9fcd43cf85293f6"), success: ui("m_b4f76a33b89bb947"),
+        warning: ui("m_acc90fbf66686d20"), danger: ui("m_baaff05e434f85e3"), note: ui("m_a34b4d0aafc9ecfd")
     };
     // 컨테이너 블록(tabs/accordion/steps)의 오프너 라인은 제거.
     // 자식 블록(tab/item/step): 제목을 평문으로 보존. step 은 자동 번호 부여.
@@ -405,7 +406,7 @@ export async function renderForAI(content: string, db: D1Database, depth = 0, cu
         }
         if (type === 'step') {
             _stepCounter++;
-            return `${_stepCounter}. ${t || '단계'}`;
+            return `${_stepCounter}. ${t || ui("m_29ee1bb7ff289989")}`;
         }
         if (type === 'tab' || type === 'item') return t || '';
         // area 는 순수 레이아웃 래퍼: 오프너 라인만 제거하고 내부 콘텐츠는 보존.
@@ -684,7 +685,7 @@ export function extractTOC(content: string): string {
         }
     }
 
-    if (hasPreamble) toc.unshift('0. 도입부');
+    if (hasPreamble) toc.unshift(ui("m_34fbc55c71b14896"));
 
     return toc.join('\n');
 }

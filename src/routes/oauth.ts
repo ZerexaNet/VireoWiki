@@ -9,6 +9,7 @@
 // 발급된 토큰은 통합 MCP 엔드포인트 /api/mcp 에서만 사용된다(scope=mcp).
 // 토큰 자체는 일반 사용자/관리자를 구분하지 않으며, /api/mcp 가 호출 시점에 역할로 도구
 // 목록과 호출 가능 여부를 분기한다.
+import { ui } from '../i18n/server';
 import { Hono, Context } from 'hono';
 import type { Env } from '../types';
 import { RBAC } from '../utils/role';
@@ -380,29 +381,29 @@ async function authenticateClient(c: Context<Env>, formClientId?: string, formCl
                 };
             }
         } catch {
-            return { ok: false, error: 'invalid_client', description: 'Malformed Basic auth header' };
+            return { ok: false, error: "invalid_client", description: ui("m_b0f75f3dc9842745") };
         }
     } else if (formClientId) {
         credentials = { clientId: formClientId, clientSecret: formClientSecret || null };
     }
-    if (!credentials) return { ok: false, error: 'invalid_client', description: 'client_id is required' };
+    if (!credentials) return { ok: false, error: "invalid_client", description: ui("m_78476174b943f7e1") };
 
     const row = await c.env.DB
         .prepare('SELECT client_id, client_secret_hash, redirect_uris, token_endpoint_auth_method FROM oauth_clients WHERE client_id = ?')
         .bind(credentials.clientId)
         .first<{ client_id: string; client_secret_hash: string | null; redirect_uris: string; token_endpoint_auth_method: string }>();
-    if (!row) return { ok: false, error: 'invalid_client', description: 'Unknown client_id' };
+    if (!row) return { ok: false, error: "invalid_client", description: ui("m_f55a618c340a0a6e") };
 
     if (row.token_endpoint_auth_method === 'none') {
         // Public client — secret 무시
         return { ok: true, client: row };
     }
     if (!credentials.clientSecret || !row.client_secret_hash) {
-        return { ok: false, error: 'invalid_client', description: 'client_secret required' };
+        return { ok: false, error: "invalid_client", description: ui("m_7833b9b21edde940") };
     }
     const provided = await sha256Hex(credentials.clientSecret);
     if (!timingSafeEqual(provided, row.client_secret_hash)) {
-        return { ok: false, error: 'invalid_client', description: 'Bad client_secret' };
+        return { ok: false, error: "invalid_client", description: ui("m_968b0883b33214e5") };
     }
     return { ok: true, client: row };
 }
@@ -624,41 +625,18 @@ function consentHtml(p: {
     const safeScope = escapeHtml(p.scope);
     const safeState = escapeHtml(p.state);
     const accessSummary = p.userIsAdmin
-        ? '문서 읽기/검색에 더해, <strong>관리자 권한</strong>으로 위키 문서의 편집·이동·삭제·복원·되돌리기까지 자동 수행할 수 있습니다.'
-        : '위키 문서의 읽기·검색·목차 조회 등 읽기 전용 도구만 사용할 수 있습니다.';
+        ? ui("m_7e829c4373ba6c5e")
+        : ui("m_4e0fe9efd211ae39");
     const warningHtml = p.userIsAdmin
-        ? '<p class="warning">승인하면 이 클라이언트는 당신의 관리자 권한으로 위키 문서를 자동 편집/삭제할 수 있습니다. 신뢰하는 클라이언트만 승인하세요.</p>'
+        ? ui("m_30fb6083119efa6a")
         : '';
-    return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>MCP 접근 승인 — ${safeWiki}</title>
-<style>body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#1a1a1a;margin:0;padding:2rem;display:flex;justify-content:center;align-items:flex-start;min-height:100vh}.card{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.10);padding:2rem;max-width:480px;width:100%}h1{font-size:1.4rem;margin:0 0 1rem}p{line-height:1.6;color:#444}.meta{background:#f0f7ff;border:1px solid #c2daf7;border-radius:8px;padding:0.9rem 1.2rem;font-size:0.85rem;color:#1d4ed8;margin:1.2rem 0}.meta dt{font-weight:600;margin-top:0.4rem}.meta dd{margin:0 0 0 0;word-break:break-all;font-family:ui-monospace,Consolas,monospace}.warning{background:#fff4e5;border:1px solid #ffb866;border-radius:8px;padding:0.9rem 1.2rem;font-size:0.85rem;color:#a04500;margin:1.2rem 0}.actions{display:flex;gap:0.8rem;margin-top:1.6rem}button{flex:1;padding:0.8rem;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer}.approve{background:#2563eb;color:#fff}.deny{background:#e5e7eb;color:#374151}</style>
-</head><body><div class="card">
-<h1>MCP 접근 승인</h1>
-<p><strong>${safeUser}</strong> 님, 외부 클라이언트가 <strong>${safeWiki}</strong> 의 MCP 서버에 접근하려고 합니다. ${accessSummary}</p>
-<dl class="meta">
-  <dt>클라이언트 ID</dt><dd>${safeClient}</dd>
-  <dt>리다이렉트 URI</dt><dd>${safeRedirect}</dd>
-  <dt>요청 권한</dt><dd>${safeScope}</dd>
-</dl>
-${warningHtml}
-<form method="POST" action="/oauth/authorize" class="actions">
-  <input type="hidden" name="client_id" value="${safeClient}">
-  <input type="hidden" name="redirect_uri" value="${safeRedirect}">
-  <input type="hidden" name="code_challenge" value="${safeChallenge}">
-  <input type="hidden" name="code_challenge_method" value="${safeMethod}">
-  <input type="hidden" name="scope" value="${safeScope}">
-  <input type="hidden" name="state" value="${safeState}">
-  <button class="deny" type="submit" name="action" value="deny">거부</button>
-  <button class="approve" type="submit" name="action" value="approve">승인</button>
-</form>
-</div></body></html>`;
+    return ui("m_04fe776508260fc8", [safeWiki, safeUser, safeWiki, accessSummary, safeClient, safeRedirect, safeScope, warningHtml, safeClient, safeRedirect, safeChallenge, safeMethod, safeScope, safeState]);
 }
 
 function consentDeniedHtml(userName: string, wikiName: string | undefined): string {
     const safeUser = escapeHtml(userName);
     const safeWiki = escapeHtml(wikiName || 'CloudWiki');
-    return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>권한 없음 — ${safeWiki}</title>
-<style>body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#1a1a1a;margin:0;padding:2rem;display:flex;justify-content:center;align-items:flex-start;min-height:100vh}.card{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.10);padding:2rem;max-width:480px;width:100%}h1{font-size:1.4rem;margin:0 0 1rem;color:#b91c1c}p{line-height:1.6;color:#444}</style>
-</head><body><div class="card"><h1>접근 권한이 없습니다</h1><p><strong>${safeUser}</strong> 님은 MCP 서버에 접근할 권한이 없습니다. 권한이 있는 계정으로 로그인한 뒤 다시 시도해주세요.</p></div></body></html>`;
+    return ui("m_97e5ea25d19547a9", [safeWiki, safeUser]);
 }
 
 export default oauth;

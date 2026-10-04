@@ -16,6 +16,7 @@
 // 있기 때문이다. 한 번 받은 base 의 결과는 캐시해 토글 반복 시 재요청하지 않는다.
 // 현재 문서가 최상위 문서이면 두 뷰가 동일하므로 체크박스를 노출하지 않는다.
 
+import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import type { ArticleContext } from './context';
 
 declare const Swal: any;
@@ -33,7 +34,7 @@ export function createStructureModal(ctx: ArticleContext) {
       const cached = cache.get(baseSlug);
       if (cached) return cached;
       const res = await fetch(ctx.subdocsUrl(baseSlug, false));
-      if (!res.ok) throw new Error('failed');
+      if (!res.ok) throw new Error("failed");
       const data = await res.json();
       const list = data.subdocs || [];
       cache.set(baseSlug, list);
@@ -168,7 +169,7 @@ export function createStructureModal(ctx: ArticleContext) {
         startFull = currentList.length === 0;
       } catch (err) {
         console.error(err);
-        Swal.fire('错误', '하위 문서를 불러오는 데 실패했습니다.', 'error');
+        Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_34f74a1b1a652190"), 'error');
         return;
       }
     }
@@ -181,14 +182,14 @@ export function createStructureModal(ctx: ArticleContext) {
       initialList = await loadSubdocs(initialBase);
     } catch (err) {
       console.error(err);
-      Swal.fire('错误', '하위 문서를 불러오는 데 실패했습니다.', 'error');
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_34f74a1b1a652190"), 'error');
       return;
     }
 
     // 현재 문서가 최상위 문서인데 하위 문서가 없으면 안내만 표시(기존 동작).
     // 현재 문서가 하위 문서이면 비어 있어도 모달을 열어 "전체 구조 보기"로 전환할 수 있게 한다.
     if (!isSubdoc && initialList.length === 0) {
-      Swal.fire('문서 구조', '하위 暂无页面.', 'info');
+      Swal.fire(ui("m_e97fa0a8680309fb"), ui("m_dfb2fc6223803099"), 'info');
       return;
     }
 
@@ -208,7 +209,7 @@ export function createStructureModal(ctx: ArticleContext) {
       try {
         await navigator.clipboard.writeText(text);
         const original = btn.innerHTML;
-        btn.innerHTML = '<i class="bi bi-check2"></i> 복사됨';
+        btn.innerHTML = ui("m_70de8e074ef644cd");
         btn.classList.remove('btn-outline-secondary');
         btn.classList.add('btn-success');
         setTimeout(() => {
@@ -236,23 +237,15 @@ export function createStructureModal(ctx: ArticleContext) {
     copyData.md = initialView.markdown;
 
     // 현재 문서가 하위 문서일 때만 전체/현재 전환 체크박스를 노출한다.
-    const checkboxHtml = isSubdoc ? `
-      <div class="form-check text-start mb-2">
-        <input class="form-check-input" type="checkbox" id="structure-full-toggle"${startFull ? ' checked' : ''}>
-        <label class="form-check-label" for="structure-full-toggle">전체 구조 보기</label>
-      </div>` : '';
+    const checkboxHtml = isSubdoc ? ui("m_2f7cace2e470cb6f", [startFull ? ' checked' : '']) : '';
 
-    const buttonsHtml = `
-      <div class="d-flex gap-2 mb-3 justify-content-end">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-copy="plain"><i class="bi bi-copy"></i> 텍스트 복사</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-copy="md"><i class="bi bi-markdown"></i> 마크다운 복사</button>
-      </div>`;
+    const buttonsHtml = ui("m_fd065914070c3ee5");
 
     Swal.fire({
-      title: '문서 구조',
+      title: ui("m_e97fa0a8680309fb"),
       html: `${checkboxHtml}${buttonsHtml}<div class="text-start" id="article-structure-tree">${initialView.treeHtml}</div>`,
       width: 600,
-      confirmButtonText: '关闭',
+      confirmButtonText: ui("m_3fd47edce45b3603"),
       customClass: { htmlContainer: 'text-start' },
       didOpen: (popup: HTMLElement) => {
         const treeContainer = popup.querySelector('#article-structure-tree') as HTMLElement | null;
@@ -267,7 +260,7 @@ export function createStructureModal(ctx: ArticleContext) {
             const targetBase = toggle.checked ? topSlug : slug;
             toggle.disabled = true;
             if (!cache.has(targetBase) && treeContainer) {
-              treeContainer.innerHTML = '<div class="text-muted">正在加载...</div>';
+              treeContainer.innerHTML = ui("m_7e0bfd6a2f4cf2c2");
             }
             try {
               const list = await loadSubdocs(targetBase);
@@ -275,7 +268,7 @@ export function createStructureModal(ctx: ArticleContext) {
             } catch (err) {
               console.error(err);
               if (treeContainer) {
-                treeContainer.innerHTML = '<div class="text-danger">하위 문서를 불러오는 데 실패했습니다.</div>';
+                treeContainer.innerHTML = ui("m_1194736d55543b31");
               }
             } finally {
               toggle.disabled = false;

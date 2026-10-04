@@ -11,6 +11,7 @@
 //    confirmDeleteRevision / goToRevPage)는 파일 끝에서 window.* 로 노출한다.
 
 // ── 전역 상태 ──
+import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 let currentSlug = null;
 let isPageDeleted = false;
 const REV_PAGE_SIZE = 10;
@@ -31,23 +32,23 @@ let lastRevisionId = null;
 // \d/+/-/줄/공백/[] 만으로 구성되어 있어 그대로 합성해도 안전하다.
 // [MCP] 접두(admin-mcp.ts 가 부여)는 플러그 아이콘으로 치환해 사람 편집과 구분.
 function renderRevisionSummary(raw) {
-  if (!raw) return '（无编辑摘要）';
+  if (!raw) return ui("m_b576a13957871acf");
   let body = raw;
   let mcpIcon = '';
   const mcpMatch = body.match(/^\s*\[MCP\]\s*/);
   if (mcpMatch) {
-    mcpIcon = '<i class="bi bi-plug-fill text-primary me-1" title="[MCP]" aria-label="[MCP]"></i>';
+    mcpIcon = ui("m_2fecb165bb5e2c79");
     body = body.slice(mcpMatch[0].length);
   }
   // 가상 리비전 요약 접두([권한]/[이동])는 아이콘으로 치환해 비-본문 변경임을 구분.
   const permMatch = body.match(/^\s*\[권한\]\s*/);
   if (permMatch) {
-    mcpIcon += '<i class="bi bi-shield-lock-fill text-info me-1" title="[권한]" aria-label="[권한]"></i>';
+    mcpIcon += ui("m_12cd2366a144c4bc");
     body = body.slice(permMatch[0].length);
   }
   const moveMatch = body.match(/^\s*\[이동\]\s*/);
   if (moveMatch) {
-    mcpIcon += '<i class="bi bi-signpost-split-fill text-info me-1" title="[이동]" aria-label="[이동]"></i>';
+    mcpIcon += ui("m_5f8cd507c35be5e2");
     body = body.slice(moveMatch[0].length);
   }
   const tokenRe = /\[(?:\+\d+줄(?: -\d+줄)?|-\d+줄)\]/g;
@@ -57,8 +58,8 @@ function renderRevisionSummary(raw) {
   while ((m = tokenRe.exec(body)) !== null) {
     html += window.escapeHtml(body.slice(last, m.index));
     html += m[0]
-      .replace(/\+(\d+)줄/, '<span class="text-success">+$1줄</span>')
-      .replace(/-(\d+)줄/, '<span class="text-danger">-$1줄</span>');
+      .replace(/\+(\d+)줄/, ui("m_25f0d827e03ff670"))
+      .replace(/-(\d+)줄/, ui("m_75cb099b9144f625"));
     last = m.index + m[0].length;
   }
   html += window.escapeHtml(body.slice(last));
@@ -87,7 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } else {
     document.getElementById('loading').classList.add('d-none');
-    Swal.fire('错误', '找不到页面。', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_5fc9b515e116cb41"), 'error');
   }
   window.loadTrending();
   window.loadRecentChanges();
@@ -104,7 +105,7 @@ async function showRevisions(slug, page = 1) {
 
     const offset = (page - 1) * REV_PAGE_SIZE;
     const res = await fetch(`/api/w/${encodeURIComponent(slug)}/revisions?offset=${offset}&limit=${REV_PAGE_SIZE}`);
-    if (!res.ok) throw new Error('修订版本加载失败');
+    if (!res.ok) throw new Error(ui("m_75631a179257570c"));
 
     const data = await res.json();
     isAdminView = !!data.is_admin_view;
@@ -119,7 +120,7 @@ async function showRevisions(slug, page = 1) {
       document.getElementById('revPageTitle').textContent = pageData?.slug || slug;
       document.getElementById('revBackLink').href = `/w/${encodeURIComponent(slug)}`;
 
-      document.title = `编辑历史 - ${pageData?.slug || slug} - ${window.appConfig.wikiName}`;
+      document.title = ui("m_9c6fedbdcbd93d71", [pageData?.slug || slug, window.appConfig.wikiName]);
     }
 
     currentRevPage = page;
@@ -142,24 +143,15 @@ async function showRevisions(slug, page = 1) {
       const isLatest = lastRevisionId != null
         ? rev.id === lastRevisionId
         : (page === 1 && idx === 0 && !isVirtual);
-      const date = new Date(rev.created_at * 1000).toLocaleString('zh-CN');
+      const date = new Date(rev.created_at * 1000).toLocaleString(getLocale());
 
       // 가상 리비전: 본문 없는 비-본문 변경(ACL/비공개/주소 이동) 기록.
       // 열람·비교·되돌리기·삭제가 모두 불가하므로 액션 버튼 없이 요약만 표시한다.
       if (isVirtual) {
         const authorHtml = rev.author_id
-          ? `<a href="${rev.author_role === 'deleted' ? '/404' : '/profile/' + rev.author_id}" class="revision-author badge bg-light text-dark border text-decoration-none">${window.escapeHtml(rev.author_name || '未知用户')}${window.renderUserRoleIcon(rev.author_role)}</a>`
-          : `<span class="revision-author badge bg-light text-dark border">${window.escapeHtml(rev.author_name || '未知用户')}${window.renderUserRoleIcon(rev.author_role)}</span>`;
-        return `
-          <div class="revision-item is-virtual d-flex align-items-center justify-content-between border-bottom py-2">
-            <div class="d-flex align-items-center gap-3 flex-grow-1">
-              <span class="revision-date text-muted small" style="min-width: 160px;">${date}</span>
-              ${authorHtml}
-              <span class="badge text-bg-info" style="font-size: 0.7em; flex-shrink: 0;" title="본문 변경 없는 권한/주소 변경 기록입니다. 열람·비교·回退·삭제가 불가능합니다."><i class="bi bi-info-circle"></i> 권한/주소 변경</span>
-              <span class="revision-summary">${renderRevisionSummary(rev.summary)}</span>
-            </div>
-          </div>
-        `;
+          ? `<a href="${rev.author_role === 'deleted' ? '/404' : '/profile/' + rev.author_id}" class="revision-author badge bg-light text-dark border text-decoration-none">${window.escapeHtml(rev.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(rev.author_role)}</a>`
+          : `<span class="revision-author badge bg-light text-dark border">${window.escapeHtml(rev.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(rev.author_role)}</span>`;
+        return ui("m_8417a8327be8a0b2", [date, authorHtml, renderRevisionSummary(rev.summary)]);
       }
       // 삭제 상태: 비관리자 응답에는 삭제된 행 자체가 오지 않으므로 아래 분기는 관리자 한정.
       const isDeleted = !!rev.deleted_at;
@@ -170,9 +162,9 @@ async function showRevisions(slug, page = 1) {
       const isFullyPurged = !!rev.fully_purged;
       const isLastRev = lastRevisionId != null && rev.id === lastRevisionId;
       const deletedBadge = isPurged
-        ? '<span class="badge text-bg-danger" style="font-size: 0.7em; flex-shrink: 0;" title="R2 본문이 永久删除되었습니다."><i class="bi bi-trash"></i> 본문 永久删除됨</span>'
+        ? ui("m_5a3266c7401f9c07")
         : (isDeleted
-          ? '<span class="badge text-bg-secondary" style="font-size: 0.7em; flex-shrink: 0;" title="일반 사용자에게 숨겨진 리비전입니다."><i class="bi bi-eye-slash"></i> 已删除</span>'
+          ? ui("m_59996aa9da2fcee4")
           : '');
       // 관리자에게만 보이는 통합 삭제 버튼.
       //  - 일반 admin: !isDeleted 일 때만 노출 → 클릭 시 소프트 삭제 확인만.
@@ -180,46 +172,24 @@ async function showRevisions(slug, page = 1) {
       //  - 최신 리비전(last_revision_id)은 일관성 보호를 위해 모두 차단.
       const canDeleteThisRow = isAdminView && !isLastRev && (canHardDelete ? !isFullyPurged : !isDeleted);
       const isPartialPurge = isPurged && !isFullyPurged;
-      const deleteBtnLabel = isPartialPurge ? '重试永久删除' : '删除';
+      const deleteBtnLabel = isPartialPurge ? ui("m_530ec947a64b994f") : ui("m_2f9daa828907b93f");
       const deleteBtnDangerClass = (canHardDelete && (isDeleted || isPartialPurge)) ? ' text-danger' : '';
       const deleteBtnTitle = isPartialPurge
-        ? '이전 永久删除 시도가 부분 실패했습니다. 다시 시도합니다.'
+        ? ui("m_9c7b5cbed1608f79")
         : (isDeleted
-          ? (canHardDelete ? '이미 숨겨진 리비전입니다. 본문까지 永久删除하려면 클릭하세요.' : '')
-          : (canHardDelete ? '이 리비전을 숨기거나 永久删除합니다.' : '이 리비전을 일반 사용자에게서 숨깁니다.'));
+          ? (canHardDelete ? ui("m_2e551aad272bfe89") : '')
+          : (canHardDelete ? ui("m_abfdb6f736d91271") : ui("m_aa3d7dbed5907267")));
       const deleteActions = canDeleteThisRow ? `
         <button class="btn btn-rev-action btn-rev-delete${deleteBtnDangerClass}" data-slug="${window.escapeHtml(slug)}" data-id="${rev.id}" data-page-version="${rev.page_version ?? ''}" data-is-deleted="${isDeleted ? '1' : '0'}" data-is-partial="${isPartialPurge ? '1' : '0'}" onclick="confirmDeleteRevision(this.dataset.slug, +this.dataset.id, this.dataset.pageVersion, this.dataset.isDeleted === '1', this.dataset.isPartial === '1')" title="${window.escapeHtml(deleteBtnTitle)}">
           <i class="bi bi-trash"></i> ${deleteBtnLabel}
         </button>` : '';
       const viewBtn = isPurged
-        ? `<button class="btn btn-rev-action btn-rev-view" disabled title="본문이 永久删除되어 열람할 수 없습니다."><i class="bi bi-file-text"></i> 查看</button>`
-        : `<button class="btn btn-rev-action btn-rev-view" data-slug="${window.escapeHtml(slug)}" data-id="${rev.id}" data-page-version="${rev.page_version ?? ''}" onclick="viewRevision(this.dataset.slug, +this.dataset.id, this.dataset.pageVersion)">
-              <i class="bi bi-file-text"></i> 查看
-            </button>`;
-      return `
-        <div class="revision-item${isLatest ? ' is-current' : ''}${isDeleted ? ' is-deleted' : ''} d-flex align-items-center justify-content-between border-bottom py-2"${isDeleted ? ' style="opacity: 0.65;"' : ''}>
-          <div class="d-flex align-items-center gap-3 flex-grow-1">
-            <span class="revision-date text-muted small" style="min-width: 160px;">${date}</span>
-            ${rev.author_id ? `<a href="${rev.author_role === 'deleted' ? '/404' : '/profile/' + rev.author_id}" class="revision-author badge bg-light text-dark border text-decoration-none">${window.escapeHtml(rev.author_name || '未知用户')}${window.renderUserRoleIcon(rev.author_role)}</a>` : `<span class="revision-author badge bg-light text-dark border">${window.escapeHtml(rev.author_name || '未知用户')}${window.renderUserRoleIcon(rev.author_role)}</span>`}
-            ${isLatest ? '<span class="badge text-bg-warning" style="font-size: 0.7em; flex-shrink: 0;">当前版本</span>' : ''}
-            ${deletedBadge}
-            <span class="revision-summary">${renderRevisionSummary(rev.summary)}</span>
-          </div>
-          <div class="d-flex gap-2 ms-2" style="white-space: nowrap;">
-            ${viewBtn}
-            <button class="btn btn-rev-action btn-rev-diff" data-slug="${window.escapeHtml(slug)}" data-id="${rev.id}" data-require-confirm="${isExtSlug}" onclick="confirmAndShowDiff(this.dataset.slug, +this.dataset.id, this.dataset.requireConfirm === 'true')">
-              <i class="bi bi-file-diff"></i> 비교
-            </button>
-            <button class="btn btn-rev-action btn-rev-revert" data-slug="${window.escapeHtml(slug)}" data-id="${rev.id}" data-page-version="${rev.page_version ?? ''}" onclick="confirmRevert(this.dataset.slug, +this.dataset.id, this.dataset.pageVersion)" ${isPageDeleted ? 'disabled title="삭제된 문서는 되돌릴 수 없습니다. 먼저 복원하세요."' : (isPurged ? 'disabled title="본문이 永久删除되어 되돌릴 수 없습니다."' : (isDeleted ? 'disabled title="숨겨진 리비전으로는 되돌릴 수 없습니다. 먼저 숨김을 해제하세요."' : ''))}>
-              <i class="bi bi-arrow-counterclockwise"></i> 回退
-            </button>
-            ${deleteActions}
-          </div>
-        </div>
-      `;
+        ? ui("m_14b625d6b5e536af")
+        : ui("m_cc28b79029d81593", [window.escapeHtml(slug), rev.id, rev.page_version ?? '']);
+      return ui("m_20d4643331204a2d", [isLatest ? ' is-current' : '', isDeleted ? ' is-deleted' : '', isDeleted ? ' style="opacity: 0.65;"' : '', date, rev.author_id ? `<a href="${rev.author_role === 'deleted' ? '/404' : '/profile/' + rev.author_id}" class="revision-author badge bg-light text-dark border text-decoration-none">${window.escapeHtml(rev.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(rev.author_role)}</a>` : `<span class="revision-author badge bg-light text-dark border">${window.escapeHtml(rev.author_name || ui("m_1ac13841ba2ea68b"))}${window.renderUserRoleIcon(rev.author_role)}</span>`, isLatest ? ui("m_25db76446465c291") : '', deletedBadge, renderRevisionSummary(rev.summary), viewBtn, window.escapeHtml(slug), rev.id, isExtSlug, window.escapeHtml(slug), rev.id, rev.page_version ?? '', isPageDeleted ? ui("m_79595cf49718118a") : (isPurged ? ui("m_cc27f871f0b91b41") : (isDeleted ? ui("m_be3b5b4c8d0028be") : '')), deleteActions]);
     }).join('');
 
-    listEl.innerHTML = itemsHtml || window.uiEmptyState({ icon: 'bi bi-clock-history', title: '暂无编辑历史' });
+    listEl.innerHTML = itemsHtml || window.uiEmptyState({ icon: 'bi bi-clock-history', title: ui("m_4277bb42bcd386b3") });
 
     renderRevisionsPagination();
 
@@ -230,7 +200,7 @@ async function showRevisions(slug, page = 1) {
   } catch (err) {
     console.error(err);
     document.getElementById('loading').classList.add('d-none');
-    Swal.fire('错误', '无法加载修订版本列表。', 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_3285dcf09c69c118"), 'error');
   }
 }
 
@@ -253,9 +223,7 @@ function renderRevisionsPagination() {
   }
   const sortedPages = [...pages].sort((a, b) => a - b);
 
-  let html = `<li class="page-item ${currentRevPage === 1 ? 'disabled' : ''}">
-    <a class="page-link" href="#" ${currentRevPage === 1 ? 'tabindex="-1" aria-disabled="true"' : ''} onclick="event.preventDefault(); goToRevPage(${currentRevPage - 1})">上一页</a>
-  </li>`;
+  let html = ui("m_8be14893d1a02f0c", [currentRevPage === 1 ? 'disabled' : '', currentRevPage === 1 ? 'tabindex="-1" aria-disabled="true"' : '', currentRevPage - 1]);
 
   let prev = 0;
   for (const p of sortedPages) {
@@ -268,9 +236,7 @@ function renderRevisionsPagination() {
     prev = p;
   }
 
-  html += `<li class="page-item ${currentRevPage === totalRevPages ? 'disabled' : ''}">
-    <a class="page-link" href="#" ${currentRevPage === totalRevPages ? 'tabindex="-1" aria-disabled="true"' : ''} onclick="event.preventDefault(); goToRevPage(${currentRevPage + 1})">下一页</a>
-  </li>`;
+  html += ui("m_7435828d7975a663", [currentRevPage === totalRevPages ? 'disabled' : '', currentRevPage === totalRevPages ? 'tabindex="-1" aria-disabled="true"' : '', currentRevPage + 1]);
 
   ul.innerHTML = html;
 }
@@ -287,7 +253,7 @@ function goToRevPage(page) {
 async function viewRevision(slug, revId, pageVersion) {
   try {
     const res = await fetch(`/api/w/${encodeURIComponent(slug)}/revisions/${revId}`);
-    if (!res.ok) throw new Error('修订版本加载失败');
+    if (!res.ok) throw new Error(ui("m_75631a179257570c"));
     const rev = await res.json();
 
     currentRevisionRawContent = rev.content || '';
@@ -301,8 +267,8 @@ async function viewRevision(slug, revId, pageVersion) {
       revDate = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
     }
     document.getElementById('revisionViewLabel').textContent = revDate
-      ? `${revDate} ${versionLabel} 리비전 열람 중입니다.`
-      : `${versionLabel} 리비전 열람 중입니다.`;
+      ? ui("m_10d8c31eec746ea2", [revDate, versionLabel])
+      : ui("m_c67c60204c72929f", [versionLabel]);
     document.getElementById('revisionViewTitle').textContent = document.getElementById('revPageTitle').textContent || slug;
     document.getElementById('revisionViewContent').innerHTML = '';
 
@@ -315,16 +281,13 @@ async function viewRevision(slug, revId, pageVersion) {
     const rawBtn = document.getElementById('rawViewBtn');
     if (rawBtn) {
       rawBtn.style.display = isExtensionData ? 'none' : '';
-      rawBtn.innerHTML = '<i class="bi bi-code"></i><span class="btn-collapse-text"> Raw</span>';
+      rawBtn.innerHTML = ui("m_2f755050b2d93e2a");
       rawBtn.classList.remove('btn-secondary');
       rawBtn.classList.add('btn-outline-secondary');
     }
 
     if (extPrefix) {
-      document.getElementById('revisionViewContent').innerHTML = `<div class="wiki-ext-raw-data">
-        <div class="wiki-ext-raw-badge"><i class="bi bi-database"></i> ${window.escapeHtml(extPrefix)} 익스텐션 데이터</div>
-        <pre class="wiki-ext-raw-pre">${window.escapeHtml(rev.content || '')}</pre>
-      </div>`;
+      document.getElementById('revisionViewContent').innerHTML = ui("m_ddee5a9983add2f7", [window.escapeHtml(extPrefix), window.escapeHtml(rev.content || '')]);
     } else {
       await window.renderWikiContent(rev.content || '', slug, 'revisionViewContent');
     }
@@ -333,7 +296,7 @@ async function viewRevision(slug, revId, pageVersion) {
     document.getElementById('revisionViewPage').classList.remove('d-none');
     window.scrollTo({ top: 0, behavior: 'instant' });
   } catch (err) {
-    Swal.fire('错误', err.message, 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
   }
 }
 
@@ -351,13 +314,13 @@ async function toggleRawView() {
   const rawBtn = document.getElementById('rawViewBtn');
   if (isRawView) {
     contentEl.innerHTML = `<pre class="wiki-ext-raw-pre">${window.escapeHtml(currentRevisionRawContent)}</pre>`;
-    rawBtn.innerHTML = '<i class="bi bi-eye"></i><span class="btn-collapse-text"> 渲染</span>';
+    rawBtn.innerHTML = ui("m_a7d43339f973d3a9");
     rawBtn.classList.remove('btn-outline-secondary');
     rawBtn.classList.add('btn-secondary');
   } else {
     contentEl.innerHTML = '';
     await window.renderWikiContent(currentRevisionRawContent, currentRevisionSlug, 'revisionViewContent');
-    rawBtn.innerHTML = '<i class="bi bi-code"></i><span class="btn-collapse-text"> Raw</span>';
+    rawBtn.innerHTML = ui("m_2f755050b2d93e2a");
     rawBtn.classList.remove('btn-secondary');
     rawBtn.classList.add('btn-outline-secondary');
   }
@@ -369,11 +332,11 @@ async function confirmAndShowDiff(slug, revId, requireConfirm) {
   if (requireConfirm) {
     const result = await Swal.fire({
       icon: 'warning',
-      title: '大文件比较',
-      text: '이 문서는 대용량 익스텐션 데이터입니다. diff 로딩 시 모바일 기기에서 성능 저하가 발생할 수 있습니다. 계속하시겠습니까?',
+      title: ui("m_7252784bdc29188c"),
+      text: ui("m_538efa2ab274d60f"),
       showCancelButton: true,
-      confirmButtonText: '查看差异',
-      cancelButtonText: '取消',
+      confirmButtonText: ui("m_b35001374ea98a40"),
+      cancelButtonText: ui("m_2cd0f3be8738a86c"),
     });
     if (!result.isConfirmed) return;
   }
@@ -388,12 +351,12 @@ async function confirmAndShowDiff(slug, revId, requireConfirm) {
 async function showDiff(slug, revId) {
   try {
     const res = await fetch(`/api/w/${encodeURIComponent(slug)}/revisions/${revId}/diff`);
-    if (!res.ok) throw new Error('差异加载失败');
+    if (!res.ok) throw new Error(ui("m_87437c094c143c8d"));
     const data = await res.json();
 
     const oldLabel = data.old_revision_id
       ? (data.old_page_version != null ? `v${data.old_page_version}` : `#${data.old_revision_id}`)
-      : '(없음)';
+      : ui("m_2c5539adbf825ee1");
     const newLabel = data.new_page_version != null ? `v${data.new_page_version}` : `#${data.new_revision_id}`;
 
     // 익스텐션 데이터 슬러그(예: freq:foo) 는 본문이 마크다운이 아니라
@@ -408,15 +371,15 @@ async function showDiff(slug, revId) {
     const isExtensionDataDiff = enabledExts.some((ext) => slug.startsWith(ext + ':'));
 
     await window.showDiffModal({
-      title: `리비전 비교: ${oldLabel} → ${newLabel}`,
+      title: ui("m_b41a35f15207ce89", [oldLabel, newLabel]),
       oldText: data.old_content || '',
       newText: data.new_content || '',
       slug,
       forceRaw: isExtensionDataDiff,
-      swalOptions: { confirmButtonText: '关闭' },
+      swalOptions: { confirmButtonText: ui("m_3fd47edce45b3603") },
     });
   } catch (err) {
-    Swal.fire('错误', err.message, 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
   }
 }
 
@@ -431,12 +394,12 @@ async function confirmDeleteRevision(slug, revId, pageVersion, isAlreadySoft, is
   // 일반 admin: 체크박스 없는 간단 소프트 삭제 확인.
   if (!canHardDelete) {
     const result = await Swal.fire({
-      title: '隐藏修订版本',
-      text: `리비전 ${versionLabel} 을 일반 사용자에게서 숨기시겠습니까? 본문은 그대로 유지되며 관리자만 열람할 수 있습니다.`,
+      title: ui("m_7d8260058fe422ef"),
+      text: ui("m_65828fbcc4245176", [versionLabel]),
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
+      confirmButtonText: ui("m_2f9daa828907b93f"),
+      cancelButtonText: ui("m_2cd0f3be8738a86c"),
     });
     if (!result.isConfirmed) return;
     await sendDeleteRequest(slug, revId, /*hard*/ false);
@@ -447,31 +410,21 @@ async function confirmDeleteRevision(slug, revId, pageVersion, isAlreadySoft, is
   const checkboxDefault = isPartial || isAlreadySoft;
   const checkboxDisabled = isPartial; // 재시도 경로에서는 강제로 영구 삭제만 허용.
   const titleText = isPartial
-    ? '重试永久删除修订版本'
-    : (isAlreadySoft ? '清理修订版本' : '删除修订版本');
+    ? ui("m_1143ee108cac84cf")
+    : (isAlreadySoft ? ui("m_cb77b522c19dc9dd") : ui("m_c6a774ece1e50ac1"));
   const explanation = isPartial
-    ? `리비전 <strong>${window.escapeHtml(versionLabel)}</strong> 의 이전 永久删除 시도가 부분 실패했습니다. 다시 시도합니다.`
+    ? ui("m_cb3bf62049f4192e", [window.escapeHtml(versionLabel)])
     : (isAlreadySoft
-      ? `리비전 <strong>${window.escapeHtml(versionLabel)}</strong> 은 이미 일반 사용자에게서 숨겨진 상태입니다. 본문까지 永久删除하려면 아래 체크박스를 선택하세요. 선택하지 않고 확인을 누르면 아무 변경 없이 닫힙니다.`
-      : `리비전 <strong>${window.escapeHtml(versionLabel)}</strong> 을 삭제합니다. 기본은 일반 사용자에게서 숨기는 소프트 삭제이며, 아래 체크박스를 선택하면 R2 본문까지 함께 永久删除됩니다.`);
+      ? ui("m_e8a424dc07a20f51", [window.escapeHtml(versionLabel)])
+      : ui("m_3f9fe32f92fc75a5", [window.escapeHtml(versionLabel)]));
 
   const result = await Swal.fire({
     title: titleText,
     icon: 'warning',
-    html: `
-      <div class="text-start">
-        <p class="mb-3">${explanation}</p>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="hardDeleteCheck" ${checkboxDefault ? 'checked' : ''} ${checkboxDisabled ? 'disabled' : ''}>
-          <label class="form-check-label" for="hardDeleteCheck">
-            본문도 永久删除 (R2 에서 제거, <strong class="text-danger">복구 불가</strong>)
-          </label>
-        </div>
-      </div>
-    `,
+    html: ui("m_26f0a091ed320540", [explanation, checkboxDefault ? 'checked' : '', checkboxDisabled ? 'disabled' : '']),
     showCancelButton: true,
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
+    confirmButtonText: ui("m_2f9daa828907b93f"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c"),
     preConfirm: () => {
       const cb = document.getElementById('hardDeleteCheck');
       return { hard: !!(cb && cb.checked) };
@@ -496,30 +449,30 @@ async function sendDeleteRequest(slug, revId, hard) {
     const method = hard ? 'DELETE' : 'POST';
     const res = await fetch(url, { method });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || '删除修订版本失败');
-    const message = hard ? '修订内容已永久删除。' : '修订版本已隐藏。';
+    if (!res.ok) throw new Error(data.error || ui("m_5ecf5b24e4da4a1b"));
+    const message = hard ? ui("m_049824d2b61335cf") : ui("m_5be274f64b8150aa");
     await Swal.fire({ icon: 'success', title: message, toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
     showRevisions(slug, currentRevPage);
   } catch (err) {
-    Swal.fire('错误', err.message, 'error');
+    Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
   }
 }
 
 // ── 되돌리기 확인 ──
 async function confirmRevert(slug, revId, pageVersion) {
   if (!window.currentUser) {
-    Swal.fire('需要登录', '回退를 하려면 로그인해주세요.', 'info');
+    Swal.fire(ui("m_6eb1b64e260a2dd3"), ui("m_dc17614c67ea2f96"), 'info');
     return;
   }
 
   const versionLabel = (pageVersion !== '' && pageVersion != null) ? `v${pageVersion}` : `#${revId}`;
   const result = await Swal.fire({
-    title: '문서 回退',
-    text: `정말 리비전 ${versionLabel} 상태로 문서를 되돌리시겠습니까? 현재 내용은 새로운 리비전으로 저장됩니다.`,
+    title: ui("m_e5bc8d0f4f3faad1"),
+    text: ui("m_e9ca8fb1341f434a", [versionLabel]),
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: '回退',
-    cancelButtonText: '取消'
+    confirmButtonText: ui("m_8771e3682df14b36"),
+    cancelButtonText: ui("m_2cd0f3be8738a86c")
   });
 
   if (result.isConfirmed) {
@@ -530,13 +483,13 @@ async function confirmRevert(slug, revId, pageVersion) {
         body: JSON.stringify({ revision_id: revId })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '回退 실패');
+      if (!res.ok) throw new Error(data.error || ui("m_b1f4f14b8a91dba1"));
 
-      Swal.fire('成功', '문서가 되돌려졌습니다.', 'success').then(() => {
+      Swal.fire(ui("m_053461ce86d26572"), ui("m_76f59c47a3a322dd"), 'success').then(() => {
         window.location.href = `/w/${encodeURIComponent(slug)}`;
       });
     } catch (err) {
-      Swal.fire('错误', err.message, 'error');
+      Swal.fire(ui("m_0bc1fb72ae1be5c5"), err.message, 'error');
     }
   }
 }
