@@ -438,6 +438,20 @@ div:where(.swal2-container) .swal2-validation-message {
   object-fit: cover;
 }
 
+/* A configured logo replaces the adjacent brand name visually.
+   Keep the name available to screen readers and sidebar title labels. */
+.wiki-logo-container:has(> .brand-logo) + .app-wiki-name {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 /* Navbar Links */
 .nav-link {
   color: var(--wiki-text-muted) !important;
