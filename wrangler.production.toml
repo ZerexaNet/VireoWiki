@@ -1,0 +1,86 @@
+name = "vireowiki"
+main = "src/index.ts"
+compatibility_date = "2026-03-01"
+compatibility_flags = ["nodejs_compat"]
+account_id = "9baeed9325828a4447ae42acc465717a"
+workers_dev = true
+keep_vars = true
+
+[build]
+command = "npm run build"
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+run_worker_first = ["/", "/w/*", "/wiki/*", "/mypage", "/edit", "/memo", "/profile/*", "/search", "/admin", "/admin-media", "/admin-bulk-manage", "/tickets", "/tickets/*", "/setup-profile", "/error", "/sitemap.xml", "/robots.txt", "/login", "/recent-changes", "/explore", "/all", "/components-json-builder", "/auth/discord", "/auth/discord/callback", "/auth/nodeloc", "/auth/nodeloc/callback", "/auth/refresh-picture", "/blog", "/blog/*", "/blog-edit", "/qr-login/*", "/sw.js"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1.0
+
+[vars]
+WIKI_HOME_PAGE = ""
+RAG_SEARCH_ENABLED = "false"
+RAG_AUTORAG_NAME = ""
+AUTH_PROVIDERS = "nodeloc"
+NODELOC_CLIENT_ID = "637244ec-5781-42de-92b7-769fe6749a7e"
+NODELOC_REDIRECT_URI = "https://www.nodeloc.wiki/auth/nodeloc/callback"
+GOOGLE_CLIENT_ID = ""
+GOOGLE_REDIRECT_URI = "https://도메인/auth/google/callback"
+DISCORD_CLIENT_ID = ""
+DISCORD_REDIRECT_URI = "https://도메인/auth/discord/callback"
+TURNSTILE_SITE_KEY = ""
+MEDIA_PUBLIC_URL = "https://www.nodeloc.wiki/media"
+MAX_UPLOAD_SIZE = "15728640"
+WIKI_NAME = "VireoWiki"
+WIKI_LOGO_URL = "/vireo-mark.svg"
+WIKI_FAVICON_URL = "/vireo-mark.svg"
+SUPER_ADMIN_EMAILS = "hekuo5310@gmail.com"
+SELECTED_ICONS_ONLY = "false"
+MCP_MODE = "disabled"
+ALLOW_CRAWL = "false"
+ENABLE_CONCURRENT_EDIT_DETECTION = "true"
+EDIT_REQUEST_ENABLED = "false"
+WIKI_VISIBILITY = "open"
+LAYOUT_MODE = "default"
+WIKI_THEME = "default"
+WIKI_THEMES = "default,astro,vector,bootstrap,via"
+EMAIL_RESTRICTION = ""
+EMAIL_LIST = "example.com, example.example.com"
+ENABLED_EXTENSIONS = ""
+LOGIN_MESSAGE = ""
+PRIVACY_POLICY = "Wiki/隐私政策"
+TERMS_OF_SERVICE = "Wiki/服务条款"
+WIKI_SYNTAX = "Wiki/语法指南"
+CUSTOM_HEADER = "\n"
+SIDEBAR = "\n"
+FOOTER = "\n"
+DISCORD_ADMIN_EVENTS = "signup_pending,signup_rejected,ticket_create,ticket_status,user_ban,user_role_change,super_admin_action,pending_edit"
+DISCORD_COMMUNITY_EVENTS = "user_joined,discussion_create,announcement_publish"
+WIKI_PUBLIC_BASE_URL = "https://www.nodeloc.wiki"
+VAPID_PUBLIC_KEY = ""
+VAPID_SUBJECT = ""
+
+[triggers]
+crons = ["0 0 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vireowiki-db"
+database_id = "993cde99-9e31-4973-bc2a-6a906f19c93b"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "vireowiki-media"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "aa7f8811318048368a6901411150b8d0"
+
+[[routes]]
+pattern = "www.nodeloc.wiki/*"
+zone_id = "e95e36aab71cd3ec2cb9286a3c435fb3"
+
+[[routes]]
+pattern = "vireowiki-edge.zerexa.net/*"
+zone_id = "e95e36aab71cd3ec2cb9286a3c435fb3"
