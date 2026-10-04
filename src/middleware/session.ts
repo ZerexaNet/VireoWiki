@@ -14,7 +14,7 @@ import type { Env, User } from '../types';
  * ROLE_PERMISSIONS_JSON 환경변수 오버라이드는 폐기됨.
  */
 export const rbacMiddleware = createMiddleware<Env>(async (c, next) => {
-    c.set('rbac', new RBAC());
+    c.set('rbac', await RBAC.load(c.env.DB));
     await next();
 });
 

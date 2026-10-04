@@ -84,6 +84,8 @@ export type Env = {
         VAPID_SUBJECT?: string;
     };
     Variables: {
+        gitAuthenticated?: boolean;
+        gitTargetPageId?: number;
         user: User | null;
         rbac?: any; // To be defined or used as a helper
     };

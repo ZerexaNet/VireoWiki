@@ -1,3 +1,4 @@
+import { HTTPException } from 'hono/http-exception';
 // 추가 MCP 도구 정의 + 디스패처 (일반 유저 편집 도구 + 관리자 전용 도구).
 //
 // 통합 MCP 엔드포인트 (/api/mcp) 가 호출 시점에 사용자 역할을 보고 이 모듈의 도구를
@@ -656,6 +657,7 @@ export async function applyExistingPageUpdate(
     content: string,
     opts: {
         summary: string | null;
+        requiredPermission?: 'wiki:edit' | 'wiki:revert';
         category?: string | null;     // undefined → 기존 유지, null/string → 덮어쓰기
         redirectTo?: string | null;   // undefined → 기존 유지, null/string → 덮어쓰기
         title?: string | null;        // undefined → 기존 유지, null → 제거, string → 설정. 호출자가 사전 충돌 검증을 마쳤다고 가정.
@@ -669,6 +671,7 @@ export async function applyExistingPageUpdate(
         awaitLinkCategoryIndex?: boolean; // true 면 page_links/page_categories 재색인을 waitUntil 대신 await — 같은 페이지에 연속 리비전을 만드는 2-리비전 승인에서 rev1 의 재색인이 rev2 의 것과 경합/역전돼 중간 리비전 인덱스가 남는 것을 막는다(rev1 에만 사용).
     }
 ): Promise<{ revision_id: number; new_version: number; rows: number; characters: number }> {
+    if (!c.get('rbac').can(user.role, opts.requiredPermission ?? 'wiki:edit')) throw new HTTPException(403, { message: ui('permissions.denied') });
     const db = c.env.DB;
     const enabledExt = getEnabledExtensions(c.env);
     const isR2Only = isR2OnlyNamespace(opts.slug, enabledExt);
@@ -805,6 +808,7 @@ export async function applyNewPageInsert(
         awaitLinkCategoryIndex?: boolean; // true 면 page_links/page_categories 재색인을 await — 2-리비전 승인의 rev1(신규 생성)에서 rev2 재색인과의 경합/역전을 막는다.
     }
 ): Promise<{ page_id: number; revision_id: number; rows: number; characters: number }> {
+    if (!c.get('rbac').can(user.role, 'wiki:create')) throw new HTTPException(403, { message: ui('permissions.denied') });
     const db = c.env.DB;
     const enabledExt = getEnabledExtensions(c.env);
     const isR2Only = isR2OnlyNamespace(slug, enabledExt);
@@ -1609,7 +1613,8 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
     }
 
     if (toolName === 'revert_page') {
-        if (!rbac.can(user.role, 'wiki:edit')) {
+        if (!rbac.can(user.role, 'wiki:revert')) return asTextResult(ui('permissions.denied'), true);
+        if (!rbac.can(user.role, 'wiki:revert')) {
             return asTextResult(ui("m_eaf5dbfe425cfa3f"), true);
         }
         const slug = String(args.title || '').trim();
@@ -1678,6 +1683,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
         try {
             const result = await applyExistingPageUpdate(c, user, page, revContent, {
+                requiredPermission: 'wiki:revert',
                 summary,
                 slug,
             });
@@ -1707,10 +1713,11 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         const hard = args.hard === true;
 
         const page = await db
-            .prepare('SELECT id, edit_acl FROM pages WHERE slug = ? AND deleted_at IS NULL')
+            .prepare('SELECT id, edit_acl, is_private FROM pages WHERE slug = ? AND deleted_at IS NULL')
             .bind(slug)
-            .first<{ id: number; edit_acl: string | null }>();
+            .first<{ id: number; edit_acl: string | null; is_private: number }>();
         if (!page) return asTextResult(ui("m_f4ec1684e2260eeb"), true);
+        if (page.is_private && !rbac.can(user.role, 'wiki:private')) return asTextResult(ui('permissions.denied'), true);
 
         if (hard) {
             if (!rbac.can(user.role, '*')) return asTextResult(ui("m_a1dbee63d898ee47"), true);
@@ -1763,14 +1770,16 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
     }
 
     if (toolName === 'restore_page') {
+        if (!rbac.can(user.role, 'wiki:restore')) return asTextResult(ui('permissions.denied'), true);
         const slug = String(args.title || '').trim();
         if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
-        if (!rbac.can(user.role, 'wiki:delete')) return asTextResult(ui("m_e71689f947fff666"), true);
+        if (!rbac.can(user.role, 'wiki:restore')) return asTextResult(ui("m_e71689f947fff666"), true);
         if (slug.startsWith('이미지:')) return asTextResult(ui("m_c0cae7a74ebe04c8"), true);
         if (slug.startsWith('map:')) return asTextResult(ui("m_0c5192f5f86de2aa"), true);
 
-        const page = await db.prepare('SELECT id, deleted_at FROM pages WHERE slug = ?').bind(slug).first<{ id: number; deleted_at: number | null }>();
+        const page = await db.prepare('SELECT id, deleted_at, is_private FROM pages WHERE slug = ?').bind(slug).first<{ id: number; deleted_at: number | null; is_private: number }>();
         if (!page) return asTextResult(ui("m_36f26fa461c07fd6"), true);
+        if (page.is_private && !rbac.can(user.role, 'wiki:private')) return asTextResult(ui('permissions.denied'), true);
         if (!page.deleted_at) return asTextResult(ui("m_f3cd5840152553ef"), true);
 
         await db.prepare('UPDATE pages SET deleted_at = NULL WHERE id = ?').bind(page.id).run();
@@ -1788,6 +1797,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
     }
 
     if (toolName === 'move_page') {
+        if (!rbac.can(user.role, 'wiki:move')) return asTextResult(ui('permissions.denied'), true);
         const oldSlug = String(args.title || '').trim();
         const newSlug = String(args.new_title || '').trim();
         if (!oldSlug || !newSlug) return asTextResult(ui("m_14e60317e5fae82c"), true);
@@ -2149,6 +2159,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
     }
 
     if (toolName === 'set_page_status') {
+        if (!rbac.can(user.role, 'wiki:manage')) return asTextResult(ui('permissions.denied'), true);
         const slug = String(args.title || '').trim();
         if (!slug) return asTextResult(ui("m_8ab6728713ad8858"), true);
 

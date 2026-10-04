@@ -1,3 +1,4 @@
+import { PERMISSION_KEYS } from '../../utils/permissionGroups';
 import { ui } from '../../i18n/server';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
@@ -355,11 +356,7 @@ auth.get('/api/me', (c) => {
         return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }
     const rbac = c.get('rbac') as RBAC;
-    const permissionKeys = [
-        'wiki:read', 'wiki:edit', 'wiki:delete', 'wiki:private',
-        'comment:create', 'ticket:create', 'ticket:manage',
-        'media:upload', 'discussion:manage', 'admin:access', 'user:manage',
-    ] as const;
+    const permissionKeys = [...PERMISSION_KEYS, 'wiki:read', 'admin:access'];
     const permissions: Record<string, boolean> = {};
     for (const key of permissionKeys) {
         permissions[key] = rbac.can(user.role, key);

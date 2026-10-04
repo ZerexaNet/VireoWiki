@@ -14,6 +14,7 @@
 
       // ── 탭 전환 로직 ──
       import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
+import { mountSiteManagement } from '../admin/site-management';
 function showTab(tabId) {
         document
           .querySelectorAll(".tab-pane")
@@ -94,6 +95,7 @@ function showTab(tabId) {
           catAclPage = 1;
           renderCatAclList();
         });
+        mountSiteManagement(showTab);
         loadWikiSettings();
         loadSignupPolicy();
         loadDashStats();

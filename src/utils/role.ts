@@ -1,18 +1,23 @@
+import { applyOverrides, loadPermissionGroups, type RoleOverrides } from './permissionGroups';
 import { isSuperAdmin } from './auth';
 import type { Env, RolePermissions } from '../types';
 
 /**
  * RBAC (역할 기반 접근 제어) 관리 클래스.
  *
- * 권한 정의는 getDefaultPermissions() 단일 소스로 고정한다.
+ * 기본 권한은 getDefaultPermissions()에서 정의하며 D1의 검증된 권한 그룹으로 재정의한다.
  * 과거에는 wrangler.toml 의 ROLE_PERMISSIONS_JSON 환경변수로 오버라이드했으나,
  * 운영 중 손볼 일이 거의 없고 잘못 수정하면 전 사이트 권한이 망가지므로 폐기했다.
  */
 export class RBAC {
     private permissions: RolePermissions;
 
-    constructor() {
-        this.permissions = RBAC.getDefaultPermissions();
+    constructor(overrides: RoleOverrides = {}) {
+        this.permissions = applyOverrides(RBAC.getDefaultPermissions(), overrides);
+    }
+
+    static async load(db: D1Database): Promise<RBAC> {
+        return new RBAC((await loadPermissionGroups(db)).overrides);
     }
 
     /**
@@ -61,7 +66,7 @@ export class RBAC {
                     inherits: []
                 },
                 user: {
-                    permissions: ['wiki:read', 'wiki:edit', 'comment:create', 'ticket:create', 'media:upload'],
+                    permissions: ['wiki:read', 'wiki:create', 'wiki:edit', 'wiki:revert', 'git:push', 'comment:create', 'ticket:create', 'media:upload'],
                     inherits: []
                 },
                 discussion_manager: {
@@ -69,7 +74,7 @@ export class RBAC {
                     inherits: ['user']
                 },
                 admin: {
-                    permissions: ['admin:access', 'wiki:delete', 'wiki:private', 'user:manage', 'ticket:manage'],
+                    permissions: ['admin:access', 'wiki:delete', 'wiki:restore', 'wiki:move', 'revision:delete', 'media:delete', 'wiki:manage', 'wiki:private', 'user:manage', 'ticket:manage'],
                     inherits: ['discussion_manager']
                 },
                 super_admin: {

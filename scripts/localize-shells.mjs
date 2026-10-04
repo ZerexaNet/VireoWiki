@@ -11,15 +11,27 @@ const attrs = new Set(['title', 'alt', 'placeholder', 'aria-label', 'content']);
 
 export function localizeShell(html, locale, catalog) {
     const document = parse(html);
-    const text = value => {
+    const text = (value, title = false) => {
         const key = lookup.get(value.trim());
-        if (!key) return value;
+        if (!key) {
+            // Static layouts substitute the configured site name before localization.
+            // Translate only known title labels and preserve that user-provided name.
+            if (title) for (const [source, titleKey] of lookup) {
+                const suffix = 'VireoWiki';
+                const translated = catalog[titleKey];
+                if (source.endsWith(suffix) && translated?.endsWith(suffix)) {
+                    const prefix = source.slice(0, -suffix.length);
+                    if (prefix && value.trim().startsWith(prefix)) return translated.slice(0, -suffix.length) + value.trim().slice(prefix.length);
+                }
+            }
+            return value;
+        }
         return (value.match(/^\s*/)?.[0] ?? '') + (catalog[key] ?? value.trim()) + (value.match(/\s*$/)?.[0] ?? '');
     };
     function visit(node, excluded = false) {
         const protectedContent = excluded || ['script', 'style', 'pre', 'code'].includes(node.tagName) ||
             (node.attrs ?? []).some(a => a.name === 'data-no-i18n');
-        if (node.nodeName === '#text' && !protectedContent) node.value = text(node.value);
+        if (node.nodeName === '#text' && !protectedContent) node.value = text(node.value, node.parentNode?.tagName === 'title');
         for (const attr of node.attrs ?? []) {
             if (node.tagName === 'html' && attr.name === 'lang') attr.value = locale;
             else if (attrs.has(attr.name) && !protectedContent) {

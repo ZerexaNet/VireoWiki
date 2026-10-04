@@ -170,7 +170,7 @@ async function showRevisions(slug, page = 1) {
       //  - 일반 admin: !isDeleted 일 때만 노출 → 클릭 시 소프트 삭제 확인만.
       //  - super_admin: !isFullyPurged 일 때 노출 → 클릭 시 모달 내부의 체크박스로 영구 삭제 여부를 선택.
       //  - 최신 리비전(last_revision_id)은 일관성 보호를 위해 모두 차단.
-      const canDeleteThisRow = isAdminView && !isLastRev && (canHardDelete ? !isFullyPurged : !isDeleted);
+      const canDeleteThisRow = (canHardDelete || window.currentUser?.permissions?.['revision:delete']) && !isLastRev && (canHardDelete ? !isFullyPurged : !isDeleted);
       const isPartialPurge = isPurged && !isFullyPurged;
       const deleteBtnLabel = isPartialPurge ? ui("m_530ec947a64b994f") : ui("m_2f9daa828907b93f");
       const deleteBtnDangerClass = (canHardDelete && (isDeleted || isPartialPurge)) ? ' text-danger' : '';
@@ -195,6 +195,7 @@ async function showRevisions(slug, page = 1) {
 
     document.getElementById('loading').classList.add('d-none');
     document.getElementById('revisionsPage').classList.remove('d-none');
+    if (!window.currentUser?.permissions?.['wiki:revert']) listEl.querySelectorAll('[onclick*="confirmRevert("]').forEach(button => { button.disabled = true; button.setAttribute('aria-disabled', 'true'); });
     window.initRoleIconPopovers(listEl);
 
   } catch (err) {
