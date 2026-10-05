@@ -1,3 +1,4 @@
+import { localTrending, localPageViews } from './utils/localAnalytics';
 import gitRoutes from './routes/git';
 import { HTTPException } from 'hono/http-exception';
 import permissionGroupsRoutes from './routes/permissionGroups';
@@ -33,7 +34,7 @@ import analyticsRoutes from './routes/analytics';
 import blogRoutes from './routes/blog';
 import exploreRoutes from './routes/explore';
 import qrLoginRoutes from './routes/qr-login';
-import { trackPageView, trackError, queryAnalytics } from './utils/analytics';
+import { trackError, queryAnalytics } from './utils/analytics';
 import { isR2OnlyNamespace, isMapNamespace, normalizeSlug } from './utils/slug';
 import { getEnabledExtensions } from './utils/extensions';
 import { getRevisionContent } from './utils/r2';
@@ -194,6 +195,7 @@ app.get('/sw.js', async (c) => {
 
 // ── 공개 Analytics API (인기 문서, 문서별 조회수) ──
 app.get('/api/analytics/trending', async (c) => {
+    if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) return c.json({ error: 'Authentication required' }, 401);
     const cache = caches.default;
     const cacheKey = c.req.url;
 
@@ -205,7 +207,7 @@ app.get('/api/analytics/trending', async (c) => {
 
     const accountId = c.env.CF_ACCOUNT_ID;
     const apiToken = c.env.CF_API_TOKEN;
-    if (!accountId || !apiToken) return c.json({ trending: [] });
+    if (!accountId || !apiToken || !c.env.ANALYTICS) return c.json({ trending: await localTrending(c.env.DB, Math.min(72, Math.max(1, Number(c.req.query('hours')) || 24)), Math.min(20, Math.max(1, Number(c.req.query('limit')) || 10))) }, 200, { 'Cache-Control': 'no-store' });
 
     const hours = Math.min(72, Math.max(1, Number(c.req.query('hours')) || 24));
     const limit = Math.min(20, Math.max(1, Number(c.req.query('limit')) || 10));
@@ -234,7 +236,7 @@ app.get('/api/analytics/trending', async (c) => {
 app.get('/api/analytics/page-views/:slug', requireAdmin, async (c) => {
     const accountId = c.env.CF_ACCOUNT_ID;
     const apiToken = c.env.CF_API_TOKEN;
-    if (!accountId || !apiToken) return c.json({ total: 0, recent: 0 });
+    if (!accountId || !apiToken || !c.env.ANALYTICS) return c.json(await localPageViews(c.env.DB,c.req.param('slug')),200,{'Cache-Control':'no-store'});
 
     const slug = c.req.param('slug');
     // Analytics Engine 쿼리는 파라미터 바인딩이 없어 문자열 보간을 쓴다. 닫는 따옴표
@@ -503,7 +505,7 @@ app.get('/w/*', async (c) => {
     if (canUseCache && !isMapNamespace(slug)) {
         const cached = await cache.match(ssrCacheKey);
         if (cached) {
-            trackPageView(c, slug, Date.now() - startTime);
+
             return new Response(cached.body, cached);
         }
     }
@@ -519,7 +521,7 @@ app.get('/w/*', async (c) => {
         if (!user && canUseCache && permsQueryRaw == null) {
             const cached = await cache.match(ssrCacheKey);
             if (cached) {
-                trackPageView(c, slug, Date.now() - startTime);
+
                 return new Response(cached.body, cached);
             }
         }
@@ -787,11 +789,6 @@ ${contentBlock}
         // 크롤러: 본문(마크다운)이 보이는 미니멀 HTML로 응답
         // renderForAI 결과는 그대로 마크다운이므로 escape 후 <pre>에 넣어 전달한다.
         if (isCrawler) {
-            // 관리자 열람 전용 비공개 문서는 Analytics Engine 통계에서 완전히 제외
-            // (sourceWasPrivate: 비공개 슬러그가 public 으로 redirect 된 진입 경로도 함께 차단)
-            if (page.is_private !== 1 && !sourceWasPrivate) {
-                trackPageView(c, page.slug, Date.now() - startTime);
-            }
             // 표시 이름은 title 우선, 호출/공식 식별자는 slug. 둘 다 크롤러에 노출해 검색 색인성 유지.
             const displayName = page.title || page.slug;
             const title = `${displayName} - ${wikiName}`;
@@ -856,11 +853,6 @@ ${contentBlock}
     const response = await renderHtml(c, '/', ssrData);
 
     // Analytics: 문서 조회 추적 (존재하는 문서만)
-    // 관리자 열람 전용 비공개 문서는 Analytics Engine 통계에서 완전히 제외
-    // (sourceWasPrivate: 비공개 슬러그가 public 으로 redirect 된 진입 경로도 함께 차단)
-    if (!ssrData._ssrNotFound && ssrData.is_private !== 1 && !sourceWasPrivate) {
-        trackPageView(c, ssrData.slug || slug, Date.now() - startTime);
-    }
 
     // 4) 공개 문서이면 Edge 캐시에 24시간 저장
     if (shouldCache) {

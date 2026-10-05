@@ -1,3 +1,4 @@
+import { trackPageView } from '../utils/analytics';
 import { ui } from '../i18n/server';
 import { Hono, type Context } from 'hono';
 import type { Env, Page, Revision, User } from '../types';
@@ -1537,7 +1538,13 @@ wiki.get('/w/wiki-stats', async (c) => {
  * - 리다이렉트 처리: 문서가 없고 리다이렉트가 존재하면 대상 문서 반환 (redirected_from 포함)
  * - 비공개 문서: 관리자만 접근 가능
  */
-wiki.get('/w/:slug', async (c) => {
+wiki.get('/w/:slug', async (c, next) => {
+    const start = Date.now(); await next();
+    if (c.res.status === 200 && c.req.query('for_edit') !== 'true') {
+        const result = await c.res.clone().json() as {slug?:string; id?:number; is_private?:boolean; deleted_at?:number};
+        if (result.id && result.slug && !result.is_private && !result.deleted_at) trackPageView(c, result.slug, Date.now()-start);
+    }
+}, async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) {
         return c.json({ error: ui("m_640f50ae9c6b8e41") }, 401);
     }

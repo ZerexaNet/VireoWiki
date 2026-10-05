@@ -20,7 +20,8 @@
     "deploy:do": "wrangler deploy -c do-worker/wrangler.toml",
     "test:i18n": "node scripts/test-i18n.mjs",
     "test:permissions": "node scripts/test-permissions.mjs",
-    "test:git": "node scripts/test-git.mjs"
+    "test:git": "node scripts/test-git.mjs",
+    "test:services": "node scripts/test-services.mjs"
   },
   "dependencies": {
     "@block65/webcrypto-web-push": "^1.0.2",

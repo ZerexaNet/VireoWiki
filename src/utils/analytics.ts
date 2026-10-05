@@ -1,3 +1,4 @@
+import { recordLocalAnalytics } from './localAnalytics';
 import { ui } from '../i18n/server';
 import type { Context } from 'hono';
 import type { Env } from '../types';
@@ -29,6 +30,7 @@ function detectDevice(ua: string): string {
 
 export function trackPageView(c: Context<Env>, slug: string, responseTimeMs: number = 0) {
     if (slug.startsWith('이미지:')) return;
+    c.executionCtx.waitUntil(recordLocalAnalytics(c, 'pageview', slug, responseTimeMs).catch(error => console.error('Local analytics write failed:', error)));
     try {
         const analytics = c.env.ANALYTICS;
         if (!analytics) return;
@@ -62,6 +64,7 @@ export function trackPageView(c: Context<Env>, slug: string, responseTimeMs: num
 }
 
 export function trackSearch(c: Context<Env>, query: string, resultCount: number, responseTimeMs: number = 0) {
+    c.executionCtx.waitUntil(recordLocalAnalytics(c, 'search', query, responseTimeMs).catch(error => console.error('Local analytics write failed:', error)));
     try {
         const analytics = c.env.ANALYTICS;
         if (!analytics) return;
@@ -95,6 +98,7 @@ export function trackSearch(c: Context<Env>, query: string, resultCount: number,
 }
 
 export function trackError(c: Context<Env>, path: string, statusCode: number, errorMessage: string, responseTimeMs: number = 0) {
+    c.executionCtx.waitUntil(recordLocalAnalytics(c, 'error', path, responseTimeMs, statusCode, errorMessage).catch(error => console.error('Local analytics write failed:', error)));
     try {
         const analytics = c.env.ANALYTICS;
         if (!analytics) return;
