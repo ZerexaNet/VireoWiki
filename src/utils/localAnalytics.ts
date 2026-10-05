@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { Env } from '../types';
+import { trendingHomeSlugs } from './trendingPolicy';
 const schema = [
 `CREATE TABLE IF NOT EXISTS wiki_analytics_hourly (hour INTEGER NOT NULL, key TEXT NOT NULL, type TEXT NOT NULL, page_id INTEGER NOT NULL DEFAULT 0, referrer TEXT NOT NULL, country TEXT NOT NULL, device TEXT NOT NULL, query TEXT NOT NULL, error_message TEXT NOT NULL, path TEXT NOT NULL, status_code INTEGER NOT NULL, duration_bucket INTEGER NOT NULL, events INTEGER NOT NULL DEFAULT 1, duration_sum REAL NOT NULL DEFAULT 0, PRIMARY KEY(hour,key))`,
 `CREATE INDEX IF NOT EXISTS wiki_analytics_time ON wiki_analytics_hourly(type,hour)`,
@@ -41,9 +42,10 @@ export async function recordLocalAnalytics(c: Context<Env>, type: 'pageview'|'se
     await db.batch(statements);
 }
 const PUBLIC = `FROM wiki_analytics_hourly a JOIN pages p ON p.id=a.page_id WHERE a.type='pageview' AND p.is_private=0 AND p.deleted_at IS NULL`;
-export async function localTrending(db: D1Database, hours=24, limit=10) {
+export async function localTrending(db: D1Database, hours=24, limit=10, excludedHomes: string[] = [], excludeSystemPages = true) {
     await ensureLocalAnalytics(db);
-    return (await db.prepare(`SELECT p.slug,SUM(a.events) AS views ${PUBLIC} AND a.hour>=? GROUP BY p.id ORDER BY views DESC,p.slug LIMIT ?`).bind(Math.floor(Date.now()/3600000)*3600-hours*3600,limit).all()).results;
+    const excluded = excludeSystemPages ? ` AND substr(p.slug,1,5)!='Wiki/'${excludedHomes.map(() => ' AND p.slug!=?').join('')}` : '';
+    return (await db.prepare(`SELECT p.slug,SUM(a.events) AS views ${PUBLIC} AND a.hour>=?${excluded} GROUP BY p.id ORDER BY views DESC,p.slug LIMIT ?`).bind(Math.floor(Date.now()/3600000)*3600-hours*3600,...(excludeSystemPages ? excludedHomes : []),limit).all()).results;
 }
 export async function localPageViews(db:D1Database,slug:string) {
     await ensureLocalAnalytics(db);
@@ -57,9 +59,9 @@ export async function localDashboard(c: Context<Env>) {
     const since=Math.floor(Date.now()/1000)-days*86400,limit=Math.min(100,Math.max(1,Number(c.req.query('limit'))||30));
     const all=async(sql:string,params:any[]=[]) => (await db.prepare(sql).bind(...params).all()).results;
     const daily=()=>all(`SELECT date(a.hour,'unixepoch') AS date,SUM(a.events) AS views ${PUBLIC} AND a.hour>=? GROUP BY date ORDER BY date`,[since]);
-    if(endpoint==='trending')return {trending:await localTrending(db,Math.min(72,Math.max(1,Number(c.req.query('hours'))||24)),20)};
+    if(endpoint==='trending')return {trending:await localTrending(db,Math.min(72,Math.max(1,Number(c.req.query('hours'))||24)),20,trendingHomeSlugs(c.env))};
     if(endpoint==='overview')return {summary:await db.prepare(`SELECT COALESCE(SUM(a.events),0) AS total_views,COALESCE(SUM(a.events),0) AS sampled_views,COUNT(DISTINCT NULLIF(a.country,'')) AS unique_countries ${PUBLIC} AND a.hour>=?`).bind(since).first(),daily:await daily()};
-    if(endpoint==='pages')return {pages:await localTrending(db,days*24,limit)};
+    if(endpoint==='pages')return {pages:await localTrending(db,days*24,limit,[],false)};
     if(['referrers','countries','devices'].includes(endpoint)) {
         const column=endpoint==='referrers'?'referrer':endpoint==='countries'?'country':'device';
         return {[endpoint]:await all(`SELECT a.${column} AS ${column==='referrer'?'referer':column},SUM(a.events) AS views ${PUBLIC} AND a.hour>=? AND a.${column}!='' GROUP BY a.${column} ORDER BY views DESC LIMIT ?`,[since,limit])};

@@ -1,3 +1,4 @@
+import {findPrefixRuleEditAcl,evaluateEditAcl} from '../src/utils/editAcl';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
@@ -37,4 +38,26 @@ test('MCP open mode initializes and lists public tools; disabled mode stays deni
  const initialized=await request('initialize');assert.equal(initialized.status,200);assert.ok((await initialized.json() as any).result.capabilities.tools);
  const tools=await request('tools/list');assert.equal(tools.status,200);assert.ok((await tools.json() as any).result.tools.length>0);
  assert.equal((await request('initialize','disabled')).status,403);
+});
+
+test('system pages stay counted but are excluded from trending before the limit', async () => {
+ const {sql,db,c}=fixture();
+ sql.exec("INSERT INTO pages(id,slug) VALUES(3,'Wiki/服务条款'),(4,'Nodeloc Wiki'),(5,'Wiki/指南/子页'),(6,'WikiX/普通页面')");
+ for(const slug of ['Wiki/服务条款','Nodeloc Wiki','Wiki/指南/子页']) for(let i=0;i<3;i++) await recordLocalAnalytics(c,'pageview',slug);
+ await recordLocalAnalytics(c,'pageview','Public');await recordLocalAnalytics(c,'pageview','WikiX/普通页面');
+ const rows=await localTrending(db,24,1,['Nodeloc Wiki']);assert.equal(rows.length,1);assert.equal(rows[0].slug,'Public');
+ assert.equal((await localPageViews(db,'Wiki/服务条款')).total,3);
+ assert.equal((await localPageViews(db,'Nodeloc Wiki')).total,3);
+ const all=await localTrending(db,24,20,[],false);assert.equal(all.length,5);
+ c.env.WIKI_NAME='Nodeloc Wiki';c.req.path='/api/admin/analytics/trending';c.req.query=()=>undefined;
+ const dashboard:any=await localDashboard(c);assert.deepEqual(dashboard.trending.map((r:any)=>r.slug),['Public','WikiX/普通页面']);
+});
+
+test('Wiki prefix defaults deny ordinary editors and allow administrators', async () => {
+ const {sql,db}=fixture();
+ sql.exec(`CREATE TABLE doc_setting_prefix_rules(prefix TEXT,is_private INTEGER,edit_acl TEXT);INSERT INTO doc_setting_prefix_rules VALUES('Wiki',NULL,'{"flags":["admin_only"]}')`);
+ const acl=await findPrefixRuleEditAcl(db,'Wiki/新页面/子页面');assert.ok(acl);
+ assert.equal((await evaluateEditAcl(db,acl!,{id:1,role:'user'} as any,null,0,false)).allowed,false);
+ assert.equal((await evaluateEditAcl(db,acl!,{id:1,role:'admin'} as any,null,0,true)).allowed,true);
+ assert.equal(await findPrefixRuleEditAcl(db,'WikiX/普通页面'),null);
 });

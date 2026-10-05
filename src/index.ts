@@ -1,3 +1,4 @@
+import { analyticsTrendingFilter, trendingHomeSlugs } from './utils/trendingPolicy';
 import { localTrending, localPageViews } from './utils/localAnalytics';
 import gitRoutes from './routes/git';
 import { HTTPException } from 'hono/http-exception';
@@ -197,7 +198,9 @@ app.get('/sw.js', async (c) => {
 app.get('/api/analytics/trending', async (c) => {
     if (c.env.WIKI_VISIBILITY === 'closed' && !c.get('user')) return c.json({ error: 'Authentication required' }, 401);
     const cache = caches.default;
-    const cacheKey = c.req.url;
+    const cacheUrl = new URL(c.req.url);
+    cacheUrl.searchParams.set('_ranking_policy', 'system-pages-v1');
+    const cacheKey = cacheUrl.toString();
 
     // 캐시 확인
     const cached = await cache.match(cacheKey);
@@ -207,7 +210,7 @@ app.get('/api/analytics/trending', async (c) => {
 
     const accountId = c.env.CF_ACCOUNT_ID;
     const apiToken = c.env.CF_API_TOKEN;
-    if (!accountId || !apiToken || !c.env.ANALYTICS) return c.json({ trending: await localTrending(c.env.DB, Math.min(72, Math.max(1, Number(c.req.query('hours')) || 24)), Math.min(20, Math.max(1, Number(c.req.query('limit')) || 10))) }, 200, { 'Cache-Control': 'no-store' });
+    if (!accountId || !apiToken || !c.env.ANALYTICS) return c.json({ trending: await localTrending(c.env.DB, Math.min(72, Math.max(1, Number(c.req.query('hours')) || 24)), Math.min(20, Math.max(1, Number(c.req.query('limit')) || 10)), trendingHomeSlugs(c.env)) }, 200, { 'Cache-Control': 'no-store' });
 
     const hours = Math.min(72, Math.max(1, Number(c.req.query('hours')) || 24));
     const limit = Math.min(20, Math.max(1, Number(c.req.query('limit')) || 10));
@@ -217,6 +220,7 @@ app.get('/api/analytics/trending', async (c) => {
             SELECT blob2 as slug, sum(_sample_interval) as views
             FROM cloudwiki
             WHERE blob1 = 'pageview' AND blob2 != ''
+              AND ${analyticsTrendingFilter(c.env)}
               AND timestamp >= now() - toIntervalHour(${hours})
             GROUP BY slug ORDER BY views DESC LIMIT ${limit}
             FORMAT JSON

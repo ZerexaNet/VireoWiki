@@ -1,3 +1,4 @@
+import { analyticsTrendingFilter } from '../utils/trendingPolicy';
 import { localDashboard } from '../utils/localAnalytics';
 import { ui } from '../i18n/server';
 import { Hono } from 'hono';
@@ -114,6 +115,7 @@ analyticsRoutes.get('/trending', async (c) => {
         FROM ${DATASET}
         WHERE blob1 = 'pageview'
           AND blob2 != ''
+          AND ${analyticsTrendingFilter(c.env)}
           AND timestamp >= now() - toIntervalHour(${hours})
         GROUP BY slug
         ORDER BY views DESC
