@@ -150,7 +150,7 @@ function hookRuleDeleteButtons(container: HTMLElement, relatedTo: string) {
 // 카테고리 칩 한 항목의 형식 검증 — 백엔드 CATEGORY_PATTERN 이 콤마 포함 문자열
 // 전체에 한글/영문/숫자/공백/쉼표만 허용하므로, 칩 단위로는 콤마를 제외한
 // 한글/영문/숫자/공백만 허용한다.
-const BULK_CAT_TAG_RE = /^[가-힣a-zA-Z0-9\s]+$/;
+const BULK_CAT_TAG_RE = /^[\p{Script=Han}가-힣a-zA-Z0-9\s]+$/u;
 
 interface BulkCatAcState {
     visible: boolean;

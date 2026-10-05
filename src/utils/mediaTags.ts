@@ -5,11 +5,11 @@
  */
 
 /**
- * 태그 문자열 규칙: 카테고리와 동일 (한글/영숫자/공백/_/./-).
+ * 태그 문자열 규칙: 중국어/한글/영숫자/공백/_/./-.
  * 최대 20개, 각 50자 이내. trim, 중복 제거, 정규식 통과 항목만 유효.
  * 입력은 배열 / JSON 배열 문자열 / 쉼표구분 문자열을 모두 허용한다.
  */
-const TAG_VALID_RE = /^[가-힣a-zA-Z0-9 _.-]+$/;
+const TAG_VALID_RE = /^[\p{Script=Han}가-힣a-zA-Z0-9 _.-]+$/u;
 const TAG_MAX_COUNT = 20;
 const TAG_MAX_LENGTH = 50;
 

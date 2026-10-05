@@ -100,7 +100,7 @@ function escapeHtml(str) {
 // ── 미디어 태그 입력 위젯 (카테고리 입력과 동일한 UX) ──
 // 컨테이너에 버블 UI + 자동완성(/api/media/search-tags)을 장착한다.
 // 업로드 모달, 이미지 검색 모달, 이미지 문서 편집 모달에서 공통 사용한다.
-const MEDIA_TAG_VALID_RE = /^[가-힣a-zA-Z0-9 _.-]+$/;
+const MEDIA_TAG_VALID_RE = /^[\p{Script=Han}가-힣a-zA-Z0-9 _.-]+$/u;
 function mountMediaTagInput({ container, input, initial }) {
     const tags = Array.isArray(initial) ? initial.slice() : [];
 
