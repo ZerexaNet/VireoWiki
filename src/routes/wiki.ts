@@ -329,7 +329,7 @@ export function getCategoryDocAutoCategory(slug: string): string | null {
     if (!slug.startsWith(prefix)) return null;
     const name = slug.slice(prefix.length).trim();
     if (!name) return null;
-    if (!/^[가-힣a-zA-Z0-9\s]+$/.test(name)) return null;
+    if (!/^[\p{Script=Han}가-힣a-zA-Z0-9\s]+$/u.test(name)) return null;
     return name;
 }
 
@@ -1094,7 +1094,7 @@ wiki.post('/w/check-category', requireAuth, async (c) => {
     if (!raw) {
         return c.json({ ok: false, reason: 'invalid' as const });
     }
-    if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(raw)) {
+    if (!/^[\p{Script=Han}가-힣a-zA-Z0-9\s_.-]+$/u.test(raw)) {
         return c.json({ ok: false, reason: 'invalid' as const });
     }
 
@@ -2189,7 +2189,7 @@ wiki.put('/w/:slug', requireAuth, async (c) => {
 
     // 보안: 카테고리 특수문자 금지 (한글, 영문, 숫자, 공백, 쉼표만 허용)
     if (body.category) {
-        const categoryPattern = /^[가-힣a-zA-Z0-9\s,]+$/;
+        const categoryPattern = /^[\p{Script=Han}가-힣a-zA-Z0-9\s,]+$/u;
         if (!categoryPattern.test(body.category)) {
             return c.json({ error: ui("m_a21df18dbb6dce0c") }, 400);
         }

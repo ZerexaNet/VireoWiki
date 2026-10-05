@@ -2871,7 +2871,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const _autoSlugCat = (() => {
                     if (!slug?.startsWith('카테고리:')) return null;
                     const n = slug.slice('카테고리:'.length).trim();
-                    return (n && /^[가-힣a-zA-Z0-9\s]+$/.test(n)) ? n : null;
+                    return (n && /^[\p{Script=Han}가-힣a-zA-Z0-9\s]+$/u.test(n)) ? n : null;
                 })();
                 if (_autoSlugCat && !categoryTags.includes(_autoSlugCat)) {
                     categoryTags.unshift(_autoSlugCat);
@@ -3041,7 +3041,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 카테고리 문서(카테고리:이름)는 신규 생성 시에도 해당 카테고리를 미리 주입
             if (slug?.startsWith('카테고리:')) {
                 const _autoNewCat = slug.slice('카테고리:'.length).trim();
-                if (_autoNewCat && /^[가-힣a-zA-Z0-9\s]+$/.test(_autoNewCat) && !categoryTags.includes(_autoNewCat)) {
+                if (_autoNewCat && /^[\p{Script=Han}가-힣a-zA-Z0-9\s]+$/u.test(_autoNewCat) && !categoryTags.includes(_autoNewCat)) {
                     categoryTags.unshift(_autoNewCat);
                     document.getElementById('categoryInput').value = categoryTags.join(',');
                     syncStateToWindow();
@@ -3954,7 +3954,7 @@ async function savePage() {
         return;
     }
 
-    if (category && !/^[가-힣a-zA-Z0-9\s,]+$/.test(category)) {
+    if (category && !/^[\p{Script=Han}가-힣a-zA-Z0-9\s,]+$/u.test(category)) {
         window.Swal.fire(ui("m_0bc1fb72ae1be5c5"), ui("m_a21df18dbb6dce0c"), 'warning');
         return;
     }

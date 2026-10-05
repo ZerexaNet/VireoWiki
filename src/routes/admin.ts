@@ -1198,7 +1198,7 @@ adminRoutes.put('/category-acl/:name', async (c) => {
     const currentUser = c.get('user')!;
     const name = c.req.param('name');
     if (!name) return c.json({ error: ui("m_fd04e6fd149684a1") }, 400);
-    if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(name)) {
+    if (!/^[\p{Script=Han}가-힣a-zA-Z0-9\s_.-]+$/u.test(name)) {
         return c.json({ error: ui("m_592c3fe662fb1c68") }, 400);
     }
 
@@ -1304,7 +1304,7 @@ adminRoutes.post('/category-acl/:name/bulk-apply', async (c) => {
     const currentUser = c.get('user')!;
     const name = c.req.param('name');
     if (!name) return c.json({ error: ui("m_fd04e6fd149684a1") }, 400);
-    if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(name)) {
+    if (!/^[\p{Script=Han}가-힣a-zA-Z0-9\s_.-]+$/u.test(name)) {
         return c.json({ error: ui("m_592c3fe662fb1c68") }, 400);
     }
 
@@ -2095,7 +2095,7 @@ adminRoutes.get('/pages/deleted', async (c) => {
 // 관리자 전용 (이 라우터 자체가 requireAdmin 미들웨어로 보호됨).
 
 const PREFIX_FORBIDDEN_CHARS = /[\x00-\x1F\x7F]/;
-const CATEGORY_PATTERN = /^[가-힣a-zA-Z0-9\s,]+$/;
+const CATEGORY_PATTERN = /^[\p{Script=Han}가-힣a-zA-Z0-9\s,]+$/u;
 
 function normalizeCategoryString(s: string): string {
     return s

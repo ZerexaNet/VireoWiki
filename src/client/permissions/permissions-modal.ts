@@ -696,7 +696,7 @@ export async function openPermissionsModal(rawSlug: string): Promise<void> {
                 const addTag = (tag: string) => {
                     const cleanTag = tag.trim();
                     if (!cleanTag) return;
-                    if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(cleanTag)) {
+                    if (!/^[\p{Script=Han}가-힣a-zA-Z0-9\s_.-]+$/u.test(cleanTag)) {
                         swal.fire({
                             icon: 'warning',
                             title: ui("m_4907df8dbe60e7cc"),
@@ -791,7 +791,7 @@ export async function openPermissionsModal(rawSlug: string): Promise<void> {
             }
             if (categoriesAction === 'add' || categoriesAction === 'set') {
                 const raw = readBulkCatInput();
-                if (!/^[가-힣a-zA-Z0-9\s_.,-]+$/.test(raw)) {
+                if (!/^[\p{Script=Han}가-힣a-zA-Z0-9\s_.,-]+$/u.test(raw)) {
                     swal.showValidationMessage(ui("m_35926634b2949979"));
                     return false;
                 }

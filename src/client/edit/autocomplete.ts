@@ -1580,7 +1580,7 @@ async function addCategoryTag(tag: string): Promise<void> {
     if (!window.categoryTags) window.categoryTags = [];
     if (!window.categoryAclChoices) window.categoryAclChoices = {};
 
-    if (!/^[가-힣a-zA-Z0-9\s_.-]+$/.test(cleanTag)) {
+    if (!/^[\p{Script=Han}가-힣a-zA-Z0-9\s_.-]+$/u.test(cleanTag)) {
         window.Swal?.fire({
             icon: 'warning',
             title: ui("m_63d43c7f9b539745"),

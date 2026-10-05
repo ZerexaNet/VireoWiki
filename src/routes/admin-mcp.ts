@@ -1022,7 +1022,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
         if (slug.startsWith('이미지:')) return asTextResult(ui("m_e02821f6bffe9ca0"), true);
         if (slug.startsWith('map:')) return asTextResult(ui("m_51f6566a2dc68dac"), true);        if (typeof args.content !== 'string') return asTextResult(ui("m_b3104adc425b92b3"), true);
         if (args.category && typeof args.category === 'string') {
-            if (!/^[가-힣a-zA-Z0-9\s,]+$/.test(args.category)) {
+            if (!/^[\p{Script=Han}가-힣a-zA-Z0-9\s,]+$/u.test(args.category)) {
                 return asTextResult(ui("m_ecc6b4ed43d3fa11"), true);
             }
         }
@@ -2178,7 +2178,7 @@ export async function dispatchAdminEditTool(c: Context<Env>, user: User, toolNam
 
         const trimmedCategory = (args.category as string).trim();
         const newCategory = trimmedCategory ? trimmedCategory : null;
-        if (newCategory && !/^[가-힣a-zA-Z0-9\s,]+$/.test(newCategory)) {
+        if (newCategory && !/^[\p{Script=Han}가-힣a-zA-Z0-9\s,]+$/u.test(newCategory)) {
             return asTextResult(ui("m_ecc6b4ed43d3fa11"), true);
         }
 
