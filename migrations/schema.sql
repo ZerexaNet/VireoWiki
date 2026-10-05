@@ -680,3 +680,9 @@ CREATE TABLE IF NOT EXISTS git_commit_links (
   page_id INTEGER NOT NULL, oid TEXT NOT NULL, revision_id INTEGER, user_id INTEGER,
   PRIMARY KEY(page_id, oid)
 );
+
+-- Local analytics fallback: hourly aggregates and lifetime page totals.
+CREATE TABLE IF NOT EXISTS wiki_analytics_hourly (hour INTEGER NOT NULL, key TEXT NOT NULL, type TEXT NOT NULL, page_id INTEGER NOT NULL DEFAULT 0, referrer TEXT NOT NULL, country TEXT NOT NULL, device TEXT NOT NULL, query TEXT NOT NULL, error_message TEXT NOT NULL, path TEXT NOT NULL, status_code INTEGER NOT NULL, duration_bucket INTEGER NOT NULL, events INTEGER NOT NULL DEFAULT 1, duration_sum REAL NOT NULL DEFAULT 0, PRIMARY KEY(hour,key));
+CREATE INDEX IF NOT EXISTS wiki_analytics_time ON wiki_analytics_hourly(type,hour);
+CREATE INDEX IF NOT EXISTS wiki_analytics_expiration ON wiki_analytics_hourly(hour);
+CREATE TABLE IF NOT EXISTS wiki_page_view_totals (page_id INTEGER PRIMARY KEY, views INTEGER NOT NULL DEFAULT 0);

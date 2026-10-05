@@ -1692,7 +1692,13 @@ async function loadRecentChanges() {
 
 // ── 실시간 트렌딩 로드 ──
 // ── 실시간 트렌딩 로드 ──
+const trendingCleanup = new WeakMap();
+let trendingRefresh = null;
+let trendingLoading = false;
 async function loadTrending() {
+    if (!trendingRefresh) trendingRefresh = setInterval(() => { if (!document.hidden && document.querySelector('.trending-container')) void loadTrending(); }, 30000);
+    if (trendingLoading) return;
+    trendingLoading = true;
     try {
         const res = await fetch('/api/analytics/trending?limit=10');
         if (!res.ok) return;
@@ -1713,14 +1719,17 @@ async function loadTrending() {
         const content = data.trending && data.trending.length > 0 ? html : emptyMsg;
 
         document.querySelectorAll('.trending-container').forEach(el => {
+            if (el._trendingContent === content) return;
+            trendingCleanup.get(el)?.();
+            el._trendingContent = content;
             el.innerHTML = content;
             if (data.trending && data.trending.length > 0) {
                 initTrendingTicker(el, Math.min(data.trending.length, 10));
             }
         });
     } catch (e) {
-        // 무시
-    }
+        // Retry during the next refresh.
+    } finally { trendingLoading = false; }
 }
 
 function initTrendingTicker(container, count) {
@@ -1748,6 +1757,7 @@ function initTrendingTicker(container, count) {
     container.style.left = '0';
     container.style.width = '100%';
     container.style.transition = 'transform 0.4s ease';
+    container.style.transform = 'translateY(0)';
 
     let currentIndex = 0;
     let tickerInterval = setInterval(slideNext, 3000);
@@ -1768,7 +1778,7 @@ function initTrendingTicker(container, count) {
         container.style.transform = `translateY(-${currentIndex * itemHeight}px)`;
     }
 
-    window.addEventListener('resize', () => {
+    const resizeHandler = () => {
         const nextHeight = getItemHeight();
         if (nextHeight === itemHeight) return;
         itemHeight = nextHeight;
@@ -1777,7 +1787,9 @@ function initTrendingTicker(container, count) {
         } else {
             applyFoldedState();
         }
-    }, { passive: true });
+    };
+    window.addEventListener('resize', resizeHandler, { passive: true });
+    trendingCleanup.set(container, () => { clearInterval(tickerInterval); window.removeEventListener('resize', resizeHandler); });
 
     const section = container.closest('.sidebar-section');
     const expandBtn = section ? section.querySelector('.trending-expand-btn') : null;
@@ -1786,6 +1798,7 @@ function initTrendingTicker(container, count) {
         // 클릭 시 이벤트 전파 방지 등을 고려해 다시 세팅
         const clone = expandBtn.cloneNode(true);
         expandBtn.replaceWith(clone);
+        clone.innerHTML = ui("m_06864158538ff797");
 
         clone.addEventListener('click', (e) => {
             e.preventDefault();

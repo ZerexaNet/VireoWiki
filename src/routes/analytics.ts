@@ -1,3 +1,4 @@
+import { localDashboard } from '../utils/localAnalytics';
 import { ui } from '../i18n/server';
 import { Hono } from 'hono';
 import { requireAdmin } from '../middleware/session';
@@ -14,7 +15,7 @@ const DATASET = 'cloudwiki';
 function getAnalyticsCredentials(c: any): { accountId: string; apiToken: string } | null {
     const accountId = (c.env.CF_ACCOUNT_ID || '').trim();
     const apiToken = (c.env.CF_API_TOKEN || '').trim();
-    if (!accountId || !apiToken) return null;
+    if (!accountId || !apiToken || !c.env.ANALYTICS) return null;
     return { accountId, apiToken };
 }
 
@@ -34,7 +35,7 @@ function credentialError(c: any) {
  */
 analyticsRoutes.get('/overview', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const period = c.req.query('period') || '7d';
     const days = period === '90d' ? 90 : period === '30d' ? 30 : 7;
@@ -74,7 +75,7 @@ analyticsRoutes.get('/overview', async (c) => {
  */
 analyticsRoutes.get('/pages', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const period = c.req.query('period') || '7d';
     const limit = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 20));
@@ -102,7 +103,7 @@ analyticsRoutes.get('/pages', async (c) => {
  */
 analyticsRoutes.get('/trending', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const hours = Math.min(72, Math.max(1, Number(c.req.query('hours')) || 24));
 
@@ -128,7 +129,7 @@ analyticsRoutes.get('/trending', async (c) => {
  */
 analyticsRoutes.get('/referrers', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const period = c.req.query('period') || '7d';
     const limit = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 20));
@@ -156,7 +157,7 @@ analyticsRoutes.get('/referrers', async (c) => {
  */
 analyticsRoutes.get('/countries', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const period = c.req.query('period') || '7d';
     const days = period === '90d' ? 90 : period === '30d' ? 30 : 7;
@@ -183,7 +184,7 @@ analyticsRoutes.get('/countries', async (c) => {
  */
 analyticsRoutes.get('/devices', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const period = c.req.query('period') || '7d';
     const days = period === '90d' ? 90 : period === '30d' ? 30 : 7;
@@ -208,7 +209,7 @@ analyticsRoutes.get('/devices', async (c) => {
  */
 analyticsRoutes.get('/searches', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const period = c.req.query('period') || '7d';
     const limit = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 30));
@@ -236,7 +237,7 @@ analyticsRoutes.get('/searches', async (c) => {
  */
 analyticsRoutes.get('/errors', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const period = c.req.query('period') || '7d';
     const limit = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 30));
@@ -265,7 +266,7 @@ analyticsRoutes.get('/errors', async (c) => {
  */
 analyticsRoutes.get('/performance', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const period = c.req.query('period') || '7d';
     const days = period === '90d' ? 90 : period === '30d' ? 30 : 7;
@@ -305,7 +306,7 @@ analyticsRoutes.get('/performance', async (c) => {
  */
 analyticsRoutes.get('/page/:slug', async (c) => {
     const creds = getAnalyticsCredentials(c);
-    if (!creds) return credentialError(c);
+    if (!creds) return c.json(await localDashboard(c));
 
     const slug = c.req.param('slug');
     const period = c.req.query('period') || '7d';
