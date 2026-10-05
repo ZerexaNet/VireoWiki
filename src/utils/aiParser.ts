@@ -1,3 +1,4 @@
+import {isDisambiguation,stripDisambiguation} from '../../packages/wiki-shared/src/markup/disambiguation';
 import { ui } from '../i18n/server';
 import type { D1Database } from '@cloudflare/workers-types';
 import { normalizeSlug } from './slug';
@@ -334,7 +335,8 @@ function substituteParams(templateContent: string, args: Record<string, string>,
 export async function renderForAI(content: string, db: D1Database, depth = 0, currentSlug?: string): Promise<string> {
     if (!content) return '';
 
-    let processed = content;
+    const disambiguation = isDisambiguation(content);
+    let processed = stripDisambiguation(content);
     const placeholders = new Map<string, string>();
     let placeholderIndex = 0;
 
@@ -480,7 +482,7 @@ export async function renderForAI(content: string, db: D1Database, depth = 0, cu
         processed = processed.split(key).join(value);
     }
 
-    return processed;
+    return (disambiguation ? ui('disambiguation.notice') + '\n\n' : '') + processed;
 }
 
 /**

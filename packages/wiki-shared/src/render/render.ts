@@ -18,6 +18,7 @@
  * - DOMContentLoaded 시점 처리(_setupArticleTitleCopy 등) 는 module top-level 에서
  *   동기적으로 호출되며, 모듈은 deferred 이므로 DOM 이 이미 준비된 상태이다.
  */
+import {isDisambiguation,stripDisambiguation} from '../markup/disambiguation';
 import { ui, getLocale } from '../i18n/client';
 import { escapeHtml } from '../ui/html';
 import { isSafeUrl } from '../ui/url';
@@ -5029,6 +5030,8 @@ function _sortWikiTableByColumn(table, headRow, colIdx) {
 async function renderWikiContent(content, slug, containerId, options = {}) {
     const containerEl = document.getElementById(containerId);
     if (!containerEl) return;
+    const disambiguation = isDisambiguation(content);
+    content = stripDisambiguation(content);
 
     // 이 렌더 호출 동안 _resolvePaletteTokens 가 참조할 팔레트 맵을 옵션으로 받는다.
     // SPA 네비게이션 / 블로그 동적 로드처럼 페이지마다 다른 used_palettes 집합을 받는
@@ -5255,6 +5258,8 @@ async function renderWikiContent(content, slug, containerId, options = {}) {
             return `<div class="wiki-ext wiki-ext-${escapeHtml(extName)}" data-ext-name="${escapeHtml(extName)}" data-ext-idx="${escapeHtml(idx)}"></div>`;
         });
         let html = (typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(rawHtml, { ADD_TAGS: ['i', 'span', 'details', 'summary', 'div', 'canvas'], ADD_ATTR: ['class', 'style', 'data-bg', 'data-color', 'data-size', 'data-align', 'data-caption', 'data-unix', 'data-temporal-ms', 'data-temporal-mode', 'hidden', 'data-ext-name', 'data-ext-idx', 'data-state-key', 'data-fn-html', 'data-fn-name', 'data-fn-ref', 'data-progress-auto', 'colspan', 'rowspan', 'title'] }) : escapeHtml(rawHtml);
+
+        if (disambiguation) html = `<div class="alert alert-info wiki-disambiguation-notice" role="note"><strong>${escapeHtml(ui('disambiguation.type'))}</strong><br>${escapeHtml(ui('disambiguation.notice'))}</div>` + html;
 
         if (options.showCategory && slug) {
             // index.html 의 route() 가 decodeURIComponent 실패 시 원본 slug 를 그대로

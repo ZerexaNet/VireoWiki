@@ -20,6 +20,7 @@
  * - 다른 모듈이 read/write 하는 state(slug, editor, sectionMode 등)는 types.ts 에
  *   선언된 window 프로퍼티를 직접 read/write 한다 — 모듈 내부 로컬 미러는 두지 않는다.
  */
+import {isDisambiguation,setDisambiguation,stripDisambiguation} from '../../../packages/wiki-shared/src/markup/disambiguation';
 import { ui } from '../../../packages/wiki-shared/src/i18n/client';
 import './types';
 import { escapeHtml } from '../utils/html';
@@ -1258,6 +1259,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 문서 변경 감지 리스너
         const updateListener = EditorView.updateListener.of((update) => {
             if (update.docChanged) {
+                const typeInput = document.getElementById('disambiguationType') as HTMLInputElement | null;
+                if (typeInput) typeInput.checked = isDisambiguation(update.state.doc.toString());
                 editorEventHandlers.change.forEach(cb => cb());
                 window.updateEditorTextCounterFromDoc(update.state.doc);
                 if (_findFeatureOnDocChange) _findFeatureOnDocChange(update);
@@ -2748,6 +2751,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 넘겨주기(redirect) 변경 시 편집 요약 자동 갱신
     // input: 매 키 입력마다 디바운스로 갱신 (입력 중간 prefix 가 길어졌다 짧아졌다 반복하는 것 완화)
     // change: blur 직후 즉시 확정
+    const redirectField = document.getElementById('redirectInput')?.closest('.mb-3');
+    if (redirectField && !document.getElementById('disambiguationControls')) {
+        const controls = document.createElement('div'); controls.id = 'disambiguationControls'; controls.className = 'mb-3';
+        const label = document.createElement('label'); label.className = 'form-check-label fw-bold';
+        const checkbox = document.createElement('input'); checkbox.id = 'disambiguationType'; checkbox.type = 'checkbox'; checkbox.className = 'form-check-input me-2';
+        label.append(checkbox, document.createTextNode(ui('disambiguation.type')));
+        const hint = document.createElement('div'); hint.className = 'form-text text-muted'; hint.textContent = ui('disambiguation.hint');
+        const template = document.createElement('button'); template.type = 'button'; template.className = 'btn btn-sm btn-wiki-outline mt-2'; template.textContent = ui('disambiguation.insertTemplate');
+        checkbox.onchange = () => {
+            if (!editor) return;
+            editor.setMarkdown(setDisambiguation(editor.getMarkdown(), checkbox.checked));
+        };
+        template.onclick = async () => {
+            if (!editor) return;
+            if (stripDisambiguation(editor.getMarkdown()).trim() && !(await window.Swal.fire({text:ui('disambiguation.replaceConfirm'),showCancelButton:true})).isConfirmed) return;
+            const name = (document.getElementById('titleInput') as HTMLInputElement)?.value.trim().replace(/[\[\]|\r\n]/g,'') || ui('disambiguation.exampleTitle');
+            editor.setMarkdown(setDisambiguation(ui('disambiguation.template',[name]),true));
+        };
+        checkbox.checked = !!editor && isDisambiguation(editor.getMarkdown());
+        controls.style.display = sectionMode ? 'none' : '';
+        controls.append(label,hint,template); redirectField.after(controls);
+    }
     const redirectInputEl = document.getElementById('redirectInput');
     if (redirectInputEl) {
         let redirectDebounce = null;
@@ -3251,6 +3276,7 @@ function applySectionEditModeUI(range: SectionRange, fullContent: string): void 
         document.getElementById('alternateTitleInput'),
         document.getElementById('categoryInput'),
         document.getElementById('redirectInput'),
+        document.getElementById('disambiguationType'),
     ];
     lockedContainers.forEach(el => {
         if (el) {

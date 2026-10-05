@@ -3496,5 +3496,13 @@
   "tokens.never": "永不过期",
   "tokens.apiHint": "同一令牌可用作 Git 密码，也可通过 Authorization: Bearer TOKEN 调用 Wiki API 和 MCP。请妥善保管。",
   "tokens.invalidExpiry": "请选择未来的到期时间。",
-  "tokens.sessionRequired": "请通过网页登录管理令牌。"
+  "tokens.sessionRequired": "请通过网页登录管理令牌。",
+  "disambiguation.type": "消歧义页面",
+  "disambiguation.hint": "用于列出同一名称的不同含义。使用 Wiki 链接指向各条目；不要设置页面重定向。",
+  "disambiguation.notice": "本页列出同一名称的不同含义，请选择您要查阅的条目。",
+  "disambiguation.insertTemplate": "生成消歧义模板",
+  "disambiguation.replaceConfirm": "生成模板会替换当前正文，是否继续？",
+  "disambiguation.exampleTitle": "名称",
+  "disambiguation.template": "“__VIREO_SLOT_0__”可能指：\n\n- [[__VIREO_SLOT_0__（含义一）|含义一]]：简要说明。\n- [[__VIREO_SLOT_0__（含义二）|含义二]]：简要说明。\n",
+  "disambiguation.redirectConflict": "消歧义页面不能同时设置页面重定向。"
 }

@@ -78,7 +78,8 @@ test('personal tokens authenticate API and MCP, honor current roles and expire/r
  const sql=new DatabaseSync(':memory:');sql.exec(await readFile('migrations/schema.sql','utf8'));
  const db:any={prepare(query:string){let params:any[]=[];const s={bind(...args:any[]){params=args;return s},async first(){return sql.prepare(query).get(...params)||null},async all(){return{results:sql.prepare(query).all(...params)}},async run(){const r=sql.prepare(query).run(...params);return{meta:{changes:Number(r.changes),last_row_id:Number(r.lastInsertRowid)}}}};return s},async batch(items:any[]){sql.exec('BEGIN');try{const result=[];for(const item of items)result.push(await item.run());sql.exec('COMMIT');return result}catch(error){sql.exec('ROLLBACK');throw error}}};
  sql.exec("INSERT INTO users(id,provider,uid,email,name,role) VALUES(1,'nodeloc','1','token@example.com','API editor','user');INSERT INTO pages(id,slug,content,version) VALUES(1,'Public','hello',1)");
- const env:any={DB:db,KV:{get:async()=>null,put:async()=>{},delete:async()=>{}},MEDIA:{put:async()=>{},get:async()=>null},WIKI_NAME:'Test Wiki',WIKI_VISIBILITY:'open',MCP_MODE:'open',SUPER_ADMIN_EMAILS:'',ENABLED_EXTENSIONS:'',EDIT_REQUEST_ENABLED:'false',ASSETS:{fetch:async()=>new Response('',{status:404})}};
+ const objects=new Map<string,string>();
+ const env:any={DB:db,KV:{get:async()=>null,put:async()=>{},delete:async()=>{}},MEDIA:{put:async(key:string,value:string)=>{objects.set(key,value);return{}},get:async(key:string)=>objects.has(key)?{text:async()=>objects.get(key),arrayBuffer:async()=>new TextEncoder().encode(objects.get(key)).buffer}:null},WIKI_NAME:'Test Wiki',WIKI_VISIBILITY:'open',MCP_MODE:'open',SUPER_ADMIN_EMAILS:'',ENABLED_EXTENSIONS:'',EDIT_REQUEST_ENABLED:'false',ASSETS:{fetch:async()=>new Response('',{status:404})}};
  const waits:Promise<any>[]=[];const ctx:any={waitUntil:(p:Promise<any>)=>waits.push(p),passThroughOnException(){}};
  (globalThis as any).caches={default:{match:async()=>undefined,put:async()=>{},delete:async()=>true}};
  const now=Math.floor(Date.now()/1000);
@@ -100,6 +101,13 @@ test('personal tokens authenticate API and MCP, honor current roles and expire/r
  assert.equal((await call('/api/me/git-token',{method:'DELETE',headers})).status,403);
  const mcp=await call('/api/mcp',{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list'})});assert.equal(mcp.status,200);assert.ok((await mcp.json() as any).result.tools.some((t:any)=>t.name==='create_or_update_page'));
  const authContext:any={env,req:{header:()=>headers.Authorization},executionCtx:ctx};assert.equal((await resolveBearerAuth(authContext)).kind,'authenticated');
+ const {DISAMBIGUATION_MARKER}=await import('../packages/wiki-shared/src/markup/disambiguation');
+ env.TURNSTILE_SECRET_KEY='test-secret';
+ const body=DISAMBIGUATION_MARKER+'\nName may refer to:\n- [[Meaning one]]\n- [[Meaning two]]';
+ const updated=await call('/api/w/Public',{method:'PUT',headers,body:JSON.stringify({content:body,version:1,summary:'Mark disambiguation'})});assert.equal(updated.status,200,await updated.text());
+ const readPage=await call('/api/w/Public?for_edit=true',{headers});assert.equal(readPage.status,200);const saved:any=await readPage.json();assert.equal(saved.is_disambiguation,true);assert.equal(saved.content,body);
+ const conflict=await call('/api/w/Public',{method:'PUT',headers,body:JSON.stringify({content:body,version:2,redirect_to:'Other'})});assert.equal(conflict.status,400);
+ const rev=sql.prepare('SELECT content,r2_key FROM revisions WHERE page_id=1 ORDER BY id DESC LIMIT 1').get() as any;assert.equal(rev.r2_key?objects.get(rev.r2_key):rev.content,body);
  // Bearer writes work without browser Origin; ordinary cookie writes still require same-origin.
  assert.equal((await call('/api/me/api-token',{method:'POST',headers:{Cookie:'wiki_session=browser',Origin:'https://evil.example','Content-Type':'text/plain'},body:'{}'})).status,403);
  const invalid=await call('/api/me/api-token',{method:'POST',headers:browser,body:JSON.stringify({expires_at:now-1})});assert.equal(invalid.status,400);assert.ok(await authenticatePersonalToken(env,data.token));
@@ -110,4 +118,14 @@ test('personal tokens authenticate API and MCP, honor current roles and expire/r
  const legacy='git_'+'a'.repeat(64);sql.prepare('UPDATE git_tokens SET token_hash=?,expires_at=? WHERE user_id=1').run(await sha256Hex(legacy),now+120);assert.ok(await authenticatePersonalToken(env,legacy));
  assert.equal((await call('/api/me/git-token',{method:'DELETE',headers:browser})).status,200);assert.equal(await authenticatePersonalToken(env,legacy),null);
  await Promise.all(waits);sql.close();
+});
+
+
+test('disambiguation markers preserve source and ignore inline/code examples', async () => {
+ const {DISAMBIGUATION_MARKER,isDisambiguation,setDisambiguation,stripDisambiguation}=await import('../packages/wiki-shared/src/markup/disambiguation');
+ const body='- [[Meaning one]]\n- [[Meaning two]]';const marked=setDisambiguation(body,true);
+ assert.equal(isDisambiguation(marked),true);assert.equal(stripDisambiguation(marked),body);assert.equal(setDisambiguation(marked,true),marked);assert.equal(setDisambiguation(marked,false),body);
+ assert.equal(isDisambiguation('```html\n'+DISAMBIGUATION_MARKER+'\n```'),false);assert.equal(isDisambiguation('Example: '+DISAMBIGUATION_MARKER),false);
+ assert.equal(isDisambiguation('\uFEFF\n'+marked.replace(/\n/g,'\r\n')),true);
+ const {renderForAI}=await import('../src/utils/aiParser');const text=await renderForAI(marked,{} as any);assert.ok(!text.includes(DISAMBIGUATION_MARKER));assert.ok(text.includes('[[Meaning one]]'));assert.ok(text.length>body.length);
 });
