@@ -16,6 +16,7 @@
 //    (원본 classic 스크립트에서도 모듈 함수라 false 로 평가되어 fallback 이 돌던 동작 보존).
 //  - HTML 의 on* 속성에서 호출되는, 이 블록이 정의한 함수들은 파일 끝에서 window.* 로 노출한다.
 
+import {isDisambiguation} from '../../../packages/wiki-shared/src/markup/disambiguation';
 import { ui, getLocale } from '../../../packages/wiki-shared/src/i18n/client';
 import { createBreadcrumbNav } from '../article/breadcrumb';
 import { createStructureModal } from '../article/structure';
@@ -755,7 +756,7 @@ import { createTocController } from '../article/toc';
         // 메타 정보
         const updatedDate = new Date(page.updated_at * 1000).toLocaleString(getLocale());
 
-        let badgesHtml = '';
+        let badgesHtml = (page.is_disambiguation || isDisambiguation(page.content)) ? `<span class="badge bg-info text-dark ms-2">${window.escapeHtml(ui('disambiguation.type'))}</span>` : '';
         if (page.category) {
           const cats = page.category.split(',').map(c => c.trim()).filter(c => c);
           cats.forEach(cat => {

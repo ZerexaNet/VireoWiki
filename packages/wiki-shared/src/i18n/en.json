@@ -3496,5 +3496,13 @@
   "tokens.never": "Never expires",
   "tokens.apiHint": "Use the same token as your Git password or send Authorization: Bearer TOKEN to the Wiki API and MCP. Keep it private.",
   "tokens.invalidExpiry": "Choose a future expiration time.",
-  "tokens.sessionRequired": "Sign in through the browser to manage tokens."
+  "tokens.sessionRequired": "Sign in through the browser to manage tokens.",
+  "disambiguation.type": "Disambiguation page",
+  "disambiguation.hint": "List different meanings of the same name using Wiki links. Do not set a page redirect.",
+  "disambiguation.notice": "This page lists different meanings of the same name. Choose the article you want to read.",
+  "disambiguation.insertTemplate": "Insert disambiguation template",
+  "disambiguation.replaceConfirm": "This replaces the current content with a template. Continue?",
+  "disambiguation.exampleTitle": "Name",
+  "disambiguation.template": "“__VIREO_SLOT_0__” may refer to:\n\n- [[__VIREO_SLOT_0__ (meaning one)|Meaning one]]: Brief description.\n- [[__VIREO_SLOT_0__ (meaning two)|Meaning two]]: Brief description.\n",
+  "disambiguation.redirectConflict": "A disambiguation page cannot also redirect to another page."
 }

@@ -1,3 +1,4 @@
+import {isDisambiguation} from '../../packages/wiki-shared/src/markup/disambiguation';
 import { trackPageView } from '../utils/analytics';
 import { ui } from '../i18n/server';
 import { Hono, type Context } from 'hono';
@@ -1742,7 +1743,7 @@ wiki.get('/w/:slug', async (c, next) => {
         console.error('loadPalettesForPage failed:', e);
     }
 
-    const result = safeJSON({ ...page, redirected_from: redirectedFrom, used_palettes: usedPalettes });
+    const result = safeJSON({ ...page, is_disambiguation: isDisambiguation(page.content), redirected_from: redirectedFrom, used_palettes: usedPalettes });
 
     // 편집 메모(editor_note)는 편집기 로딩(for_edit=true) 시에만 wiki:edit 권한자에게 노출한다.
     // 일반 열람·SPA 네비게이션·검색 등에서는 응답에서 제거한다.
@@ -2172,6 +2173,8 @@ wiki.put('/w/:slug', requireAuth, async (c) => {
     if (typeof body.content !== 'string') {
         return c.json({ error: ui("m_8dd4e38868d9e2ba") }, 400);
     }
+
+    if (isDisambiguation(body.content) && body.redirect_to) return c.json({error:ui('disambiguation.redirectConflict')},400);
 
     // CRLF/CR → LF 정규화. 클라이언트 환경(Windows 클립보드, 외부 임포트 등)에서
     // \r 가 섞여 들어오면 렌더 파이프라인의 펜스/`:::`/폴드 정규식이 깨진다.
