@@ -52,20 +52,20 @@ app.use('*', localeMiddleware);
 // Secure Headers
 app.use('*', secureHeaders());
 
+// RBAC 초기화 및 세션 미들웨어 (모든 요청에서 유저 정보를 주입)
+app.use('*', rbacMiddleware);
+app.use('*', sessionMiddleware);
 // CSRF 보호 (GET/HEAD/OPTIONS 제외)
 // MCP / OAuth 토큰 엔드포인트는 외부 서비스(Claude 등)에서 호출하므로 CSRF 제외.
 // /oauth/authorize 는 위키 도메인의 동의 폼에서 POST 되므로 CSRF 적용 (Origin 자동 검증).
 app.use('*', (c, next) => {
     const path = c.req.path;
+    if (path.startsWith('/api/') && c.get('apiTokenAuthenticated') && !['/api/me/api-token','/api/me/git-token','/api/me/mcp-api-key'].includes(path)) return next();
     if (/^\/git\/pages\/[1-9][0-9]*\.git\/git-(upload|receive)-pack$/.test(path)) return next();
     if (path === '/api/mcp' || path.startsWith('/api/mcp/')) return next();
     if (path === '/oauth/token' || path === '/oauth/register' || path === '/oauth/revoke') return next();
     return csrf()(c, next);
 });
-
-// RBAC 초기화 및 세션 미들웨어 (모든 요청에서 유저 정보를 주입)
-app.use('*', rbacMiddleware);
-app.use('*', sessionMiddleware);
 
 // ── closed 위키에서 banned 유저의 접근 제한 ──
 // WIKI_VISIBILITY=closed 인 환경의 banned 사용자는 다음 세 슬러그(=wrangler.toml 환경변수)

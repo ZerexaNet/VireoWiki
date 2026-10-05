@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { Buffer } from 'node:buffer';
 import * as git from 'isomorphic-git';
-import type { Env, User } from '../types';
-import { requireAuth } from '../middleware/session';
-import { isSuperAdmin } from '../utils/auth';
+import type { Env } from '../types';
+import { requireAuth, requireBrowserSession } from '../middleware/session';
+import { authenticatePersonalToken, ensurePersonalTokens, personalTokenExpiry } from '../utils/personalTokens';
 import { ObjectStore, newCommits } from '../git/objectStore';
 import { advertisement, parsePackets, parseUpdate, packet, status, OID } from '../git/protocol';
 import { acquire, release, ensureGit, page, synchronize, recordHead } from '../git/storage';
@@ -22,20 +22,27 @@ async function boundedBody(request: Request, limit: number) {
     return Buffer.concat(chunks);
 }
 // Browser token management uses the normal session and CSRF protection. Passwords are one-time output.
-routes.get('/api/me/git-token', requireAuth, async c => {
-    await ensureGit(c.env.DB);
+const tokenPaths = ['/api/me/api-token', '/api/me/git-token'];
+routes.on('GET', tokenPaths, requireAuth, requireBrowserSession, async c => {
+    await ensurePersonalTokens(c.env.DB);
     const token = await c.env.DB.prepare('SELECT masked_token, expires_at FROM git_tokens WHERE user_id = ?').bind(c.get('user')!.id).first();
     return c.json({ token }, 200, { 'Cache-Control': 'no-store' });
 });
-routes.post('/api/me/git-token', requireAuth, async c => {
-    await ensureGit(c.env.DB);
-    const raw = `git_${Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex')}`;
-    const expires = Math.floor(Date.now() / 1000) + 30 * 86400;
+routes.on('POST', tokenPaths, requireAuth, requireBrowserSession, async c => {
+    await ensurePersonalTokens(c.env.DB);
+    let expires: number;
+    try {
+        const text = await c.req.text();
+        const body = text ? JSON.parse(text) : {};
+        if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid body');
+        expires = personalTokenExpiry(body.expires_at);
+    } catch { return c.json({ error: ui('tokens.invalidExpiry') }, 400); }
+    const raw = `wiki_${Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex')}`;
     await c.env.DB.prepare('INSERT OR REPLACE INTO git_tokens (user_id, token_hash, masked_token, expires_at, created_at) VALUES (?, ?, ?, ?, unixepoch())')
         .bind(c.get('user')!.id, await hash(raw), raw.slice(0, 8) + '…' + raw.slice(-4), expires).run();
     return c.json({ token: raw, expires_at: expires }, 200, { 'Cache-Control': 'no-store' });
 });
-routes.delete('/api/me/git-token', requireAuth, async c => { await ensureGit(c.env.DB); await c.env.DB.prepare('DELETE FROM git_tokens WHERE user_id = ?').bind(c.get('user')!.id).run(); return c.json({ success: true }); });
+routes.on('DELETE', tokenPaths, requireAuth, requireBrowserSession, async c => { await ensurePersonalTokens(c.env.DB); await c.env.DB.prepare('DELETE FROM git_tokens WHERE user_id = ?').bind(c.get('user')!.id).run(); return c.json({ success: true }); });
 // Basic credentials are intentionally restricted to the Git transport, never accepted for browser APIs.
 routes.use('/git/pages/*', async (c, next) => {
     const authorization = c.req.header('Authorization') || '';
@@ -43,13 +50,8 @@ routes.use('/git/pages/*', async (c, next) => {
     let token: string;
     try { const decoded = Buffer.from(authorization.slice(6), 'base64').toString('utf8'); token = decoded.slice(decoded.indexOf(':') + 1); }
     catch { return challenge(); }
-    if (!/^git_[a-f0-9]{64}$/.test(token)) return challenge();
-    await ensureGit(c.env.DB);
-    const user = await c.env.DB.prepare(`SELECT u.* FROM users u JOIN git_tokens t ON t.user_id = u.id WHERE t.token_hash = ? AND t.expires_at > unixepoch()`)
-        .bind(await hash(token)).first<User>();
-    if (!user || user.role === 'deleted' || (user.banned_until && user.banned_until > Math.floor(Date.now() / 1000))) return challenge();
-    if (isSuperAdmin(user.email, c.env)) user.role = 'super_admin';
-    else if (user.role === 'banned') { if (!user.banned_until) return challenge(); user.role = 'user'; }
+    const user = await authenticatePersonalToken(c.env, token);
+    if (!user) return challenge();
     c.set('user', user); await next();
 });
 async function accessible(c: any) {
@@ -156,16 +158,20 @@ routes.post('/git/pages/:repository/git-receive-pack', async c => {
     finally { if (lease) await release(c.env.DB, current.id, lease); }
 });
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
-routes.get('/git', requireAuth, c => {
+routes.on('GET', ['/git', '/tokens'], requireAuth, c => {
     const id = c.req.query('page');
     const url = id && /^[1-9][0-9]*$/.test(id) ? `${new URL(c.req.url).origin}/git/pages/${id}.git` : '';
-    const texts = Object.fromEntries(['title', 'intro', 'token', 'generate', 'revoke', 'clone', 'commands', 'limits', 'back', 'tokenHint', 'updated', 'failed', 'confirm'].map(key => [key, ui(`git.${key}`)]));
-    return c.html(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escape(texts.title)}</title><link rel="stylesheet" href="/css/style.css"></head><body><main class="wiki-container" style="max-width:850px;margin:40px auto;padding:20px"><a href="/">${escape(texts.back)}</a><h1>${escape(texts.title)}</h1><p>${escape(texts.intro)}</p><p>${escape(texts.limits)}</p><h2>${escape(texts.token)}</h2><p>${escape(texts.tokenHint)}</p><button id="generate">${escape(texts.generate)}</button> <button id="revoke">${escape(texts.revoke)}</button><pre id="result" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre><h2>${escape(texts.clone)}</h2>${url ? `<pre style="overflow:auto">git clone ${escape(url)}\ncd ${id}\n# ${escape(texts.commands)}\ngit add page.md\ngit commit -m "Update page"\ngit pull --rebase\ngit push origin main</pre>` : `<p>${escape(texts.updated)}</p>`}</main><script>
+    const texts = Object.fromEntries(['title', 'intro', 'token', 'generate', 'revoke', 'clone', 'commands', 'limits', 'back', 'tokenHint', 'updated', 'failed', 'confirm', 'expiry', 'customExpiry', 'never', 'apiHint', 'invalidExpiry'].map(key => [key, ui(['expiry','customExpiry','never','apiHint','invalidExpiry'].includes(key) ? `tokens.${key}` : `git.${key}`)]));
+    const tokenOnly = c.req.path === '/tokens';
+    if (tokenOnly) texts.title = ui('tokens.title');
+    return c.html(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escape(texts.title)}</title><link rel="stylesheet" href="/css/style.css"></head><body><main class="wiki-container" style="max-width:850px;margin:40px auto;padding:20px"><a href="/">${escape(texts.back)}</a><h1>${escape(texts.title)}</h1>${tokenOnly ? '' : `<p>${escape(texts.intro)}</p><p>${escape(texts.limits)}</p>`}<h2>${escape(texts.token)}</h2><p>${escape(texts.tokenHint)}</p><p>${escape(texts.apiHint)}</p><label for="expiry">${escape(texts.expiry)}</label> <select id="expiry"><option value="7">7</option><option value="30" selected>30</option><option value="90">90</option><option value="365">365</option><option value="custom">${escape(texts.customExpiry)}</option><option value="never">${escape(texts.never)}</option></select> <input id="customExpiry" type="datetime-local" aria-label="${escape(texts.customExpiry)}" hidden><p><button id="generate">${escape(texts.generate)}</button> <button id="revoke">${escape(texts.revoke)}</button></p><pre id="result" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>${tokenOnly ? '' : `<h2>${escape(texts.clone)}</h2>${url ? `<pre style="overflow:auto">git clone ${escape(url)}\ncd ${id}\n# ${escape(texts.commands)}\ngit add page.md\ngit commit -m "Update page"\ngit pull --rebase\ngit push origin main</pre>` : `<p>${escape(texts.updated)}</p>`}`}</main><script>
 const messages=${JSON.stringify(texts).replace(/</g, '\\u003c')};
 const result=document.getElementById('result');
-async function load(){const r=await fetch('/api/me/git-token');const data=await r.json();if(data.token)result.textContent=data.token.masked_token+' · '+new Date(data.token.expires_at*1000).toLocaleString();}
-document.getElementById('generate').onclick=async()=>{if(!confirm(messages.confirm))return;const r=await fetch('/api/me/git-token',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const data=await r.json();result.textContent=r.ok?data.token:messages.failed;};
-document.getElementById('revoke').onclick=async()=>{const r=await fetch('/api/me/git-token',{method:'DELETE'});result.textContent=r.ok?messages.updated:messages.failed;};load().catch(()=>{result.textContent=messages.failed});
+async function load(){const r=await fetch('/api/me/api-token');const data=await r.json();if(data.token)result.textContent=data.token.masked_token+' · '+(data.token.expires_at?new Date(data.token.expires_at*1000).toLocaleString():messages.never);}
+const expiry=document.getElementById('expiry'),customExpiry=document.getElementById('customExpiry');
+expiry.onchange=()=>{customExpiry.hidden=expiry.value!=='custom'};
+document.getElementById('generate').onclick=async()=>{const expires_at=expiry.value==='never'?0:expiry.value==='custom'?Math.floor(new Date(customExpiry.value).getTime()/1000):Math.floor(Date.now()/1000)+Number(expiry.value)*86400;if(expiry.value!=='never'&&(!Number.isSafeInteger(expires_at)||expires_at<=Date.now()/1000)){result.textContent=messages.invalidExpiry;return;}if(!confirm(messages.confirm))return;const r=await fetch('/api/me/api-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expires_at})});const data=await r.json();result.textContent=r.ok?data.token+' · '+(data.expires_at?new Date(data.expires_at*1000).toLocaleString():messages.never):(data.error||messages.failed);};
+document.getElementById('revoke').onclick=async()=>{const r=await fetch('/api/me/api-token',{method:'DELETE'});result.textContent=r.ok?messages.updated:messages.failed;};load().catch(()=>{result.textContent=messages.failed});
 </script></body></html>`);
 });
 export default routes;

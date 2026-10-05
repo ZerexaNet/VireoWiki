@@ -1,3 +1,4 @@
+import {authenticatePersonalToken} from '../utils/personalTokens';
 import { ui } from '../i18n/server';
 import { createMiddleware } from 'hono/factory';
 import { getCookie } from 'hono/cookie';
@@ -28,6 +29,13 @@ export const rbacMiddleware = createMiddleware<Env>(async (c, next) => {
 const SESSION_CACHE_TTL = 1800; // KV 캐시 TTL: 30분
 
 export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
+    const authorization = c.req.header('Authorization') || '';
+    if (c.req.path.startsWith('/api/') && /^Bearer (?:wiki|git)_/i.test(authorization)) {
+        const user = await authenticatePersonalToken(c.env, authorization.slice(7).trim());
+        if (!user) return c.json({ error: 'Invalid or expired API token' }, 401, { 'Cache-Control': 'no-store' });
+        c.set('user', user); c.set('apiTokenAuthenticated', true);
+        return next();
+    }
     const sessionId = getCookie(c, 'wiki_session');
 
     if (!sessionId) {
@@ -176,3 +184,9 @@ export function requirePermission(permission: string) {
         return next();
     });
 }
+
+/** Credential management is reserved for browser sessions, never personal bearer tokens. */
+export const requireBrowserSession = createMiddleware<Env>(async (c, next) => {
+    if (c.get('apiTokenAuthenticated')) return c.json({error:ui('tokens.sessionRequired')},403);
+    return next();
+});

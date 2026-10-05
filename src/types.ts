@@ -85,6 +85,7 @@ export type Env = {
     };
     Variables: {
         gitAuthenticated?: boolean;
+        apiTokenAuthenticated?: boolean;
         gitTargetPageId?: number;
         user: User | null;
         rbac?: any; // To be defined or used as a helper

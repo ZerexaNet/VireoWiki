@@ -1167,6 +1167,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const listEl = document.getElementById('mcpClientsList');
             if (!section || !listEl) return;
 
+            const tokenContainer = document.getElementById('mcpApiKeyContainer');
+            if (tokenContainer && !document.getElementById('personalApiTokenLink')) {
+                const link = document.createElement('a'); link.id = 'personalApiTokenLink';
+                link.href = '/tokens'; link.className = 'btn btn-outline-wiki mb-3';
+                link.textContent = ui('tokens.title'); tokenContainer.before(link);
+            }
             // 위키 MCP 엔드포인트 URL 및 API 키 JSON 스니펫 세팅 (origin + /api/mcp)
             const wikiEndpointEl = document.getElementById('wikiMcpEndpointUrl');
             if (wikiEndpointEl) wikiEndpointEl.textContent = window.location.origin + '/api/mcp';

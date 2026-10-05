@@ -2073,7 +2073,7 @@ wiki.put('/w/:slug', requireAuth, async (c) => {
     }
 
     // Turnstile 검증
-    if (c.env.TURNSTILE_SECRET_KEY && !c.get('gitAuthenticated')) {
+    if (c.env.TURNSTILE_SECRET_KEY && !c.get('gitAuthenticated') && !c.get('apiTokenAuthenticated')) {
         const token = body.turnstileToken;
         if (!token) {
             return c.json({ error: ui("m_e6b962a8eaff5533") }, 403);
