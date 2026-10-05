@@ -1,3 +1,4 @@
+import { requireBrowserSession } from '../../middleware/session';
 import { PERMISSION_KEYS } from '../../utils/permissionGroups';
 import { ui } from '../../i18n/server';
 import { Hono } from 'hono';
@@ -1192,6 +1193,10 @@ auth.delete('/api/me/account', requireAuth, async (c) => {
         if (!err?.message?.includes('no such table')) throw err;
     }
 
+    // Revoke personal API/Git credentials on account deletion.
+    try { await db.prepare('DELETE FROM git_tokens WHERE user_id = ?').bind(user.id).run(); }
+    catch (err: any) { if (!err?.message?.includes('no such table')) throw err; }
+
     // 5. KV 세션 캐시 무효화 (현재 세션)
     const sessionId = getCookie(c, 'wiki_session');
     if (sessionId) {
@@ -1208,7 +1213,7 @@ auth.delete('/api/me/account', requireAuth, async (c) => {
  * GET /api/me/mcp-api-key
  * 현재 로그인한 사용자의 MCP API 키 정보 조회
  */
-auth.get('/api/me/mcp-api-key', requireAuth, async (c) => {
+auth.get('/api/me/mcp-api-key', requireAuth, requireBrowserSession, async (c) => {
     const user = c.get('user')!;
     const db = c.env.DB;
     try {
@@ -1228,7 +1233,7 @@ auth.get('/api/me/mcp-api-key', requireAuth, async (c) => {
  * POST /api/me/mcp-api-key
  * MCP API 키 생성 또는 갱신 (30일 고정 수명)
  */
-auth.post('/api/me/mcp-api-key', requireAuth, async (c) => {
+auth.post('/api/me/mcp-api-key', requireAuth, requireBrowserSession, async (c) => {
     const user = c.get('user')!;
     const db = c.env.DB;
 
@@ -1267,7 +1272,7 @@ auth.post('/api/me/mcp-api-key', requireAuth, async (c) => {
  * DELETE /api/me/mcp-api-key
  * MCP API 키 삭제
  */
-auth.delete('/api/me/mcp-api-key', requireAuth, async (c) => {
+auth.delete('/api/me/mcp-api-key', requireAuth, requireBrowserSession, async (c) => {
     const user = c.get('user')!;
     const db = c.env.DB;
 

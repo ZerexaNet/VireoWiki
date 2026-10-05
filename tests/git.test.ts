@@ -57,7 +57,7 @@ test('real Git clone, web pull, push, rejected force/delete, revoked permissions
     const pending: Promise<any>[] = [], ctx: any = { waitUntil: (p: Promise<any>) => pending.push(p), passThroughOnException() {} };
     const tokenResponse = await app.request('/api/me/git-token', { method: 'POST' }, env, ctx);
     const token = (await tokenResponse.json() as any).token;
-    assert.match(token, /^git_/);
+    assert.match(token, /^wiki_/);
     const server = createServer(async (req, res) => {
         try {
             const chunks = []; for await (const chunk of req) chunks.push(chunk);

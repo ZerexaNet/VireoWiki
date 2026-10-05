@@ -1,3 +1,4 @@
+import worker from '../src/index';
 import {findPrefixRuleEditAcl,evaluateEditAcl} from '../src/utils/editAcl';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -60,4 +61,53 @@ test('Wiki prefix defaults deny ordinary editors and allow administrators', asyn
  assert.equal((await evaluateEditAcl(db,acl!,{id:1,role:'user'} as any,null,0,false)).allowed,false);
  assert.equal((await evaluateEditAcl(db,acl!,{id:1,role:'admin'} as any,null,0,true)).allowed,true);
  assert.equal(await findPrefixRuleEditAcl(db,'WikiX/普通页面'),null);
+});
+
+test('personal token expiration validates input and keeps backward compatibility', async () => {
+ const {personalTokenExpiry}=await import('../src/utils/personalTokens');
+ assert.equal(personalTokenExpiry(undefined,100),100+30*86400);
+ assert.equal(personalTokenExpiry(150,100),150);assert.equal(personalTokenExpiry(0,100),0);assert.equal(personalTokenExpiry(null,100),0);
+ for(const value of [99,100,-1,150.1,'150',NaN,Infinity,253402300800])assert.throws(()=>personalTokenExpiry(value,100));
+});
+
+test('personal tokens authenticate API and MCP, honor current roles and expire/revoke immediately', async () => {
+ const {readFile}=await import('node:fs/promises');
+ const {authenticatePersonalToken}=await import('../src/utils/personalTokens');
+ const {resolveBearerAuth}=await import('../src/utils/mcpAuth');
+ const {sha256Hex}=await import('../src/utils/oauth');
+ const sql=new DatabaseSync(':memory:');sql.exec(await readFile('migrations/schema.sql','utf8'));
+ const db:any={prepare(query:string){let params:any[]=[];const s={bind(...args:any[]){params=args;return s},async first(){return sql.prepare(query).get(...params)||null},async all(){return{results:sql.prepare(query).all(...params)}},async run(){const r=sql.prepare(query).run(...params);return{meta:{changes:Number(r.changes),last_row_id:Number(r.lastInsertRowid)}}}};return s},async batch(items:any[]){sql.exec('BEGIN');try{const result=[];for(const item of items)result.push(await item.run());sql.exec('COMMIT');return result}catch(error){sql.exec('ROLLBACK');throw error}}};
+ sql.exec("INSERT INTO users(id,provider,uid,email,name,role) VALUES(1,'nodeloc','1','token@example.com','API editor','user');INSERT INTO pages(id,slug,content,version) VALUES(1,'Public','hello',1)");
+ const env:any={DB:db,KV:{get:async()=>null,put:async()=>{},delete:async()=>{}},MEDIA:{put:async()=>{},get:async()=>null},WIKI_NAME:'Test Wiki',WIKI_VISIBILITY:'open',MCP_MODE:'open',SUPER_ADMIN_EMAILS:'',ENABLED_EXTENSIONS:'',EDIT_REQUEST_ENABLED:'false',ASSETS:{fetch:async()=>new Response('',{status:404})}};
+ const waits:Promise<any>[]=[];const ctx:any={waitUntil:(p:Promise<any>)=>waits.push(p),passThroughOnException(){}};
+ (globalThis as any).caches={default:{match:async()=>undefined,put:async()=>{},delete:async()=>true}};
+ const now=Math.floor(Date.now()/1000);
+ sql.prepare('INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)').run('browser',1,now+3600);
+ const browser={Cookie:'wiki_session=browser',Origin:'https://example.com','Content-Type':'application/json'};
+ const call=(path:string,init:any={})=>worker.fetch(new Request('https://example.com'+path,init),env,ctx);
+ const tokenPage=await call('/tokens',{headers:browser});assert.equal(tokenPage.status,200);
+ const html=await tokenPage.text();assert.ok(html.includes('datetime-local'));assert.ok(html.includes('value="never"'));
+ const {Script}=await import('node:vm');new Script(html.match(/<script>([\s\S]*?)<\/script>/)![1]);
+ const generated=await call('/api/me/api-token',{method:'POST',headers:browser,body:JSON.stringify({expires_at:now+120})});assert.equal(generated.status,200);
+ const data:any=await generated.json();assert.match(data.token,/^wiki_/);assert.equal(data.expires_at,now+120);
+ const headers={Authorization:'Bearer '+data.token,'Content-Type':'application/json'};
+ assert.equal((await call('/api/me',{headers})).status,200);
+ assert.equal((await call('/api/me/mcp-instant-apply',{method:'PUT',headers,body:'{"enabled":true}'})).status,200);
+ assert.equal((sql.prepare('SELECT mcp_instant_apply FROM users WHERE id=1').get() as any).mcp_instant_apply,1);
+ assert.notEqual((sql.prepare('SELECT token_hash FROM git_tokens WHERE user_id=1').get() as any).token_hash,data.token);
+ assert.equal((await call('/api/me/mcp-api-key',{method:'POST',headers})).status,403);
+ assert.equal((await call('/api/me/api-token',{method:'POST',headers,body:'{}'})).status,403);
+ assert.equal((await call('/api/me/git-token',{method:'DELETE',headers})).status,403);
+ const mcp=await call('/api/mcp',{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list'})});assert.equal(mcp.status,200);assert.ok((await mcp.json() as any).result.tools.some((t:any)=>t.name==='create_or_update_page'));
+ const authContext:any={env,req:{header:()=>headers.Authorization},executionCtx:ctx};assert.equal((await resolveBearerAuth(authContext)).kind,'authenticated');
+ // Bearer writes work without browser Origin; ordinary cookie writes still require same-origin.
+ assert.equal((await call('/api/me/api-token',{method:'POST',headers:{Cookie:'wiki_session=browser',Origin:'https://evil.example','Content-Type':'text/plain'},body:'{}'})).status,403);
+ const invalid=await call('/api/me/api-token',{method:'POST',headers:browser,body:JSON.stringify({expires_at:now-1})});assert.equal(invalid.status,400);assert.ok(await authenticatePersonalToken(env,data.token));
+ sql.exec("UPDATE users SET role='admin' WHERE id=1");assert.equal((await authenticatePersonalToken(env,data.token))!.role,'admin');
+ sql.exec("UPDATE users SET role='banned',banned_until=NULL WHERE id=1");assert.equal(await authenticatePersonalToken(env,data.token),null);assert.equal((await call('/api/me',{headers})).status,401);
+ sql.exec("UPDATE users SET role='user' WHERE id=1;UPDATE git_tokens SET expires_at=unixepoch() WHERE user_id=1");assert.equal(await authenticatePersonalToken(env,data.token),null);
+ const forever=await call('/api/me/api-token',{method:'POST',headers:browser,body:'{"expires_at":0}'});assert.equal(forever.status,200);const indefinite:any=await forever.json();assert.equal(indefinite.expires_at,0);assert.ok(await authenticatePersonalToken(env,indefinite.token));assert.equal(await authenticatePersonalToken(env,data.token),null);
+ const legacy='git_'+'a'.repeat(64);sql.prepare('UPDATE git_tokens SET token_hash=?,expires_at=? WHERE user_id=1').run(await sha256Hex(legacy),now+120);assert.ok(await authenticatePersonalToken(env,legacy));
+ assert.equal((await call('/api/me/git-token',{method:'DELETE',headers:browser})).status,200);assert.equal(await authenticatePersonalToken(env,legacy),null);
+ await Promise.all(waits);sql.close();
 });

@@ -1,3 +1,4 @@
+import {authenticatePersonalToken,isPersonalToken} from './personalTokens';
 import { ui } from '../i18n/server';
 import type { Context } from 'hono';
 import type { Env, User } from '../types';
@@ -55,6 +56,11 @@ export async function resolveBearerAuth(c: Context<Env>): Promise<BearerAuthResu
     const token = authHeader.slice(7).trim();
     if (!token) return { kind: 'error', response: mcpUnauthorized(c, 'Empty bearer token') };
 
+    if (isPersonalToken(token)) {
+        const user = await authenticatePersonalToken(c.env, token);
+        if (!user) return { kind: 'error', response: mcpUnauthorized(c, 'Token expired, revoked or account unavailable') };
+        return {kind:'authenticated',user,effectiveRole:user.role,tokenId:null,scope:'mcp admin-mcp'};
+    }
     const tokenHash = await sha256Hex(token);
     const now = Math.floor(Date.now() / 1000);
 
