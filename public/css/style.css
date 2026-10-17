@@ -170,8 +170,9 @@
   --wiki-navbar-padding-y: 0.8rem;
   --wiki-max-content-width: 960px;
   --wiki-footer-max-width: 1400px;
-  /* 본문 산문 측정폭(가독성 상한). 단일 소스라 조정 용이 */
-  --wiki-measure: 66ch;
+  /* Let prose and headings use the article width, including Chinese text.
+     Themes may still override this token for a narrower reading measure. */
+  --wiki-measure: 100%;
   /* sidebarWidth 는 기존 --wiki-sidebar-width 재사용 */
 
   /* 글자 크기 (font-size) — DESIGN.md fontSizes */
